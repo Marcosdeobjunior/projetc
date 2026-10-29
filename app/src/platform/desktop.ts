@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { join } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { DirEntry, Platform, VaultFs, VaultRef } from "./types";
+import type { Platform, VaultFs, VaultRef } from "./types";
 import { PlatformError } from "./types";
 import { PROJECT_FILE } from "../vault/paths";
 
@@ -49,10 +49,6 @@ class TauriFs implements VaultFs {
         "x-path": encodeURIComponent(path),
       },
     });
-  }
-
-  list(path: string) {
-    return invoke<DirEntry[]>("vault_list", { root: this.root, path });
   }
 
   exists(path: string) {

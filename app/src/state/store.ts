@@ -29,7 +29,7 @@ export interface Session {
   activeSceneId: string | null;
 }
 
-export type SaveState = "idle" | "saving" | "saved" | "error";
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 interface AppState {
   platform: (Platform & { persistent?: boolean }) | null;

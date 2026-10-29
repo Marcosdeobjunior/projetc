@@ -6,7 +6,7 @@ import type { PMNode } from "./types";
  * app. Aceita o mesmo subconjunto que serialize.ts escreve.
  */
 
-export interface ParsedFile {
+interface ParsedFile {
   frontmatter: Record<string, string>;
   body: string;
 }
@@ -41,7 +41,7 @@ const INLINE_MARKS: [string, string][] = [
   ["_", "italic"],
 ];
 
-export function parseInline(src: string): PMNode[] {
+function parseInline(src: string): PMNode[] {
   const out: PMNode[] = [];
   const active: string[] = [];
   let buf = "";
@@ -64,15 +64,6 @@ export function parseInline(src: string): PMNode[] {
       } else buf += src[i + 1];
       i += 2;
       continue;
-    }
-    if (ch === "`") {
-      const end = src.indexOf("`", i + 1);
-      if (end > i) {
-        flush();
-        out.push({ type: "text", text: src.slice(i + 1, end), marks: [{ type: "code" }] });
-        i = end + 1;
-        continue;
-      }
     }
     const mark = INLINE_MARKS.find(([s]) => src.startsWith(s, i));
     if (mark) {
@@ -127,7 +118,8 @@ function parseBlocks(lines: string[]): PMNode[] {
     if (heading) {
       out.push({
         type: "heading",
-        attrs: { level: heading[1]!.length },
+        // O editor só tem títulos de nível 1 a 3.
+        attrs: { level: Math.min(3, heading[1]!.length) },
         content: parseInline(heading[2]!.trim()),
       });
       i++;
@@ -137,18 +129,6 @@ function parseBlocks(lines: string[]): PMNode[] {
     if (/^\s*([*\-_])(\s*\1){2,}\s*$/.test(line)) {
       out.push({ type: "horizontalRule" });
       i++;
-      continue;
-    }
-
-    if (line.startsWith("```")) {
-      const code: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i]!.startsWith("```")) code.push(lines[i++]!);
-      i++;
-      out.push({
-        type: "codeBlock",
-        content: code.length ? [{ type: "text", text: code.join("\n") }] : undefined,
-      });
       continue;
     }
 
@@ -184,7 +164,7 @@ function parseBlocks(lines: string[]): PMNode[] {
     const para: string[] = [];
     while (i < lines.length && !isBlank(lines[i])) {
       const l = lines[i]!;
-      if (para.length && (/^(#{1,6})\s/.test(l) || l.startsWith(">") || l.startsWith("```"))) break;
+      if (para.length && (/^(#{1,6})\s/.test(l) || l.startsWith(">"))) break;
       para.push(l);
       i++;
     }

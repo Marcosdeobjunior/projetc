@@ -9,7 +9,6 @@ pub fn run() {
             vault::vault_write_text,
             vault::vault_read_bytes,
             vault::vault_write_bytes,
-            vault::vault_list,
             vault::vault_exists,
             vault::vault_rename,
             vault::vault_remove,

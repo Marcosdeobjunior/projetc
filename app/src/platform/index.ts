@@ -1,10 +1,8 @@
 import type { Platform } from "./types";
 
-export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
 /** Escolhe a implementação certa: app desktop (Tauri) ou navegador (prévia). */
 export async function createPlatform(): Promise<Platform & { persistent?: boolean }> {
-  if (isDesktop) {
+  if ("__TAURI_INTERNALS__" in window) {
     const { createDesktopPlatform } = await import("./desktop");
     return createDesktopPlatform();
   }
@@ -12,5 +10,5 @@ export async function createPlatform(): Promise<Platform & { persistent?: boolea
   return createBrowserPlatform();
 }
 
-export type { Platform, VaultFs, VaultRef, DirEntry } from "./types";
+export type { Platform, VaultFs, VaultRef } from "./types";
 export { PlatformError } from "./types";

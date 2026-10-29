@@ -3,13 +3,13 @@ import type { PMNode } from "./types";
 /*
  * Converte o documento do editor em Markdown legível. Cobre o que o editor
  * oferece: parágrafos, títulos, citações, listas, separador de cena,
- * quebra de linha, negrito, itálico, tachado e código.
+ * quebra de linha, negrito, itálico e tachado.
  */
 
-const MARK_ORDER = ["bold", "italic", "strike", "code"] as const;
-const MARK_SYNTAX: Record<string, string> = { bold: "**", italic: "*", strike: "~~", code: "`" };
+const MARK_ORDER = ["bold", "italic", "strike"] as const;
+const MARK_SYNTAX: Record<string, string> = { bold: "**", italic: "*", strike: "~~" };
 
-export function escapeText(text: string): string {
+function escapeText(text: string): string {
   return text.replace(/([\\*_`~[\]])/g, "\\$1");
 }
 
@@ -39,18 +39,17 @@ function inline(nodes: PMNode[] = []): string {
     if (node.type !== "text" || !node.text) continue;
 
     const marks = MARK_ORDER.filter((m) => node.marks?.some((x) => x.type === m));
-    const isCode = marks.includes("code");
     const text = node.text;
 
     // Texto só com espaços não abre nem fecha marcação.
-    if (!isCode && !text.trim()) {
+    if (!text.trim()) {
       out += text;
       continue;
     }
 
     // Marcações não podem começar nem terminar com espaço: os espaços ficam de fora.
-    const lead = isCode ? "" : text.match(/^\s*/)![0];
-    const trail = isCode ? "" : text.match(/\s*$/)![0];
+    const lead = text.match(/^\s*/)![0];
+    const trail = text.match(/\s*$/)![0];
     const core = text.slice(lead.length, text.length - trail.length);
 
     let common = 0;
@@ -61,7 +60,7 @@ function inline(nodes: PMNode[] = []): string {
       out += MARK_SYNTAX[m];
       open.push(m);
     }
-    out += isCode ? core.replace(/`/g, "\\`") : escapeText(core);
+    out += escapeText(core);
     if (trail) {
       closeTo(0);
       out += trail;
@@ -113,8 +112,6 @@ function block(node: PMNode, prefix = ""): string[] {
     }
     case "horizontalRule":
       return ["* * *"];
-    case "codeBlock":
-      return ["```\n" + c.map((t) => t.text ?? "").join("") + "\n```"];
     default:
       return c.length ? [blocks(c)] : [];
   }

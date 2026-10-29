@@ -7,7 +7,7 @@ export const YDOC_FIELD = "default";
 /**
  * Recursos de texto do editor. Precisam ser os mesmos em todo lugar, porque
  * definem o formato do documento salvo. Link e sublinhado ficam de fora por
- * não terem equivalente simples em Markdown.
+ * não terem equivalente simples em Markdown; código não serve para escritores.
  */
 export const textExtensions = [
   StarterKit.configure({
@@ -15,6 +15,8 @@ export const textExtensions = [
     undoRedo: false,
     link: false,
     underline: false,
+    code: false,
+    codeBlock: false,
     heading: { levels: [1, 2, 3] },
   }),
 ];

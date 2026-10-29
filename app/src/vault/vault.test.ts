@@ -11,14 +11,11 @@ import { ydocPath } from "./paths";
 const fsFor = () => new KeyValueFs(new MemoryStore(), "browser:teste");
 
 describe("KeyValueFs", () => {
-  it("lista, move e remove pastas implícitas", async () => {
+  it("move e remove pastas implícitas", async () => {
     const fs = fsFor();
     await fs.writeText("a/b/c.md", "oi");
     await fs.writeText("a/d.md", "olá");
-    expect(await fs.list("a")).toEqual([
-      { name: "b", isDir: true },
-      { name: "d.md", isDir: false },
-    ]);
+    expect(await fs.exists("a/b")).toBe(true);
     await fs.rename("a/b", "x/y");
     expect(await fs.readText("x/y/c.md")).toBe("oi");
     expect(await fs.exists("a/b")).toBe(false);
@@ -87,7 +84,8 @@ describe("vault", () => {
   });
 
   it("renomear e excluir movem os arquivos", async () => {
-    const fs = fsFor();
+    const store = new MemoryStore();
+    const fs = new KeyValueFs(store, "browser:teste");
     const p = await createVault(fs, "x");
     const sc = p.chapters[0]!.scenes[0]!;
     await fs.writeBytes(ydocPath(sc.id), new Uint8Array([1, 2, 3]));
@@ -97,8 +95,8 @@ describe("vault", () => {
     const removed = removeScene(renamed.project, sc.id);
     await applyOps(fs, removed.ops);
     expect(await fs.exists("manuscrito/capitulo-1/a-carta.md")).toBe(false);
-    const trash = await fs.list(".inkflow/lixeira");
-    expect(trash.map((e) => e.name.replace(/^.*?Z-/, ""))).toEqual(
+    const trash = await store.keys("browser:teste\u0000.inkflow/lixeira/");
+    expect(trash.map((k) => k.replace(/^.*?Z-/, ""))).toEqual(
       expect.arrayContaining(["a-carta.md", `${sc.id}.yjs`]),
     );
   });

@@ -78,7 +78,7 @@ describe("ida e volta", () => {
   const samples: PMNode[] = [
     doc(p(t("O vento soprava frio naquela manhã."))),
     doc(p(t("Ela disse "), t("não", "italic"), t(" e "), t("saiu", "bold"), t("."))),
-    doc(p(t("Fórmula: 2 * 3 e a_b, [nota] e `código`"))),
+    doc(p(t("Fórmula: 2 * 3 e a_b, [nota] e `crase`"))),
     doc(
       { type: "heading", attrs: { level: 1 }, content: [t("Capítulo")] },
       p(t("— Diálogo com travessão, disse ela.")),

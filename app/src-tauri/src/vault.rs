@@ -8,15 +8,7 @@ use std::fs;
 use std::io::{ErrorKind, Write};
 use std::path::{Component, Path, PathBuf};
 
-use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request, Response};
-
-#[derive(Debug, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DirEntry {
-    name: String,
-    is_dir: bool,
-}
 
 type CmdResult<T> = Result<T, String>;
 
@@ -65,29 +57,6 @@ fn read_text(root: &str, path: &str) -> CmdResult<Option<String>> {
         Err(e) if e.kind() == ErrorKind::NotFound => Ok(None),
         Err(e) => Err(err(e)),
     }
-}
-
-fn list(root: &str, path: &str) -> CmdResult<Vec<DirEntry>> {
-    let dir = resolve(root, path)?;
-    let entries = match fs::read_dir(&dir) {
-        Ok(e) => e,
-        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(vec![]),
-        Err(e) => return Err(err(e)),
-    };
-    let mut out = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(err)?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if name.ends_with(".inkflow-tmp") {
-            continue;
-        }
-        out.push(DirEntry {
-            name,
-            is_dir: entry.file_type().map_err(err)?.is_dir(),
-        });
-    }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(out)
 }
 
 fn rename(root: &str, from: &str, to: &str) -> CmdResult<()> {
@@ -171,11 +140,6 @@ pub async fn vault_write_bytes(request: Request<'_>) -> CmdResult<()> {
 }
 
 #[tauri::command]
-pub async fn vault_list(root: String, path: String) -> CmdResult<Vec<DirEntry>> {
-    list(&root, &path)
-}
-
-#[tauri::command]
 pub async fn vault_exists(root: String, path: String) -> CmdResult<bool> {
     Ok(resolve(&root, &path)?.exists())
 }
@@ -210,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn grava_le_lista_move_e_remove() {
+    fn grava_le_move_e_remove() {
         let (_d, r) = root();
         write_atomic(
             &resolve(&r, "manuscrito/cap/cena.md").unwrap(),
@@ -222,13 +186,6 @@ mod tests {
             Some("Olá")
         );
         assert_eq!(read_text(&r, "nao-existe.md").unwrap(), None);
-        assert_eq!(
-            list(&r, "manuscrito").unwrap(),
-            vec![DirEntry {
-                name: "cap".into(),
-                is_dir: true
-            }]
-        );
         rename(&r, "manuscrito/cap", ".inkflow/lixeira/cap").unwrap();
         assert!(!resolve(&r, "manuscrito/cap").unwrap().exists());
         assert!(resolve(&r, ".inkflow/lixeira/cap/cena.md")

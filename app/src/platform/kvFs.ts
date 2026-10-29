@@ -1,4 +1,4 @@
-import type { DirEntry, VaultFs } from "./types";
+import type { VaultFs } from "./types";
 
 /** Armazenamento chave-valor mínimo usado pelo vault do navegador. */
 export interface KeyValueStore {
@@ -26,7 +26,7 @@ export class MemoryStore implements KeyValueStore {
 
 const SEP = "\u0000";
 
-export function normalizePath(path: string): string {
+function normalizePath(path: string): string {
   const parts: string[] = [];
   for (const part of path.split("/")) {
     if (part === "" || part === ".") continue;
@@ -74,19 +74,6 @@ export class KeyValueFs implements VaultFs {
 
   async writeBytes(path: string, data: Uint8Array) {
     await this.store.set(this.key(path), data.slice());
-  }
-
-  async list(path: string): Promise<DirEntry[]> {
-    const p = normalizePath(path);
-    const prefix = this.root + SEP + (p ? p + "/" : "");
-    const seen = new Map<string, boolean>();
-    for (const k of await this.store.keys(prefix)) {
-      const rest = k.slice(prefix.length);
-      const slash = rest.indexOf("/");
-      if (slash === -1) seen.set(rest, false);
-      else seen.set(rest.slice(0, slash), true);
-    }
-    return [...seen].map(([name, isDir]) => ({ name, isDir }));
   }
 
   async exists(path: string) {

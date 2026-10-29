@@ -7,8 +7,7 @@ import type { Chapter, FsOp, Project, Scene, TreeChange } from "./types";
  * precisam ser aplicadas no vault para os arquivos acompanharem.
  */
 
-export const newId = (prefix: string) =>
-  `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
 export const chapterDirPath = (c: Chapter) => `${MANUSCRIPT_DIR}/${c.dir}`;
 export const scenePath = (c: Chapter, s: Scene) => `${MANUSCRIPT_DIR}/${c.dir}/${s.file}`;

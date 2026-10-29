@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteSingleFile } from "vite-plugin-singlefile";
@@ -26,9 +25,6 @@ export default defineConfig(({ mode }) => {
           : "safari13",
       minify: process.env.TAURI_ENV_DEBUG ? false : "esbuild",
       sourcemap: !!process.env.TAURI_ENV_DEBUG,
-    },
-    test: {
-      environment: "node",
     },
   };
 });

@@ -12,7 +12,6 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "resolveJsonModule": true,
     "noEmit": true,
     "types": ["vite/client", "node"]
   },

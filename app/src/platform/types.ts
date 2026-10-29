@@ -7,18 +7,11 @@ export interface VaultFs {
   writeText(path: string, data: string): Promise<void>;
   readBytes(path: string): Promise<Uint8Array | null>;
   writeBytes(path: string, data: Uint8Array): Promise<void>;
-  /** Lista o conteúdo direto de uma pasta. Pasta inexistente devolve []. */
-  list(path: string): Promise<DirEntry[]>;
   exists(path: string): Promise<boolean>;
   /** Move um arquivo ou pasta. Cria as pastas de destino se preciso. */
   rename(from: string, to: string): Promise<void>;
   /** Remove um arquivo ou uma pasta inteira. */
   remove(path: string): Promise<void>;
-}
-
-export interface DirEntry {
-  name: string;
-  isDir: boolean;
 }
 
 export interface VaultRef {

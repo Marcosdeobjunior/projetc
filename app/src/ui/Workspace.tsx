@@ -19,7 +19,11 @@ export function Workspace({ session }: { session: Session }) {
 
   const { project, words, activeSceneId } = session;
   const active = activeSceneId ? findScene(project, activeSceneId) : null;
-  const total = Object.values(words).reduce((a, b) => a + b, 0);
+  // Soma só as cenas que estão no manuscrito (cenas excluídas ficam fora).
+  const total = project.chapters.reduce(
+    (n, c) => n + c.scenes.reduce((m, s) => m + (words[s.id] ?? 0), 0),
+    0,
+  );
   const chapterTotal = active
     ? active.chapter.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0)
     : 0;
