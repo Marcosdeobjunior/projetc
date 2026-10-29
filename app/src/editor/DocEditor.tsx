@@ -98,11 +98,17 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
           lang: "pt-BR",
         },
       },
-      onCreate: ({ editor }) => setDocText(sceneId, editor.getText()),
-      onUpdate: ({ editor }) => setDocText(sceneId, editor.getText()),
+      // Durante a criação o texto chega como uma atualização; quem cuida dele é o efeito abaixo.
+      onUpdate: ({ editor }) => editor.isInitialized && setDocText(sceneId, editor.getText()),
     },
     [doc],
   );
+
+  // O editor é criado durante a renderização: o texto inicial vai para o estado
+  // do app depois dela (atualizar o app no meio da renderização gera aviso do React).
+  useEffect(() => {
+    if (editor) setDocText(sceneId, editor.getText());
+  }, [editor, sceneId, setDocText]);
 
   // Títulos mudaram (nota criada ou renomeada): redesenha os links do texto.
   const titles = useApp((s) =>

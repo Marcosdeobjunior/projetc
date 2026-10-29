@@ -85,11 +85,24 @@ Write-Host "Tudo pronto." -ForegroundColor Green
 if ($installed.Count -gt 0) {
   Write-Host "Instalados agora: $($installed -join ', '). Feche e abra o terminal antes de continuar."
 }
+
+# O PowerShell costuma vir bloqueado para rodar scripts, e o pnpm é um (pnpm.ps1).
+# O script não muda isso sozinho: só avisa como liberar. Ignora o "-ExecutionPolicy
+# Bypass" usado para rodar este script, que vale só para ele.
+$policy = Get-ExecutionPolicy -Scope CurrentUser
+if ($policy -eq "Undefined") { $policy = Get-ExecutionPolicy -Scope LocalMachine }
+if ($policy -eq "Undefined" -or $policy -eq "Restricted" -or $policy -eq "AllSigned") {
+  Write-Host ""
+  Write-Host "Atenção: o PowerShell está bloqueando scripts, então o comando 'pnpm' vai dar erro." -ForegroundColor Yellow
+  Write-Host "Para liberar só para o seu usuário (recomendado para quem programa), rode uma vez:"
+  Write-Host "  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
+  Write-Host "Ou, sem mudar nada, use 'pnpm.cmd' no lugar de 'pnpm' nos comandos abaixo."
+}
+
 Write-Host ""
-Write-Host "Próximos passos (no terminal, numa pasta de sua escolha):"
+Write-Host "Próximos passos, num PowerShell novo (um comando por vez):"
+Write-Host "  cd `$HOME\Documents"
 Write-Host "  git clone https://github.com/Marcosdeobjunior/projetc.git"
-Write-Host "  cd projetc"
-Write-Host "  git checkout claude/lucid-rubin-ssjmgq"
-Write-Host "  cd app"
+Write-Host "  cd projetc\app"
 Write-Host "  pnpm install"
 Write-Host "  pnpm tauri dev"
