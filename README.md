@@ -4,4 +4,5 @@ App desktop para escritores: projetos guardados localmente em um vault (pasta) e
 
 ## Estrutura
 
-- `site/` — landing page estática (um único `index.html`, sem build). Abra o arquivo no navegador para ver.
+- `app/` — o aplicativo (Tauri + React + TypeScript). Veja [`app/README.md`](app/README.md) para rodar e para o formato dos arquivos.
+- `site/` — landing page estática (um único `index.html`, sem build).
