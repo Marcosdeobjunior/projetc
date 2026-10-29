@@ -9,6 +9,10 @@ import {
   removeScene,
   renameChapter,
   renameScene,
+  addNote,
+  findDoc,
+  removeNote,
+  renameNote,
 } from "./tree";
 import { countWords } from "./wordCount";
 import { folderName, slugify } from "../vault/paths";
@@ -115,5 +119,30 @@ describe("countWords", () => {
     expect(countWords("— Você vai mesmo? — perguntou.")).toBe(4);
     expect(countWords("guarda-chuva e copo d'água")).toBe(4);
     expect(countWords("   ")).toBe(0);
+  });
+});
+
+describe("notas", () => {
+  it("cria, renomeia e exclui notas com os arquivos certos", () => {
+    let p = createProject("x");
+    const r = addNote(p, "personagens", "Helena");
+    p = r.project;
+    expect(findDoc(p, r.note.id)).toEqual({
+      id: r.note.id,
+      title: "Helena",
+      path: "notas/personagens/helena.md",
+      type: "personagens",
+    });
+    const renamed = renameNote(p, r.note.id, "Helena Prado");
+    expect(renamed.ops).toEqual([
+      {
+        kind: "move",
+        from: "notas/personagens/helena.md",
+        to: "notas/personagens/helena-prado.md",
+      },
+    ]);
+    expect(removeNote(renamed.project, r.note.id).ops).toEqual([
+      { kind: "trash", path: "notas/personagens/helena-prado.md", sceneIds: [r.note.id] },
+    ]);
   });
 });

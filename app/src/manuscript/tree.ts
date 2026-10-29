@@ -1,5 +1,5 @@
-import { MANUSCRIPT_DIR, slugify, uniqueName } from "../vault/paths";
-import type { Chapter, FsOp, Project, Scene, TreeChange } from "./types";
+import { MANUSCRIPT_DIR, NOTES_DIR, slugify, uniqueName } from "../vault/paths";
+import type { Chapter, DocRef, FsOp, Note, NoteKind, Project, Scene, TreeChange } from "./types";
 
 /*
  * Operações na estrutura do manuscrito. São funções puras: devolvem o projeto
@@ -11,6 +11,34 @@ const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g,
 
 export const chapterDirPath = (c: Chapter) => `${MANUSCRIPT_DIR}/${c.dir}`;
 export const scenePath = (c: Chapter, s: Scene) => `${MANUSCRIPT_DIR}/${c.dir}/${s.file}`;
+
+export const notePath = (n: Note) => `${NOTES_DIR}/${n.kind}/${n.file}`;
+
+/** Encontra uma cena ou nota pelo id. */
+export function findDoc(p: Project, id: string): DocRef | null {
+  const found = findScene(p, id);
+  if (found) {
+    const { chapter, scene } = found;
+    return { id, title: scene.title, path: scenePath(chapter, scene), type: "scene" };
+  }
+  const note = p.notes.find((n) => n.id === id);
+  return note ? { id, title: note.title, path: notePath(note), type: note.kind } : null;
+}
+
+/** Todas as cenas (na ordem do livro) e depois todas as notas. */
+export function allDocs(p: Project): DocRef[] {
+  return [
+    ...p.chapters.flatMap((c) =>
+      c.scenes.map((s) => ({
+        id: s.id,
+        title: s.title,
+        path: scenePath(c, s),
+        type: "scene" as const,
+      })),
+    ),
+    ...p.notes.map((n) => ({ id: n.id, title: n.title, path: notePath(n), type: n.kind })),
+  ];
+}
 
 export function findScene(p: Project, sceneId: string) {
   for (const chapter of p.chapters) {
@@ -45,6 +73,7 @@ export function createProject(title: string): Project {
     createdAt: now,
     updatedAt: now,
     chapters: [],
+    notes: [],
   };
   const withChapter = addChapter(project, "Capítulo 1");
   return addScene(withChapter.project, withChapter.chapter.id, "Cena 1").project;
@@ -182,6 +211,53 @@ export function removeChapter(p: Project, chapterId: string): TreeChange {
       },
     ],
   };
+}
+
+function noteFileName(p: Project, kind: NoteKind, title: string, except?: string) {
+  const taken = new Set(
+    p.notes.filter((n) => n.kind === kind && n.id !== except).map((n) => n.file),
+  );
+  return uniqueName(slugify(title), taken, ".md");
+}
+
+const touchNotes = (p: Project, notes: Note[]): Project => ({
+  ...p,
+  notes,
+  updatedAt: Date.now(),
+});
+
+export function addNote(p: Project, kind: NoteKind, title: string): TreeChange & { note: Note } {
+  const note: Note = { id: newId("nt"), title, kind, file: noteFileName(p, kind, title) };
+  return { project: touchNotes(p, [...p.notes, note]), ops: [], note };
+}
+
+export function renameNote(p: Project, noteId: string, title: string): TreeChange {
+  const ops: FsOp[] = [];
+  const notes = p.notes.map((n) => {
+    if (n.id !== noteId) return n;
+    const file = noteFileName(p, n.kind, title, n.id);
+    if (file !== n.file)
+      ops.push({ kind: "move", from: notePath(n), to: notePath({ ...n, file }) });
+    return { ...n, title, file };
+  });
+  return { project: touchNotes(p, notes), ops };
+}
+
+export function removeNote(p: Project, noteId: string): TreeChange {
+  const note = p.notes.find((n) => n.id === noteId);
+  if (!note) return { project: p, ops: [] };
+  return {
+    project: touchNotes(
+      p,
+      p.notes.filter((n) => n.id !== noteId),
+    ),
+    ops: [{ kind: "trash", path: notePath(note), sceneIds: [noteId] }],
+  };
+}
+
+/** Renomeia uma cena ou uma nota. */
+export function renameDoc(p: Project, id: string, title: string): TreeChange {
+  return findScene(p, id) ? renameScene(p, id, title) : renameNote(p, id, title);
 }
 
 export function renameProject(p: Project, title: string): Project {

@@ -57,6 +57,7 @@ export function Home() {
             <div className="field-row">
               <input
                 id="project-title"
+                autoFocus
                 value={title}
                 placeholder="Ex.: A Casa das Marés"
                 maxLength={120}

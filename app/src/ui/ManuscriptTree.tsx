@@ -27,13 +27,13 @@ export function ManuscriptTree({
   onOpenScene: () => void;
 }) {
   const change = useApp((s) => s.change);
-  const selectScene = useApp((s) => s.selectScene);
+  const openDoc = useApp((s) => s.openDoc);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [drag, setDrag] = useState<Drag>(null);
   const [mark, setMark] = useState<DropMark>(null);
-  const { project, words, activeSceneId } = session;
+  const { project, words, activeDocId } = session;
 
   const chapterWords = (c: Chapter) => c.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0);
 
@@ -48,7 +48,7 @@ export function ManuscriptTree({
       },
       async () => {
         if (created) {
-          selectScene(created.id);
+          openDoc(created.id);
           setEditing(created.id);
         }
       },
@@ -245,7 +245,7 @@ export function ManuscriptTree({
                         key={s.id}
                         className={
                           "row scene-row" +
-                          (s.id === activeSceneId ? " active" : "") +
+                          (s.id === activeDocId ? " active" : "") +
                           markClass(s.id)
                         }
                         draggable={editing !== s.id}
@@ -272,9 +272,9 @@ export function ManuscriptTree({
                           <button
                             type="button"
                             className="row-title scene-open"
-                            aria-current={s.id === activeSceneId ? "page" : undefined}
+                            aria-current={s.id === activeDocId ? "page" : undefined}
                             onClick={() => {
-                              selectScene(s.id);
+                              openDoc(s.id);
                               onOpenScene();
                             }}
                             onDoubleClick={() => setEditing(s.id)}
@@ -319,47 +319,55 @@ export function ManuscriptTree({
   );
 }
 
-function RowActions(props: {
+export function RowActions(props: {
   name: string;
   onUp?: () => void;
   onDown?: () => void;
   onRename: () => void;
   onDelete: () => void;
   onAdd?: () => void;
+  addLabel?: string;
+  /** Notas não têm ordem manual: sem setas. */
+  movable?: boolean;
 }) {
+  const movable = props.movable ?? true;
   return (
     <span className="row-actions">
       {props.onAdd && (
         <button
           type="button"
           className="icon-btn sm"
-          title="Nova cena"
-          aria-label={`Nova cena em ${props.name}`}
+          title={props.addLabel ?? "Nova cena"}
+          aria-label={`${props.addLabel ?? "Nova cena"} em ${props.name}`}
           onClick={props.onAdd}
         >
           <Icon name="plus" size={15} />
         </button>
       )}
-      <button
-        type="button"
-        className="icon-btn sm"
-        title="Mover para cima"
-        aria-label={`Mover ${props.name} para cima`}
-        disabled={!props.onUp}
-        onClick={props.onUp}
-      >
-        <Icon name="up" size={15} />
-      </button>
-      <button
-        type="button"
-        className="icon-btn sm"
-        title="Mover para baixo"
-        aria-label={`Mover ${props.name} para baixo`}
-        disabled={!props.onDown}
-        onClick={props.onDown}
-      >
-        <Icon name="down" size={15} />
-      </button>
+      {movable && (
+        <>
+          <button
+            type="button"
+            className="icon-btn sm"
+            title="Mover para cima"
+            aria-label={`Mover ${props.name} para cima`}
+            disabled={!props.onUp}
+            onClick={props.onUp}
+          >
+            <Icon name="up" size={15} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn sm"
+            title="Mover para baixo"
+            aria-label={`Mover ${props.name} para baixo`}
+            disabled={!props.onDown}
+            onClick={props.onDown}
+          >
+            <Icon name="down" size={15} />
+          </button>
+        </>
+      )}
       <button
         type="button"
         className="icon-btn sm"
@@ -382,7 +390,15 @@ function RowActions(props: {
   );
 }
 
-function ConfirmRow({ text, onYes, onNo }: { text: string; onYes: () => void; onNo: () => void }) {
+export function ConfirmRow({
+  text,
+  onYes,
+  onNo,
+}: {
+  text: string;
+  onYes: () => void;
+  onNo: () => void;
+}) {
   return (
     <div className="confirm-row" role="alertdialog" aria-label={text}>
       <p>{text}</p>

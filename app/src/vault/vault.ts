@@ -1,8 +1,8 @@
 import * as Y from "yjs";
 import { prosemirrorJSONToYDoc, yDocToProsemirrorJSON } from "@tiptap/y-tiptap";
 import type { VaultFs } from "../platform/types";
-import type { FsOp, Project, Scene } from "../manuscript/types";
-import { chapterDirPath, createProject, findScene, scenePath } from "../manuscript/tree";
+import type { FsOp, Project } from "../manuscript/types";
+import { allDocs, chapterDirPath, createProject, findDoc, scenePath } from "../manuscript/tree";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toMarkdown, toPlainText } from "../markdown/serialize";
 import type { PMNode } from "../markdown/types";
@@ -55,7 +55,8 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
   if (data.format !== 1) {
     throw new VaultError("Este projeto foi criado por uma versão mais nova do InkFlow.");
   }
-  return data;
+  // Projetos criados antes das notas existirem.
+  return { ...data, notes: data.notes ?? [] };
 }
 
 export async function saveProject(fs: VaultFs, project: Project): Promise<void> {
@@ -88,18 +89,23 @@ export async function ensureChapterDirs(fs: VaultFs, project: Project) {
   }
 }
 
-function sceneFile(scene: Scene, markdown: string) {
-  return `---\nid: ${scene.id}\ntitle: ${JSON.stringify(scene.title)}\n---\n\n${markdown}`;
+function sceneFile(doc: { id: string; title: string }, markdown: string) {
+  return `---\nid: ${doc.id}\ntitle: ${JSON.stringify(doc.title)}\n---\n\n${markdown}`;
 }
 
-/** Atualiza o título no cabeçalho do .md depois de renomear a cena. */
-export async function rewriteSceneHeader(fs: VaultFs, project: Project, sceneId: string) {
-  const found = findScene(project, sceneId);
-  if (!found) return;
-  const path = scenePath(found.chapter, found.scene);
-  const md = await fs.readText(path);
+function requireDoc(project: Project, id: string) {
+  const doc = findDoc(project, id);
+  if (!doc) throw new VaultError("Texto não encontrado no projeto.");
+  return doc;
+}
+
+/** Atualiza o título no cabeçalho do .md depois de renomear a cena ou nota. */
+export async function rewriteSceneHeader(fs: VaultFs, project: Project, id: string) {
+  const doc = findDoc(project, id);
+  if (!doc) return;
+  const md = await fs.readText(doc.path);
   if (md === null) return;
-  await fs.writeText(path, sceneFile(found.scene, splitFrontmatter(md).body.replace(/^\n/, "")));
+  await fs.writeText(doc.path, sceneFile(doc, splitFrontmatter(md).body.replace(/^\n/, "")));
 }
 
 /** Grava o texto de uma cena a partir de Markdown (usado no projeto de exemplo). */
@@ -109,9 +115,8 @@ export async function writeSceneMarkdown(
   sceneId: string,
   markdown: string,
 ) {
-  const found = findScene(project, sceneId);
-  if (!found) return;
-  await fs.writeText(scenePath(found.chapter, found.scene), sceneFile(found.scene, markdown));
+  const doc = findDoc(project, sceneId);
+  if (doc) await fs.writeText(doc.path, sceneFile(doc, markdown));
 }
 
 /** O .md da cena mudou no disco desde a última vez que o app leu ou gravou. */
@@ -135,8 +140,8 @@ export async function readSceneFile(
   project: Project,
   sceneId: string,
 ): Promise<string | null> {
-  const found = findScene(project, sceneId);
-  return found ? fs.readText(scenePath(found.chapter, found.scene)) : null;
+  const doc = findDoc(project, sceneId);
+  return doc ? fs.readText(doc.path) : null;
 }
 
 export interface LoadedScene {
@@ -155,12 +160,8 @@ export async function loadSceneDoc(
   project: Project,
   sceneId: string,
 ): Promise<LoadedScene> {
-  const found = findScene(project, sceneId);
-  if (!found) throw new VaultError("Cena não encontrada.");
-  const [bytes, md] = await Promise.all([
-    fs.readBytes(ydocPath(sceneId)),
-    fs.readText(scenePath(found.chapter, found.scene)),
-  ]);
+  const ref = requireDoc(project, sceneId);
+  const [bytes, md] = await Promise.all([fs.readBytes(ydocPath(sceneId)), fs.readText(ref.path)]);
 
   if (bytes) {
     const doc = new Y.Doc();
@@ -187,34 +188,38 @@ export async function saveScene(
   sceneId: string,
   doc: Y.Doc,
   expected: string | null,
-): Promise<{ words: number; written: string }> {
-  const found = findScene(project, sceneId);
-  if (!found) throw new VaultError("Cena não encontrada.");
-  const path = scenePath(found.chapter, found.scene);
+): Promise<{ words: number; text: string; written: string }> {
+  const ref = requireDoc(project, sceneId);
+  const path = ref.path;
   const current = await fs.readText(path);
   // Arquivo apagado por fora não é conflito: nenhum texto se perde ao recriá-lo.
   if (current !== null && !sameText(current, expected)) throw new ExternalChangeError(current);
 
   const json = yDocToProsemirrorJSON(doc, YDOC_FIELD) as PMNode;
-  const written = sceneFile(found.scene, toMarkdown(json));
+  const written = sceneFile(ref, toMarkdown(json));
   await fs.writeBytes(ydocPath(sceneId), Y.encodeStateAsUpdate(doc));
   await fs.writeText(path, written);
-  return { words: countWords(toPlainText(json)), written };
+  const text = toPlainText(json);
+  return { words: countWords(text), text, written };
 }
 
-/** Conta as palavras de todas as cenas a partir dos arquivos .md. */
-export async function countProjectWords(
+/**
+ * Lê o texto de todas as cenas e notas: contagem de palavras e texto puro
+ * (usado para encontrar os links e menções do grafo).
+ */
+export async function readProjectTexts(
   fs: VaultFs,
   project: Project,
-): Promise<Record<string, number>> {
-  const counts: Record<string, number> = {};
+): Promise<{ words: Record<string, number>; texts: Record<string, string> }> {
+  const words: Record<string, number> = {};
+  const texts: Record<string, string> = {};
   await Promise.all(
-    project.chapters.flatMap((c) =>
-      c.scenes.map(async (s) => {
-        const md = await fs.readText(scenePath(c, s));
-        counts[s.id] = md ? countWords(toPlainText(parseMarkdown(md))) : 0;
-      }),
-    ),
+    allDocs(project).map(async (d) => {
+      const md = await fs.readText(d.path);
+      const text = md ? toPlainText(parseMarkdown(md)) : "";
+      texts[d.id] = text;
+      words[d.id] = countWords(text);
+    }),
   );
-  return counts;
+  return { words, texts };
 }

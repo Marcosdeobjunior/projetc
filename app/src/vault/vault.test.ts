@@ -8,6 +8,7 @@ import {
   ExternalChangeError,
   loadProject,
   loadSceneDoc,
+  readProjectTexts,
   rewriteSceneHeader,
   saveScene,
 } from "./vault";
@@ -148,6 +149,25 @@ describe("vault", () => {
     await fs.remove(scenePath(ch, sc));
     await saveScene(fs, p, sc.id, docWith("texto"), written);
     expect(await fs.readText(scenePath(ch, sc))).toBe(written);
+  });
+
+  it("projetos antigos, sem notas, abrem normalmente", async () => {
+    const fs = fsFor();
+    const p = await createVault(fs, "x");
+    const old: Partial<typeof p> = { ...p };
+    delete old.notes;
+    await fs.writeText(".inkflow/project.json", JSON.stringify(old));
+    expect((await loadProject(fs)).notes).toEqual([]);
+  });
+
+  it("notas são gravadas e lidas como as cenas", async () => {
+    const fs = fsFor();
+    const p = await createSampleVault(fs);
+    const { texts, words } = await readProjectTexts(fs, p);
+    const helena = p.notes.find((n) => n.title === "Helena")!;
+    expect(await fs.exists("notas/personagens/helena.md")).toBe(true);
+    expect(texts[helena.id]).toContain("[[O segredo do pai]]");
+    expect(words[helena.id]).toBeGreaterThan(5);
   });
 
   it("renomear e excluir movem os arquivos", async () => {

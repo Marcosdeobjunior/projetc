@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
@@ -14,8 +14,9 @@ import {
 import { parseMarkdown } from "../markdown/parse";
 import { useApp, type Session } from "../state/store";
 import { registerFlush, serial } from "../state/writes";
-import { countWords } from "../manuscript/wordCount";
-import { findScene } from "../manuscript/tree";
+import { allDocs, findDoc } from "../manuscript/tree";
+import { createLinksExtension, REFRESH_LINKS } from "./links";
+import { createLinkContext } from "../links/context";
 import { Icon } from "../ui/Icon";
 
 const SAVE_DELAY_MS = 700;
@@ -25,8 +26,11 @@ interface Props {
   sceneId: string;
 }
 
-/** Carrega a cena do vault e mostra o editor. Use `key={sceneId}`: uma instância por cena. */
-export function SceneEditor({ session, sceneId }: Props) {
+/**
+ * Carrega uma cena ou nota do vault e mostra o editor.
+ * Use `key={sceneId}`: uma instância por texto aberto.
+ */
+export function DocEditor({ session, sceneId }: Props) {
   const [loaded, setLoaded] = useState<LoadedScene | null>(null);
   const [failed, setFailed] = useState(false);
   const { fs, root } = session;
@@ -51,7 +55,7 @@ export function SceneEditor({ session, sceneId }: Props) {
   if (failed) {
     return (
       <div className="editor-state" role="alert">
-        Não foi possível abrir esta cena. Verifique se os arquivos do projeto ainda estão na pasta.
+        Não foi possível abrir este texto. Verifique se os arquivos do projeto ainda estão na pasta.
       </div>
     );
   }
@@ -62,7 +66,8 @@ export function SceneEditor({ session, sceneId }: Props) {
 function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScene }) {
   const { doc } = loaded;
   const setSaveState = useApp((s) => s.setSaveState);
-  const setSceneWords = useApp((s) => s.setSceneWords);
+  const setDocText = useApp((s) => s.setDocText);
+  const linkContext = useMemo(() => createLinkContext(sceneId), [sceneId]);
   const timer = useRef<number | undefined>(undefined);
   const dirty = useRef(false);
   /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
@@ -74,20 +79,34 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         ...textExtensions,
         Collaboration.configure({ document: doc, field: YDOC_FIELD }),
         Placeholder.configure({ placeholder: "Comece a escrever…" }),
+        createLinksExtension(linkContext),
       ],
       editorProps: {
         attributes: {
           class: "prose",
-          "aria-label": "Texto da cena",
+          "aria-label": "Texto",
           spellcheck: "true",
           lang: "pt-BR",
         },
       },
-      onCreate: ({ editor }) => setSceneWords(sceneId, countWords(editor.getText())),
-      onUpdate: ({ editor }) => setSceneWords(sceneId, countWords(editor.getText())),
+      onCreate: ({ editor }) => setDocText(sceneId, editor.getText()),
+      onUpdate: ({ editor }) => setDocText(sceneId, editor.getText()),
     },
     [doc],
   );
+
+  // Títulos mudaram (nota criada ou renomeada): redesenha os links do texto.
+  const titles = useApp((s) =>
+    s.session
+      ? allDocs(s.session.project)
+          .map((d) => d.title)
+          .join("\n")
+      : "",
+  );
+  useEffect(() => {
+    if (editor && !editor.isDestroyed)
+      editor.view.dispatch(editor.state.tr.setMeta(REFRESH_LINKS, true));
+  }, [editor, titles]);
 
   useEffect(() => {
     if (!editor) return;
@@ -102,7 +121,7 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         await serial(async () => {
           const project = useApp.getState().session?.project;
           // A cena pode ter sido excluída enquanto estava aberta.
-          if (project && findScene(project, sceneId)) {
+          if (project && findDoc(project, sceneId)) {
             const r = await saveScene(session.fs, project, sceneId, doc, diskText.current);
             diskText.current = r.written;
           }
@@ -126,7 +145,7 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
     /** Ao voltar para o app, confere se o .md mudou por fora. */
     const checkDisk = async () => {
       const project = useApp.getState().session?.project;
-      if (!project || !findScene(project, sceneId)) return;
+      if (!project || !findDoc(project, sceneId)) return;
       const disk = await serial(() => readSceneFile(session.fs, project, sceneId));
       if (disk === null || sameText(disk, diskText.current)) return;
       if (dirty.current) {

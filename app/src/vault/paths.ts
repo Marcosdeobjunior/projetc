@@ -7,6 +7,8 @@ const YDOC_DIR = `${META_DIR}/ydoc`;
 export const TRASH_DIR = `${META_DIR}/lixeira`;
 /** Textos legíveis do livro. */
 export const MANUSCRIPT_DIR = "manuscrito";
+/** Personagens, lugares e ideias. */
+export const NOTES_DIR = "notas";
 
 export const ydocPath = (sceneId: string) => `${YDOC_DIR}/${sceneId}.yjs`;
 

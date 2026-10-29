@@ -1,57 +1,40 @@
 import { useState } from "react";
-import { useApp, type Session } from "../state/store";
-import { findScene, renameProject, renameScene } from "../manuscript/tree";
+import { renameSceneAndHeader, useApp, type Session } from "../state/store";
+import { findDoc, findScene, renameDoc, renameProject } from "../manuscript/tree";
 import { formatCount } from "../manuscript/wordCount";
-import { SceneEditor } from "../editor/SceneEditor";
+import { KIND_LABEL } from "../links/context";
+import { DocEditor } from "../editor/DocEditor";
 import { ManuscriptTree } from "./ManuscriptTree";
+import { NotesTree } from "./NotesTree";
+import { GraphView } from "./GraphView";
+import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
 import { ThemeToggle } from "./ThemeToggle";
-import { Icon, Quill } from "./Icon";
-import { renameSceneAndHeader } from "../state/store";
+import { Icon } from "./Icon";
 
 export function Workspace({ session }: { session: Session }) {
-  const closeVault = useApp((s) => s.closeVault);
   const change = useApp((s) => s.change);
   const saveState = useApp((s) => s.saveState);
+  const setView = useApp((s) => s.setView);
   const [navOpen, setNavOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(false);
-  const [editingScene, setEditingScene] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
 
-  const { project, words, activeSceneId } = session;
-  const active = activeSceneId ? findScene(project, activeSceneId) : null;
-  // Soma só as cenas que estão no manuscrito (cenas excluídas ficam fora).
+  const { project, words, activeDocId, view } = session;
+  const active = activeDocId ? findDoc(project, activeDocId) : null;
+  const scene = activeDocId ? findScene(project, activeDocId) : null;
+  // Soma só as cenas que estão no manuscrito (notas e cenas excluídas ficam fora).
   const total = project.chapters.reduce(
     (n, c) => n + c.scenes.reduce((m, s) => m + (words[s.id] ?? 0), 0),
     0,
   );
-  const chapterTotal = active
-    ? active.chapter.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0)
-    : 0;
+  const chapterTotal = scene ? scene.chapter.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0) : 0;
+  const closeNav = () => setNavOpen(false);
 
   return (
     <div className={"workspace" + (navOpen ? " nav-open" : "")}>
       <aside className="sidebar">
         <div className="side-top">
-          <button
-            type="button"
-            className="back-btn"
-            onClick={closeVault}
-            title="Voltar para a lista de projetos"
-          >
-            <Quill size={22} />
-            <span>Projetos</span>
-          </button>
-          <button
-            type="button"
-            className="icon-btn nav-close"
-            aria-label="Fechar menu"
-            onClick={() => setNavOpen(false)}
-          >
-            <Icon name="close" />
-          </button>
-        </div>
-
-        <div className="project-name">
           {editingProject ? (
             <InlineEdit
               value={project.title}
@@ -64,24 +47,43 @@ export function Workspace({ session }: { session: Session }) {
               onCancel={() => setEditingProject(false)}
             />
           ) : (
-            <h1
-              onDoubleClick={() => setEditingProject(true)}
-              title="Clique duas vezes para renomear"
-            >
-              {project.title}
-            </h1>
+            <VaultSwitcher session={session} onRename={() => setEditingProject(true)} />
           )}
-          <p className="project-total">{formatCount(total)} palavras</p>
+          <button
+            type="button"
+            className="icon-btn nav-close"
+            aria-label="Fechar menu"
+            onClick={closeNav}
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+        <div className="side-meta">
+          <span className="project-total">{formatCount(total)} palavras</span>
+          <button
+            type="button"
+            className={"graph-btn" + (view === "graph" ? " on" : "")}
+            aria-pressed={view === "graph"}
+            onClick={() => {
+              setView(view === "graph" ? "editor" : "graph");
+              closeNav();
+            }}
+          >
+            <Icon name="graph" size={16} /> Grafo
+          </button>
         </div>
 
-        <ManuscriptTree session={session} onOpenScene={() => setNavOpen(false)} />
+        <div className="side-scroll">
+          <ManuscriptTree session={session} onOpenScene={closeNav} />
+          <NotesTree session={session} onOpen={closeNav} />
+        </div>
 
         <div className="side-foot">
           <ThemeToggle />
         </div>
       </aside>
 
-      <div className="scrim" onClick={() => setNavOpen(false)} />
+      <div className="scrim" onClick={closeNav} />
 
       <main className="main">
         <header className="main-head">
@@ -93,61 +95,76 @@ export function Workspace({ session }: { session: Session }) {
           >
             <Icon name="menu" />
           </button>
-          {active ? (
+          {view === "graph" ? (
             <div className="crumbs">
-              <span className="crumb-chapter">{active.chapter.title}</span>
+              <span className="crumb-title">Grafo de conexões</span>
+            </div>
+          ) : active ? (
+            <div className="crumbs">
+              <span className="crumb-chapter">
+                {scene
+                  ? scene.chapter.title
+                  : KIND_LABEL[active.type as keyof typeof KIND_LABEL].many}
+              </span>
               <span aria-hidden="true">/</span>
-              {editingScene ? (
+              {editingTitle ? (
                 <InlineEdit
-                  value={active.scene.title}
-                  label="Nome da cena"
+                  value={active.title}
+                  label="Nome do texto"
                   onCommit={(t) => {
-                    setEditingScene(false);
-                    void renameSceneAndHeader(
-                      (p) => renameScene(p, active.scene.id, t),
-                      active.scene.id,
-                    );
+                    setEditingTitle(false);
+                    void renameSceneAndHeader((p) => renameDoc(p, active.id, t), active.id);
                   }}
-                  onCancel={() => setEditingScene(false)}
+                  onCancel={() => setEditingTitle(false)}
                 />
               ) : (
                 <button
                   type="button"
                   className="crumb-scene"
-                  onClick={() => setEditingScene(true)}
-                  title="Renomear cena"
+                  onClick={() => setEditingTitle(true)}
+                  title="Renomear"
                 >
-                  {active.scene.title}
+                  {active.title}
                 </button>
               )}
             </div>
           ) : (
             <div className="crumbs" />
           )}
-          <SaveIndicator state={saveState} />
+          {view === "graph" ? (
+            <button type="button" className="btn ghost sm" onClick={() => setView("editor")}>
+              Voltar ao texto
+            </button>
+          ) : (
+            <SaveIndicator state={saveState} />
+          )}
         </header>
 
         <section className="editor-area">
-          {active ? (
-            <SceneEditor key={active.scene.id} session={session} sceneId={active.scene.id} />
+          {view === "graph" ? (
+            <GraphView session={session} />
+          ) : active ? (
+            <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (
             <div className="editor-state">
-              <p>Nenhuma cena aberta.</p>
+              <p>Nenhum texto aberto.</p>
               <p className="muted">
-                Crie um capítulo ou uma cena na barra lateral para começar a escrever.
+                Crie um capítulo, uma cena ou uma nota na barra lateral para começar a escrever.
               </p>
             </div>
           )}
         </section>
 
-        {active && (
+        {view === "editor" && active && (
           <footer className="status">
             <span>
-              Cena <b>{formatCount(words[active.scene.id] ?? 0)}</b>
+              {scene ? "Cena" : "Nota"} <b>{formatCount(words[active.id] ?? 0)}</b>
             </span>
-            <span>
-              Capítulo <b>{formatCount(chapterTotal)}</b>
-            </span>
+            {scene && (
+              <span>
+                Capítulo <b>{formatCount(chapterTotal)}</b>
+              </span>
+            )}
             <span>
               Livro <b>{formatCount(total)}</b>
             </span>

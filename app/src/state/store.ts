@@ -7,15 +7,15 @@ import {
   type VaultFs,
   type VaultRef,
 } from "../platform";
-import type { Project, TreeChange } from "../manuscript/types";
-import { addScene, findScene, moveScene } from "../manuscript/tree";
+import type { NoteKind, Project, TreeChange } from "../manuscript/types";
+import { addNote, addScene, findDoc, findScene, moveScene } from "../manuscript/tree";
 import { countWords } from "../manuscript/wordCount";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toPlainText } from "../markdown/serialize";
 import { folderName } from "../vault/paths";
 import {
   applyOps,
-  countProjectWords,
+  readProjectTexts,
   createVault,
   ensureChapterDirs,
   loadProject,
@@ -31,8 +31,12 @@ export interface Session {
   root: string;
   fs: VaultFs;
   project: Project;
+  /** Palavras de cada cena e nota. */
   words: Record<string, number>;
-  activeSceneId: string | null;
+  /** Texto puro de cada cena e nota, para os links e o grafo. */
+  texts: Record<string, string>;
+  activeDocId: string | null;
+  view: "editor" | "graph";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -54,11 +58,17 @@ interface AppState {
   openExistingFolder(): Promise<void>;
   createVaultInFolder(folder: ChosenFolder): Promise<void>;
   cancelFolderToConvert(): void;
-  closeVault(): void;
+  /** Grava o que estiver pendente e volta para a lista de projetos. */
+  closeVault(): Promise<void>;
+  switchVault(root: string): Promise<void>;
   forgetVault(root: string): Promise<void>;
   change(edit: (p: Project) => TreeChange, after?: (p: Project) => Promise<void>): Promise<void>;
-  selectScene(sceneId: string | null): void;
-  setSceneWords(sceneId: string, words: number): void;
+  /** Abre uma cena ou nota no editor. */
+  openDoc(id: string): void;
+  setView(view: Session["view"]): void;
+  setDocText(id: string, text: string): void;
+  /** Cria uma nota (sem abrir). Devolve o id, ou o id da que já existe com esse título. */
+  createNote(kind: NoteKind, title: string): Promise<string | null>;
   keepExternalCopy(sceneId: string, diskText: string): Promise<void>;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null): void;
@@ -101,7 +111,7 @@ export const useApp = create<AppState>((set, get) => {
     if (!platform) return;
     const fs = platform.fs(root);
     const project = await loadProject(fs);
-    const words = await countProjectWords(fs, project);
+    const { words, texts } = await readProjectTexts(fs, project);
     await platform.rememberVault({
       root,
       title: project.title,
@@ -110,7 +120,15 @@ export const useApp = create<AppState>((set, get) => {
     });
     storageSet(LAST_KEY, root);
     set({
-      session: { root, fs, project, words, activeSceneId: firstScene(project) },
+      session: {
+        root,
+        fs,
+        project,
+        words,
+        texts,
+        activeDocId: firstScene(project),
+        view: "editor",
+      },
       saveState: "idle",
       message: null,
     });
@@ -156,6 +174,20 @@ export const useApp = create<AppState>((set, get) => {
         await get().refreshVaults();
       }
     }
+  }
+
+  /**
+   * Antes de trocar ou fechar o projeto, grava as edições pendentes. O editor
+   * só grava depois de uma pausa na digitação; sem isso as últimas palavras
+   * se perderiam.
+   */
+  async function flushPending() {
+    if (await flushAll()) return true;
+    set({
+      message:
+        "Não foi possível salvar as últimas alterações. Verifique se a pasta do projeto está acessível e tente de novo.",
+    });
+    return false;
   }
 
   async function guarded(task: () => Promise<void>) {
@@ -210,9 +242,15 @@ export const useApp = create<AppState>((set, get) => {
         set({ folderToConvert: null });
         const folder = await get().platform?.chooseFolder?.();
         if (!folder) return;
-        // Pasta comum: a tela inicial oferece transformá-la em projeto.
-        if (folder.isProject) await open(folder.root);
-        else set({ folderToConvert: folder });
+        if (!(await flushPending())) return;
+        if (folder.isProject) {
+          await open(folder.root);
+          await get().refreshVaults();
+        } else {
+          // Pasta comum: a tela inicial oferece transformá-la em projeto.
+          storageSet(LAST_KEY, null);
+          set({ session: null, folderToConvert: folder });
+        }
       }),
 
     createVaultInFolder: (folder) =>
@@ -228,11 +266,20 @@ export const useApp = create<AppState>((set, get) => {
       set({ folderToConvert: null });
     },
 
-    closeVault() {
+    async closeVault() {
+      if (!(await flushPending())) return;
       storageSet(LAST_KEY, null);
       set({ session: null, saveState: "idle" });
-      void get().refreshVaults();
+      await get().refreshVaults();
     },
+
+    switchVault: (root) =>
+      guarded(async () => {
+        if (root === get().session?.root) return;
+        if (!(await flushPending())) return;
+        await open(root);
+        await get().refreshVaults();
+      }),
 
     forgetVault: (root) =>
       guarded(async () => {
@@ -250,10 +297,9 @@ export const useApp = create<AppState>((set, get) => {
           await applyOps(session.fs, ops);
           await ensureChapterDirs(session.fs, project);
           await saveProject(session.fs, project);
-          let activeSceneId = session.activeSceneId;
-          if (activeSceneId && !findScene(project, activeSceneId))
-            activeSceneId = firstScene(project);
-          set({ session: { ...session, project, activeSceneId } });
+          let activeDocId = session.activeDocId;
+          if (activeDocId && !findDoc(project, activeDocId)) activeDocId = firstScene(project);
+          set({ session: { ...session, project, activeDocId } });
           if (project.title !== session.project.title) {
             // Mantém a lista de projetos recentes com o nome novo.
             await get().platform?.rememberVault({
@@ -269,38 +315,70 @@ export const useApp = create<AppState>((set, get) => {
         }
       }),
 
-    selectScene(sceneId) {
+    openDoc(id) {
       const session = get().session;
-      if (session) set({ session: { ...session, activeSceneId: sceneId } });
+      if (session) set({ session: { ...session, activeDocId: id, view: "editor" } });
     },
 
-    setSceneWords(sceneId, words) {
+    setView(view) {
       const session = get().session;
-      if (!session || session.words[sceneId] === words) return;
-      set({ session: { ...session, words: { ...session.words, [sceneId]: words } } });
+      if (session) set({ session: { ...session, view } });
     },
 
-    async keepExternalCopy(sceneId, diskText) {
-      const found = get().session && findScene(get().session!.project, sceneId);
-      if (!found) return;
-      const title = `${found.scene.title} (versão externa)`;
+    setDocText(id, text) {
+      const session = get().session;
+      if (!session || session.texts[id] === text) return;
+      set({
+        session: {
+          ...session,
+          texts: { ...session.texts, [id]: text },
+          words: { ...session.words, [id]: countWords(text) },
+        },
+      });
+    },
+
+    async createNote(kind, title) {
+      const existing = get().session?.project.notes.find(
+        (n) => n.title.toLocaleLowerCase("pt-BR") === title.toLocaleLowerCase("pt-BR"),
+      );
+      if (existing) return existing.id;
+      let id: string | null = null;
+      await get().change((p) => {
+        const r = addNote(p, kind, title);
+        id = r.note.id;
+        return r;
+      });
+      return id;
+    },
+
+    async keepExternalCopy(id, diskText) {
+      const project = get().session?.project;
+      const doc = project && findDoc(project, id);
+      if (!project || !doc) return;
+      const title = `${doc.title} (versão externa)`;
       const body = splitFrontmatter(diskText).body.replace(/^\n/, "");
       let copyId = "";
       await get().change(
         (p) => {
-          const added = addScene(p, found.chapter.id, title);
-          copyId = added.scene.id;
-          // Logo abaixo da cena original.
-          return moveScene(added.project, copyId, found.chapter.id, found.index + 1);
+          const scene = findScene(p, id);
+          if (scene) {
+            const added = addScene(p, scene.chapter.id, title);
+            copyId = added.scene.id;
+            // Logo abaixo da cena original.
+            return moveScene(added.project, copyId, scene.chapter.id, scene.index + 1);
+          }
+          const added = addNote(p, p.notes.find((n) => n.id === id)!.kind, title);
+          copyId = added.note.id;
+          return added;
         },
-        async (project) => {
+        async (next) => {
           const session = get().session!;
-          await writeSceneMarkdown(session.fs, project, copyId, body);
-          get().setSceneWords(copyId, countWords(toPlainText(parseMarkdown(body))));
+          await writeSceneMarkdown(session.fs, next, copyId, body);
+          get().setDocText(copyId, toPlainText(parseMarkdown(body)));
         },
       );
       set({
-        message: `"${found.scene.title}" foi alterada fora do InkFlow enquanto estava aberta. Para não perder nada, a versão de fora foi guardada como "${title}".`,
+        message: `"${doc.title}" foi alterada fora do InkFlow enquanto estava aberta. Para não perder nada, a versão de fora foi guardada como "${title}".`,
       });
     },
 

@@ -9,8 +9,9 @@ import type { PMNode } from "./types";
 const MARK_ORDER = ["bold", "italic", "strike"] as const;
 const MARK_SYNTAX: Record<string, string> = { bold: "**", italic: "*", strike: "~~" };
 
+// Colchetes ficam sem escape para os links [[Nome]] continuarem legíveis no .md.
 function escapeText(text: string): string {
-  return text.replace(/([\\*_`~[\]])/g, "\\$1");
+  return text.replace(/([\\*_`~])/g, "\\$1");
 }
 
 /** Escapa o que só tem sentido especial no começo da linha. */
