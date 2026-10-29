@@ -1426,6 +1426,9 @@ p {
 .minimap-title {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1444,6 +1447,18 @@ p {
 }
 .minimap-canvas canvas {
   display: block;
+}
+.minimap-zoom {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
 }
 .minimap-empty {
   position: absolute;
