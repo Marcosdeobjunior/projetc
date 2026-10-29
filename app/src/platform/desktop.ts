@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { join } from "@tauri-apps/api/path";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Platform, VaultFs, VaultRef } from "./types";
 import { PlatformError } from "./types";
@@ -108,6 +109,12 @@ export function createDesktopPlatform(): Platform {
 
     fs(root: string) {
       return new TauriFs(root);
+    },
+
+    onClose(beforeClose) {
+      void getCurrentWindow().onCloseRequested(async (event) => {
+        if (!(await beforeClose())) event.preventDefault();
+      });
     },
   };
 }

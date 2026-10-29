@@ -20,6 +20,7 @@ import {
   VaultError,
 } from "../vault/vault";
 import { createSampleVault } from "../vault/sample";
+import { flushAll, serial } from "./writes";
 
 export interface Session {
   root: string;
@@ -51,17 +52,6 @@ interface AppState {
   setSceneWords(sceneId: string, words: number): void;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null): void;
-}
-
-/*
- * Toda escrita no vault passa por esta fila, uma de cada vez. Assim uma cena
- * nunca é gravada enquanto o arquivo dela está sendo movido ou renomeado.
- */
-let queue: Promise<unknown> = Promise.resolve();
-export function serial<T>(task: () => Promise<T>): Promise<T> {
-  const run = queue.then(task, task);
-  queue = run.catch(() => undefined);
-  return run;
 }
 
 const SAMPLE_FLAG = "inkflow.sampleCreated";
@@ -119,6 +109,15 @@ export const useApp = create<AppState>((set, get) => {
   async function initialize() {
     const platform = await createPlatform();
     set({ platform });
+    // Ao fechar o app, grava o que estiver pendente. Se falhar, a janela não fecha.
+    platform.onClose?.(async () => {
+      if (await flushAll()) return true;
+      set({
+        message:
+          "Não foi possível salvar as últimas alterações, então o app não foi fechado. Verifique se a pasta do projeto está acessível e tente de novo.",
+      });
+      return false;
+    });
     await get().refreshVaults();
 
     // Reabre o último projeto usado, se ele ainda existir.

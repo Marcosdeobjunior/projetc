@@ -5,7 +5,8 @@ import { Placeholder } from "@tiptap/extensions";
 import type * as Y from "yjs";
 import { textExtensions, YDOC_FIELD } from "./extensions";
 import { loadSceneDoc, saveScene } from "../vault/vault";
-import { serial, useApp, type Session } from "../state/store";
+import { useApp, type Session } from "../state/store";
+import { registerFlush, serial } from "../state/writes";
 import { countWords } from "../manuscript/wordCount";
 import { findScene } from "../manuscript/tree";
 import { Icon } from "../ui/Icon";
@@ -79,42 +80,48 @@ function LoadedEditor({ doc, session, sceneId }: Props & { doc: Y.Doc }) {
   );
 
   useEffect(() => {
-    const save = () => {
+    /** Grava agora o que estiver pendente. Rejeita se a gravação falhar. */
+    const save = async (): Promise<void> => {
       window.clearTimeout(timer.current);
       if (!dirty.current) return;
       dirty.current = false;
       setSaveState("saving");
-      serial(async () => {
-        const project = useApp.getState().session?.project;
-        // A cena pode ter sido excluída enquanto estava aberta.
-        if (project && findScene(project, sceneId)) {
-          await saveScene(session.fs, project, sceneId, doc);
-        }
-      })
-        .then(() => setSaveState(dirty.current ? "saving" : "saved"))
-        .catch((err) => {
-          console.error(err);
-          dirty.current = true;
-          setSaveState("error");
+      try {
+        await serial(async () => {
+          const project = useApp.getState().session?.project;
+          // A cena pode ter sido excluída enquanto estava aberta.
+          if (project && findScene(project, sceneId)) {
+            await saveScene(session.fs, project, sceneId, doc);
+          }
         });
+        setSaveState(dirty.current ? "saving" : "saved");
+      } catch (err) {
+        console.error(err);
+        dirty.current = true;
+        setSaveState("error");
+        throw err;
+      }
     };
+    const saveQuietly = () => void save().catch(() => undefined);
     const onUpdate = () => {
       dirty.current = true;
       setSaveState("saving");
       window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(save, SAVE_DELAY_MS);
+      timer.current = window.setTimeout(saveQuietly, SAVE_DELAY_MS);
     };
     const onHide = () => {
-      if (document.visibilityState === "hidden") save();
+      if (document.visibilityState === "hidden") saveQuietly();
     };
     doc.on("update", onUpdate);
     document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("beforeunload", save);
+    window.addEventListener("beforeunload", saveQuietly);
+    const unregister = registerFlush(save);
     return () => {
+      unregister();
       doc.off("update", onUpdate);
       document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("beforeunload", save);
-      save();
+      window.removeEventListener("beforeunload", saveQuietly);
+      saveQuietly();
       void serial(async () => doc.destroy());
     };
   }, [doc, session.fs, sceneId, setSaveState]);

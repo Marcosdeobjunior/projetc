@@ -34,6 +34,12 @@ export interface Platform {
   /** Tira o vault da lista. No navegador também apaga os arquivos. */
   forgetVault(root: string): Promise<void>;
   fs(root: string): VaultFs;
+  /**
+   * Chama `beforeClose` quando o usuário fecha a janela do app. Se devolver
+   * false, a janela continua aberta. Só existe no desktop; no navegador o
+   * editor grava ao esconder a página.
+   */
+  onClose?(beforeClose: () => Promise<boolean>): void;
 }
 
 export class PlatformError extends Error {}
