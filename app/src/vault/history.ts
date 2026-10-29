@@ -4,7 +4,8 @@ import { allDocs } from "../manuscript/tree";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toPlainText } from "../markdown/serialize";
 import { countWords } from "../manuscript/wordCount";
-import { HISTORY_DIR, MANUSCRIPT_DIR, NOTES_DIR, TRASH_DIR } from "./paths";
+import { HISTORY_DIR, MANUSCRIPT_DIR, NOTES_DIR } from "./paths";
+import { moveToTrash } from "./trash";
 import { ensureChapterDirs, saveProject, sceneFile } from "./vault";
 
 /*
@@ -167,6 +168,11 @@ export function versionsToPrune(list: VersionInfo[]): string[] {
   return drop;
 }
 
+/** Esquece o índice para ser refeito a partir dos arquivos (ex.: chegaram versões pelo sync). */
+export async function forgetVersionIndex(fs: VaultFs) {
+  await fs.remove(INDEX);
+}
+
 export async function deleteVersion(fs: VaultFs, id: string) {
   const list = await listVersions(fs);
   await fs.remove(versionPath(id));
@@ -242,10 +248,11 @@ export function compareVersion(
  * aplica a diferença como uma edição.
  */
 export async function restoreProjectFiles(fs: VaultFs, version: Version): Promise<Project> {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   for (const dir of [MANUSCRIPT_DIR, NOTES_DIR]) {
-    if (await fs.exists(dir))
-      await fs.rename(dir, `${TRASH_DIR}/${stamp}-antes-de-restaurar/${dir}`);
+    await moveToTrash(fs, dir, {
+      kind: "backup",
+      label: `${dir}/ antes de voltar para "${version.label}"`,
+    });
   }
   const project: Project = {
     ...version.project,

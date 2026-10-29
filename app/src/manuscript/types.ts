@@ -48,9 +48,19 @@ export interface DocRef {
   type: "scene" | NoteKind;
 }
 
+/** O que foi excluído, com o necessário para pôr de volta (veja vault/trash.ts). */
+export type TrashItem =
+  | { kind: "scene"; scene: Scene; chapter: { id: string; title: string }; index: number }
+  | { kind: "chapter"; chapter: Chapter; index: number }
+  | { kind: "note"; note: Note }
+  | { kind: "attachment"; name: string }
+  /** Pastas guardadas antes de restaurar uma versão (só dá para apagar). */
+  | { kind: "backup"; label: string };
+
 /** Operação de arquivo que precisa acompanhar uma mudança na estrutura. */
 export type FsOp =
-  { kind: "move"; from: string; to: string } | { kind: "trash"; path: string; sceneIds: string[] };
+  | { kind: "move"; from: string; to: string }
+  | { kind: "trash"; path: string; sceneIds: string[]; item: TrashItem };
 
 export interface TreeChange {
   project: Project;

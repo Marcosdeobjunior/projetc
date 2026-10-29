@@ -191,7 +191,19 @@ export function removeScene(p: Project, sceneId: string): TreeChange {
   );
   return {
     project: touch(p, chapters),
-    ops: [{ kind: "trash", path: scenePath(found.chapter, found.scene), sceneIds: [sceneId] }],
+    ops: [
+      {
+        kind: "trash",
+        path: scenePath(found.chapter, found.scene),
+        sceneIds: [sceneId],
+        item: {
+          kind: "scene",
+          scene: found.scene,
+          chapter: { id: found.chapter.id, title: found.chapter.title },
+          index: found.index,
+        },
+      },
+    ],
   };
 }
 
@@ -208,6 +220,7 @@ export function removeChapter(p: Project, chapterId: string): TreeChange {
         kind: "trash",
         path: chapterDirPath(chapter),
         sceneIds: chapter.scenes.map((s) => s.id),
+        item: { kind: "chapter", chapter, index: p.chapters.indexOf(chapter) },
       },
     ],
   };
@@ -251,7 +264,9 @@ export function removeNote(p: Project, noteId: string): TreeChange {
       p,
       p.notes.filter((n) => n.id !== noteId),
     ),
-    ops: [{ kind: "trash", path: notePath(note), sceneIds: [noteId] }],
+    ops: [
+      { kind: "trash", path: notePath(note), sceneIds: [noteId], item: { kind: "note", note } },
+    ],
   };
 }
 

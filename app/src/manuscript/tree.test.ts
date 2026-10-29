@@ -92,11 +92,23 @@ describe("estrutura do manuscrito", () => {
     const ch = p.chapters[0]!;
     const sc = ch.scenes[0]!;
     expect(removeScene(p, sc.id).ops).toEqual([
-      { kind: "trash", path: "manuscrito/capitulo-1/cena-1.md", sceneIds: [sc.id] },
+      {
+        kind: "trash",
+        path: "manuscrito/capitulo-1/cena-1.md",
+        sceneIds: [sc.id],
+        item: { kind: "scene", scene: sc, chapter: { id: ch.id, title: ch.title }, index: 0 },
+      },
     ]);
     const r = removeChapter(p, ch.id);
     expect(r.project.chapters).toEqual([]);
-    expect(r.ops).toEqual([{ kind: "trash", path: "manuscrito/capitulo-1", sceneIds: [sc.id] }]);
+    expect(r.ops).toEqual([
+      {
+        kind: "trash",
+        path: "manuscrito/capitulo-1",
+        sceneIds: [sc.id],
+        item: { kind: "chapter", chapter: ch, index: 0 },
+      },
+    ]);
   });
 });
 
@@ -142,7 +154,12 @@ describe("notas", () => {
       },
     ]);
     expect(removeNote(renamed.project, r.note.id).ops).toEqual([
-      { kind: "trash", path: "notas/personagens/helena-prado.md", sceneIds: [r.note.id] },
+      expect.objectContaining({
+        kind: "trash",
+        path: "notas/personagens/helena-prado.md",
+        sceneIds: [r.note.id],
+        item: { kind: "note", note: expect.objectContaining({ id: r.note.id }) },
+      }),
     ]);
   });
 });

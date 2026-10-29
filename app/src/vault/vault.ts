@@ -9,7 +9,8 @@ import type { PMNode } from "../markdown/types";
 import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { renameLinksInText } from "../links/links";
-import { PROJECT_FILE, TRASH_DIR, ydocPath } from "./paths";
+import { PROJECT_FILE, ydocPath } from "./paths";
+import { moveToTrash } from "./trash";
 
 /*
  * Leitura e gravação de um vault. Cada cena é guardada em dois formatos:
@@ -70,14 +71,7 @@ export async function applyOps(fs: VaultFs, ops: FsOp[]): Promise<void> {
     if (op.kind === "move") {
       if (await fs.exists(op.from)) await fs.rename(op.from, op.to);
     } else {
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const name = op.path.split("/").pop()!;
-      if (await fs.exists(op.path)) await fs.rename(op.path, `${TRASH_DIR}/${stamp}-${name}`);
-      for (const id of op.sceneIds) {
-        if (await fs.exists(ydocPath(id))) {
-          await fs.rename(ydocPath(id), `${TRASH_DIR}/${stamp}-${id}.yjs`);
-        }
-      }
+      await moveToTrash(fs, op.path, op.item, op.sceneIds);
     }
   }
 }

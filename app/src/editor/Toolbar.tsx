@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
 import { useSettings } from "../state/settings";
+import { useApp } from "../state/store";
 import {
   BLOCK_STYLES,
   blockStyle,
@@ -130,6 +131,11 @@ export function Toolbar({
         run={() => editor.commands.redo()}
       />
       <span className="toolbar-spacer" />
+      <ToolButton
+        label="Histórico de versões"
+        icon="history"
+        run={() => useApp.getState().setView("history")}
+      />
       <ToolButton
         label={minimap ? "Esconder minimapa" : "Mostrar minimapa"}
         icon="graph"

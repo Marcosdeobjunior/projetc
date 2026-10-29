@@ -33,7 +33,7 @@ import {
   importFiles,
   setAttachmentSource,
 } from "../editor/attachments";
-import { TRASH_DIR } from "../vault/paths";
+import { dropTrashEntry, moveToTrash, restorePlan, type TrashEntry } from "../vault/trash";
 import { restoreProjectFiles, saveVersion, type Version } from "../vault/history";
 import { renameLinksInOpenEditors } from "./openEditors";
 
@@ -48,7 +48,7 @@ export interface Session {
   activeDocId: string | null;
   /** Arquivos da pasta anexos/. */
   attachments: string[];
-  view: "editor" | "graph" | "settings" | "history";
+  view: "editor" | "graph" | "settings" | "history" | "trash";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -94,6 +94,8 @@ interface AppState {
   restoreText(version: Version, docId: string): Promise<void>;
   /** Volta o projeto inteiro para uma versão (a situação atual vira uma versão antes). */
   restoreVersion(version: Version): Promise<void>;
+  /** Põe de volta no projeto um item da lixeira. */
+  restoreFromTrash(entry: TrashEntry): Promise<void>;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null, tone?: "info" | "error"): void;
 }
@@ -336,8 +338,7 @@ export const useApp = create<AppState>((set, get) => {
         const session = get().session;
         if (!session) return;
         const src = `${ATTACHMENTS_DIR}/${name}`;
-        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-        await serial(() => session.fs.rename(src, `${TRASH_DIR}/${stamp}-${name}`));
+        await serial(() => moveToTrash(session.fs, src, { kind: "attachment", name }));
         forgetAttachment(src);
         const now = get().session;
         if (now?.root === session.root) {
@@ -364,6 +365,14 @@ export const useApp = create<AppState>((set, get) => {
         if (!get().session || !(await closeEditor())) return;
         const body = version.texts[docId] ?? "";
         const old = findDoc(version.project, docId);
+        // Guarda como está agora, para dar para desfazer.
+        const before = get().session!;
+        await serial(() =>
+          saveVersion(before.fs, before.project, {
+            label: `Antes de restaurar "${old?.title ?? "um texto"}"`,
+            auto: false,
+          }),
+        );
         let target = docId;
         const session = get().session!;
         if (findDoc(session.project, docId)) {
@@ -382,9 +391,12 @@ export const useApp = create<AppState>((set, get) => {
                 p.chapters.find((c) => c.id === thenChapter.id) ??
                 p.chapters.find((c) => c.title === thenChapter.title);
               if (chapter) {
+                // Volta para a posição que tinha no capítulo.
                 const r = addScene(p, chapter.id, old.title);
                 target = r.scene.id;
-                return r;
+                const index = findScene(version.project, docId)!.index;
+                const moved = moveScene(r.project, target, chapter.id, index);
+                return { project: moved.project, ops: [...r.ops, ...moved.ops] };
               }
               const c = addChapter(p, thenChapter.title);
               const r = addScene(c.project, c.chapter.id, old.title);
@@ -399,7 +411,7 @@ export const useApp = create<AppState>((set, get) => {
         get().setDocText(target, toPlainText(parseMarkdown(body)));
         get().openDoc(target);
         set({
-          message: `"${old?.title ?? "Texto"}" voltou a ser como estava em ${versionDate(version)}.`,
+          message: `"${old?.title ?? "Texto"}" voltou a ser como estava em ${versionDate(version)}. Como estava antes ficou guardado no histórico.`,
           messageTone: "info",
         });
       }),
@@ -421,6 +433,28 @@ export const useApp = create<AppState>((set, get) => {
           message: `O projeto voltou a ser como estava em ${versionDate(version)}. A situação anterior ficou guardada no histórico.`,
           messageTone: "info",
         });
+      }),
+
+    restoreFromTrash: (entry) =>
+      guarded(async () => {
+        const session = get().session;
+        if (!session) return;
+        const plan = restorePlan(session.project, entry, session.attachments);
+        if (!plan) return;
+        if (plan.project === session.project) {
+          // Só arquivos (um anexo): nada muda na estrutura.
+          await serial(() => applyOps(session.fs, plan.ops));
+        } else {
+          await get().change(() => ({ project: plan.project, ops: plan.ops }));
+        }
+        const now = get().session!;
+        const [{ words, texts }, attachments] = await serial(async () => {
+          await dropTrashEntry(now.fs, entry.id);
+          return [await readProjectTexts(now.fs, now.project), await now.fs.list(ATTACHMENTS_DIR)];
+        });
+        set({ session: { ...get().session!, words, texts, attachments } });
+        if (plan.openId) get().openDoc(plan.openId);
+        set({ message: `"${entry.title}" voltou da lixeira.`, messageTone: "info" });
       }),
 
     async closeVault() {

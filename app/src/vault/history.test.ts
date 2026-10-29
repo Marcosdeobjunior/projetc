@@ -4,6 +4,8 @@ import { addScene, removeScene } from "../manuscript/tree";
 import { createVault, loadProject, readSceneFile, writeSceneMarkdown } from "./vault";
 import {
   compareVersion,
+  deleteVersion,
+  forgetVersionIndex,
   listVersions,
   readBodies,
   readVersion,
@@ -12,6 +14,7 @@ import {
   versionsToPrune,
   type VersionInfo,
 } from "./history";
+import { listTrash } from "./trash";
 
 async function setup() {
   const fs = new KeyValueFs(new MemoryStore(), "v");
@@ -59,8 +62,14 @@ describe("histórico de versões", () => {
     expect(await readSceneFile(fs, restored, scene.id)).toContain("Era uma vez.");
     expect((await loadProject(fs)).chapters).toEqual(project.chapters);
     expect((await readBodies(fs, restored))[scene.id]).toBe("Era uma vez.\n");
-    expect(await fs.list(".inkflow/lixeira")).toEqual([]);
-    expect(await fs.exists(".inkflow/lixeira")).toBe(true);
+    // O que havia antes foi para a lixeira (este projeto ainda não tem notas/).
+    const trash = await listTrash(fs);
+    expect(trash.map((e) => e.item.kind)).toEqual(["backup"]);
+    expect(
+      await fs.readText(
+        `${trash.find((e) => e.title.startsWith("manuscrito"))!.path}/${restored.chapters[0]!.dir}/${scene.file}`,
+      ),
+    ).toContain("Texto novo.");
   });
 
   it("das versões automáticas antigas fica uma por dia", () => {
@@ -81,5 +90,17 @@ describe("histórico de versões", () => {
       v(103, 9 * day - 5, false),
     ];
     expect(versionsToPrune([...recent, ...old])).toEqual(["v101"]);
+  });
+
+  it("refaz o índice a partir dos arquivos e exclui versões", async () => {
+    const { fs, project, scene } = await setup();
+    const a = await saveVersion(fs, project, { label: "a", auto: false, now: 1000 });
+    await writeSceneMarkdown(fs, project, scene.id, "Outro texto.\n");
+    const b = await saveVersion(fs, project, { label: "b", auto: true, now: 2000 });
+    await forgetVersionIndex(fs);
+    expect((await listVersions(fs)).map((v) => v.id)).toEqual([b!.id, a!.id]);
+    await deleteVersion(fs, a!.id);
+    expect((await listVersions(fs)).map((v) => v.label)).toEqual(["b"]);
+    expect(await readVersion(fs, a!.id)).toBeNull();
   });
 });

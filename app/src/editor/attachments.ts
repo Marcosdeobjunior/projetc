@@ -1,6 +1,6 @@
 import { Node, mergeAttributes, type Editor } from "@tiptap/core";
 import type { VaultFs } from "../platform/types";
-import { slugify, uniqueName } from "../vault/paths";
+import { ATTACHMENTS_DIR, slugify, uniqueName } from "../vault/paths";
 
 /*
  * Anexos: imagens, vídeos, áudios e outros arquivos copiados para a pasta
@@ -8,7 +8,7 @@ import { slugify, uniqueName } from "../vault/paths";
  * `![nome](anexos/arquivo.ext)`.
  */
 
-export const ATTACHMENTS_DIR = "anexos";
+export { ATTACHMENTS_DIR };
 
 export type AttachmentKind = "image" | "video" | "audio" | "file";
 

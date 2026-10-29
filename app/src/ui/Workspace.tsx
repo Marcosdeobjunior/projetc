@@ -13,6 +13,7 @@ import { Settings } from "./Settings";
 import { SearchPanel } from "./SearchPanel";
 import { AttachmentsTree } from "./AttachmentsTree";
 import { HistoryView } from "./HistoryView";
+import { TrashView } from "./TrashView";
 import { useSearch } from "../state/search";
 import { Icon } from "./Icon";
 import { shortcut } from "../editor/formatting";
@@ -144,19 +145,6 @@ export function Workspace({ session }: { session: Session }) {
           </button>
           <button
             type="button"
-            className={"icon-btn sm" + (view === "history" ? " on" : "")}
-            aria-pressed={view === "history"}
-            title="Histórico de versões"
-            aria-label="Histórico de versões"
-            onClick={() => {
-              setView(view === "history" ? "editor" : "history");
-              closeNav();
-            }}
-          >
-            <Icon name="history" size={16} />
-          </button>
-          <button
-            type="button"
             className={"graph-btn" + (view === "graph" ? " on" : "")}
             aria-pressed={view === "graph"}
             onClick={() => {
@@ -179,17 +167,21 @@ export function Workspace({ session }: { session: Session }) {
         )}
 
         <div className="side-foot">
-          <button
-            type="button"
-            className={"foot-btn" + (view === "settings" ? " on" : "")}
-            aria-pressed={view === "settings"}
-            onClick={() => {
-              setView(view === "settings" ? "editor" : "settings");
-              closeNav();
-            }}
-          >
-            <Icon name="settings" size={17} /> Configurações
-          </button>
+          {(["settings", "trash"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={"foot-btn" + (view === v ? " on" : "")}
+              aria-pressed={view === v}
+              onClick={() => {
+                setView(view === v ? "editor" : v);
+                closeNav();
+              }}
+            >
+              <Icon name={v === "settings" ? "settings" : "trash"} size={17} />
+              {v === "settings" ? "Configurações" : "Lixeira"}
+            </button>
+          ))}
         </div>
       </aside>
 
@@ -213,7 +205,9 @@ export function Workspace({ session }: { session: Session }) {
                   ? "Grafo de conexões"
                   : view === "history"
                     ? "Histórico de versões"
-                    : "Configurações"}
+                    : view === "trash"
+                      ? "Lixeira"
+                      : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -264,6 +258,8 @@ export function Workspace({ session }: { session: Session }) {
             <Settings />
           ) : view === "history" ? (
             <HistoryView session={session} />
+          ) : view === "trash" ? (
+            <TrashView session={session} />
           ) : active ? (
             <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (

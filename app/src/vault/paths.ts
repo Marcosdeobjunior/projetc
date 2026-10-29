@@ -9,6 +9,8 @@ export const HISTORY_DIR = `${META_DIR}/versoes`;
 export const TRASH_DIR = `${META_DIR}/lixeira`;
 /** Textos legíveis do livro. */
 export const MANUSCRIPT_DIR = "manuscrito";
+/** Imagens, vídeos, áudios e outros arquivos usados nos textos. */
+export const ATTACHMENTS_DIR = "anexos";
 /** Personagens, lugares e ideias. */
 export const NOTES_DIR = "notas";
 
