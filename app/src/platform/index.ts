@@ -10,5 +10,5 @@ export async function createPlatform(): Promise<Platform & { persistent?: boolea
   return createBrowserPlatform();
 }
 
-export type { Platform, VaultFs, VaultRef } from "./types";
+export type { ChosenFolder, Platform, VaultFs, VaultRef } from "./types";
 export { PlatformError } from "./types";

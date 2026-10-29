@@ -53,6 +53,17 @@ describe("vault", () => {
       YDOC_FIELD,
     );
 
+  it("transformar uma pasta com arquivos em projeto não apaga nada", async () => {
+    const fs = fsFor();
+    await fs.writeText("LEIA-ME.md", "minhas anotações");
+    await fs.writeText("rascunho antigo.md", "texto antigo");
+    await createVault(fs, "Pasta Antiga");
+    expect(await fs.readText("LEIA-ME.md")).toBe("minhas anotações");
+    expect(await fs.readText("rascunho antigo.md")).toBe("texto antigo");
+    expect((await loadProject(fs)).title).toBe("Pasta Antiga");
+    await expect(createVault(fs, "de novo")).rejects.toThrow("já é um projeto");
+  });
+
   it("grava a cena em .md e em Yjs, e reabre igual", async () => {
     const fs = fsFor();
     const p = await createVault(fs, "x");

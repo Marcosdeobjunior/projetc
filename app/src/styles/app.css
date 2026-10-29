@@ -320,6 +320,29 @@ p {
   font-size: 13px;
   color: var(--faint);
 }
+.convert {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 14px;
+}
+.convert code {
+  font-size: 13px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--panel-2);
+}
+.convert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
 .empty {
   padding: 8px 0;
 }

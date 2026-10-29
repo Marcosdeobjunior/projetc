@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   createPlatform,
   PlatformError,
+  type ChosenFolder,
   type Platform,
   type VaultFs,
   type VaultRef,
@@ -43,12 +44,16 @@ interface AppState {
   saveState: SaveState;
   message: string | null;
   busy: boolean;
+  /** Pasta escolhida em "Abrir projeto existente" que ainda não é um projeto. */
+  folderToConvert: ChosenFolder | null;
 
   init(): Promise<void>;
   refreshVaults(): Promise<void>;
   createVault(title: string): Promise<void>;
   openVault(root: string): Promise<void>;
   openExistingFolder(): Promise<void>;
+  createVaultInFolder(folder: ChosenFolder): Promise<void>;
+  cancelFolderToConvert(): void;
   closeVault(): void;
   forgetVault(root: string): Promise<void>;
   change(edit: (p: Project) => TreeChange, after?: (p: Project) => Promise<void>): Promise<void>;
@@ -171,6 +176,7 @@ export const useApp = create<AppState>((set, get) => {
     saveState: "idle",
     message: null,
     busy: false,
+    folderToConvert: null,
 
     init() {
       // Em modo de desenvolvimento o React chama efeitos duas vezes.
@@ -201,9 +207,26 @@ export const useApp = create<AppState>((set, get) => {
 
     openExistingFolder: () =>
       guarded(async () => {
-        const root = await get().platform?.chooseExistingVault?.();
-        if (root) await open(root);
+        set({ folderToConvert: null });
+        const folder = await get().platform?.chooseFolder?.();
+        if (!folder) return;
+        // Pasta comum: a tela inicial oferece transformá-la em projeto.
+        if (folder.isProject) await open(folder.root);
+        else set({ folderToConvert: folder });
       }),
+
+    createVaultInFolder: (folder) =>
+      guarded(async () => {
+        const { platform } = get();
+        if (!platform) return;
+        set({ folderToConvert: null });
+        await createVault(platform.fs(folder.root), folder.name);
+        await open(folder.root);
+      }),
+
+    cancelFolderToConvert() {
+      set({ folderToConvert: null });
+    },
 
     closeVault() {
       storageSet(LAST_KEY, null);

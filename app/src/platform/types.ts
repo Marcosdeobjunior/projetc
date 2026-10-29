@@ -27,8 +27,11 @@ export interface Platform {
   kind: "desktop" | "browser";
   /** Onde criar um novo vault. Devolve a raiz escolhida ou null se cancelado. */
   chooseNewVaultRoot(folderName: string): Promise<string | null>;
-  /** Escolhe uma pasta de vault existente. Só existe no desktop. */
-  chooseExistingVault?(): Promise<string | null>;
+  /**
+   * Escolhe uma pasta no computador. Só existe no desktop. `isProject` diz se
+   * ela já é um projeto do InkFlow (tem `.inkflow/project.json`).
+   */
+  chooseFolder?(): Promise<ChosenFolder | null>;
   knownVaults(): Promise<VaultRef[]>;
   rememberVault(ref: VaultRef): Promise<void>;
   /** Tira o vault da lista. No navegador também apaga os arquivos. */
@@ -40,6 +43,13 @@ export interface Platform {
    * editor grava ao esconder a página.
    */
   onClose?(beforeClose: () => Promise<boolean>): void;
+}
+
+export interface ChosenFolder {
+  root: string;
+  /** Nome da pasta, para sugerir como título do projeto. */
+  name: string;
+  isProject: boolean;
 }
 
 export class PlatformError extends Error {}

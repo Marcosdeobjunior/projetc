@@ -17,6 +17,9 @@ export function Home() {
   const createVault = useApp((s) => s.createVault);
   const openVault = useApp((s) => s.openVault);
   const openExistingFolder = useApp((s) => s.openExistingFolder);
+  const folderToConvert = useApp((s) => s.folderToConvert);
+  const createVaultInFolder = useApp((s) => s.createVaultInFolder);
+  const cancelFolderToConvert = useApp((s) => s.cancelFolderToConvert);
   const forgetVault = useApp((s) => s.forgetVault);
   const [title, setTitle] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -76,8 +79,40 @@ export function Home() {
               onClick={() => void openExistingFolder()}
               disabled={busy}
             >
-              <Icon name="folder" /> Abrir pasta de projeto
+              <Icon name="folder" /> Abrir projeto existente
             </button>
+          )}
+          {folderToConvert && (
+            <div className="convert" role="alertdialog" aria-labelledby="convert-title">
+              <p id="convert-title">
+                A pasta <b>{folderToConvert.name}</b> ainda não é um projeto do InkFlow.
+              </p>
+              <p className="muted">
+                Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
+                <code>manuscrito</code> e <code>.inkflow</code>. Os arquivos que já estão lá não são
+                alterados.
+              </p>
+              <div className="convert-actions">
+                <button
+                  type="button"
+                  className="btn primary sm"
+                  disabled={busy}
+                  onClick={() => void createVaultInFolder(folderToConvert)}
+                >
+                  Criar projeto nesta pasta
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={() => void openExistingFolder()}
+                >
+                  Escolher outra pasta
+                </button>
+                <button type="button" className="btn ghost sm" onClick={cancelFolderToConvert}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
           )}
         </section>
 

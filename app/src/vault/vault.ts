@@ -18,14 +18,22 @@ import { PROJECT_FILE, TRASH_DIR, ydocPath } from "./paths";
 
 export class VaultError extends Error {}
 
+/**
+ * Cria um projeto na raiz do vault. A pasta pode já ter outros arquivos:
+ * nada que já existe é sobrescrito.
+ */
 export async function createVault(fs: VaultFs, title: string): Promise<Project> {
+  if (await fs.exists(PROJECT_FILE)) throw new VaultError("Essa pasta já é um projeto do InkFlow.");
   const project = createProject(title);
+  const writeNew = async (path: string, text: string) => {
+    if (!(await fs.exists(path))) await fs.writeText(path, text);
+  };
   for (const chapter of project.chapters) {
     for (const scene of chapter.scenes) {
-      await fs.writeText(scenePath(chapter, scene), sceneFile(scene, ""));
+      await writeNew(scenePath(chapter, scene), sceneFile(scene, ""));
     }
   }
-  await fs.writeText(
+  await writeNew(
     "LEIA-ME.md",
     `# ${project.title}\n\nEste é um projeto do InkFlow.\n\n` +
       "- `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.\n" +

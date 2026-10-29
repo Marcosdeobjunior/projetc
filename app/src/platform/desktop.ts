@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { join } from "@tauri-apps/api/path";
+import { basename, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Platform, VaultFs, VaultRef } from "./types";
@@ -84,15 +84,14 @@ export function createDesktopPlatform(): Platform {
       return root;
     },
 
-    async chooseExistingVault() {
-      const root = await open({ directory: true, title: "Abrir pasta de projeto" });
+    async chooseFolder() {
+      const root = await open({ directory: true, title: "Abrir projeto existente" });
       if (typeof root !== "string") return null;
-      if (!(await new TauriFs(root).exists(PROJECT_FILE))) {
-        throw new PlatformError(
-          "Essa pasta não é um projeto do InkFlow. Escolha a pasta que contém a subpasta .inkflow.",
-        );
-      }
-      return root;
+      return {
+        root,
+        name: await basename(root),
+        isProject: await new TauriFs(root).exists(PROJECT_FILE),
+      };
     },
 
     async knownVaults() {
