@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import { findDoc, findScene, renameDoc, renameProject } from "../manuscript/tree";
 import { formatCount } from "../manuscript/wordCount";
@@ -11,12 +11,26 @@ import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
 import { ThemeToggle } from "./ThemeToggle";
 import { Icon } from "./Icon";
+import { shortcut } from "../editor/formatting";
+
+const COLLAPSED_KEY = "inkflow.sidebarCollapsed";
+const isPhone = () => window.matchMedia("(max-width: 760px)").matches;
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export function Workspace({ session }: { session: Session }) {
   const change = useApp((s) => s.change);
   const saveState = useApp((s) => s.saveState);
   const setView = useApp((s) => s.setView);
   const [navOpen, setNavOpen] = useState(false);
+  /** Barra lateral recolhida no computador (no celular ela é uma gaveta). */
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const [editingProject, setEditingProject] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
 
@@ -30,9 +44,31 @@ export function Workspace({ session }: { session: Session }) {
   );
   const chapterTotal = scene ? scene.chapter.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0) : 0;
   const closeNav = () => setNavOpen(false);
+  const showNav = () => (isPhone() ? setNavOpen(true) : setCollapsed(false));
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {
+      // sem armazenamento: vale só nesta sessão
+    }
+  }, [collapsed]);
+
+  // Ctrl/⌘ + \ mostra ou esconde a barra lateral.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "\\" || !(e.ctrlKey || e.metaKey) || isPhone()) return;
+      e.preventDefault();
+      setCollapsed((c) => !c);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
-    <div className={"workspace" + (navOpen ? " nav-open" : "")}>
+    <div
+      className={"workspace" + (navOpen ? " nav-open" : "") + (collapsed ? " nav-collapsed" : "")}
+    >
       <aside className="sidebar">
         <div className="side-top">
           {editingProject ? (
@@ -56,6 +92,15 @@ export function Workspace({ session }: { session: Session }) {
             onClick={closeNav}
           >
             <Icon name="close" />
+          </button>
+          <button
+            type="button"
+            className="icon-btn nav-collapse"
+            aria-label="Recolher menu"
+            title={`Recolher menu (${shortcut("Mod+\\")})`}
+            onClick={() => setCollapsed(true)}
+          >
+            <Icon name="sidebar" />
           </button>
         </div>
         <div className="side-meta">
@@ -90,10 +135,11 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-toggle"
-            aria-label="Abrir menu"
-            onClick={() => setNavOpen(true)}
+            aria-label="Mostrar menu"
+            title={`Mostrar menu (${shortcut("Mod+\\")})`}
+            onClick={showNav}
           >
-            <Icon name="menu" />
+            <Icon name="sidebar" />
           </button>
           {view === "graph" ? (
             <div className="crumbs">

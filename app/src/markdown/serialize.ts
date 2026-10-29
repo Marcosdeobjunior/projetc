@@ -3,15 +3,21 @@ import type { PMNode } from "./types";
 /*
  * Converte o documento do editor em Markdown legível. Cobre o que o editor
  * oferece: parágrafos, títulos, citações, listas, separador de cena,
- * quebra de linha, negrito, itálico e tachado.
+ * quebra de linha, negrito, itálico, tachado e destaque (==texto==, como no Obsidian).
  */
 
-const MARK_ORDER = ["bold", "italic", "strike"] as const;
-const MARK_SYNTAX: Record<string, string> = { bold: "**", italic: "*", strike: "~~" };
+const MARK_ORDER = ["highlight", "bold", "italic", "strike"] as const;
+const MARK_SYNTAX: Record<string, string> = {
+  highlight: "==",
+  bold: "**",
+  italic: "*",
+  strike: "~~",
+};
 
 // Colchetes ficam sem escape para os links [[Nome]] continuarem legíveis no .md.
+// Um "=" sozinho fica como está; só "==" (e "=" no fim, que pode encostar num destaque) é escapado.
 function escapeText(text: string): string {
-  return text.replace(/([\\*_`~])/g, "\\$1");
+  return text.replace(/([\\*_`~])/g, "\\$1").replace(/=(?==|$)/g, "\\=");
 }
 
 /** Escapa o que só tem sentido especial no começo da linha. */

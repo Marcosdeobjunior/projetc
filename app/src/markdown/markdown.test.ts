@@ -46,6 +46,16 @@ describe("toMarkdown", () => {
     expect(md).toBe("## Parte um\n\n> Citação\n\n- item\n\n* * *\n");
   });
 
+  it("escreve tachado e destaque", () => {
+    expect(toMarkdown(doc(p(t("riscado", "strike"), t(" e "), t("marcado", "highlight"))))).toBe(
+      "~~riscado~~ e ==marcado==\n",
+    );
+  });
+
+  it("só escapa sinais de igual que virariam destaque", () => {
+    expect(toMarkdown(doc(p(t("a = b, c == d"))))).toBe("a = b, c \\== d\n");
+  });
+
   it("documento vazio vira arquivo vazio", () => {
     expect(toMarkdown(doc())).toBe("");
     expect(toMarkdown({ type: "doc", content: [{ type: "paragraph" }] })).toBe("");
@@ -94,6 +104,9 @@ describe("ida e volta", () => {
       },
     ),
     doc(p(t("primeira linha"), { type: "hardBreak" }, t("segunda linha"))),
+    doc(p(t("Um "), t("trecho", "highlight"), t(" e "), t("nome", "highlight", "bold"), t("."))),
+    doc(p(t("riscado", "strike"), t(" a = b == c ="))),
+    doc(p(t("x="), t("marcado", "highlight"))),
   ];
 
   it.each(samples.map((s, i) => [i, s] as const))("amostra %i volta igual", (_, sample) => {

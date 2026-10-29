@@ -34,6 +34,7 @@ function unquote(v: string) {
 }
 
 const INLINE_MARKS: [string, string][] = [
+  ["==", "highlight"],
   ["**", "bold"],
   ["__", "bold"],
   ["~~", "strike"],
