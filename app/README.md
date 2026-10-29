@@ -43,7 +43,8 @@ src/
   platform/    Acesso a arquivos. Duas implementações com a mesma interface:
                desktop.ts (Tauri, pasta real) e browser.ts (IndexedDB, modo prévia)
   vault/       Formato do projeto em disco: criar, abrir, salvar cenas
-  manuscript/  Estrutura de capítulos e cenas (funções puras) e contagem de palavras
+  manuscript/  Estrutura de capítulos, cenas e notas (funções puras) e contagem de palavras
+  links/       Links [[Nome]], menções automáticas e montagem do grafo
   markdown/    Conversão entre o documento do editor e Markdown
   editor/      Editor de texto (TipTap + Yjs)
   state/       Estado do app (zustand)
@@ -65,6 +66,10 @@ A Casa das Marés/
     o-comeco/                 ← um capítulo
       a-carta.md              ← uma cena (Markdown legível)
       helena.md
+  notas/
+    personagens/helena.md     ← notas: personagens, lugares e ideias
+    lugares/vila-serena.md
+    ideias/o-segredo-do-pai.md
   .inkflow/
     project.json              ← título, ordem dos capítulos e das cenas
     ydoc/<id-da-cena>.yjs     ← estado do editor de cada cena (para o sync)
@@ -90,5 +95,8 @@ Regras:
   Assim, reordenar não renomeia arquivos (melhor para o sync).
 - **Renomear** uma cena ou capítulo renomeia o arquivo ou a pasta junto.
 - **Nada é apagado de verdade:** excluir move para `.inkflow/lixeira/`.
+- **Links:** `[[Nome]]` (ou `[[Nome|texto]]`) liga a uma cena ou nota pelo título, como no
+  Obsidian. Além disso, o nome de uma nota aparecendo no texto conta como menção. Os dois
+  aparecem no grafo; os links ficam no `.md` como texto comum.
 - **Gravação segura:** no desktop cada arquivo é gravado num temporário e depois renomeado,
   para nunca ficar pela metade se o app fechar no meio.
