@@ -14,6 +14,7 @@ import type { Chapter, Scene } from "../manuscript/types";
 import { formatCount } from "../manuscript/wordCount";
 import { Icon } from "./Icon";
 import { InlineEdit } from "./InlineEdit";
+import { useSettings, type SectionId } from "../state/settings";
 
 type Drag = { kind: "scene" | "chapter"; id: string } | null;
 type DropMark = { id: string; where: "before" | "after" | "inside" } | null;
@@ -34,6 +35,7 @@ export function ManuscriptTree({
   const [drag, setDrag] = useState<Drag>(null);
   const [mark, setMark] = useState<DropMark>(null);
   const { project, words, activeDocId } = session;
+  const sectionOpen = !useSettings((s) => s.collapsed.includes("manuscrito"));
 
   const chapterWords = (c: Chapter) => c.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0);
 
@@ -61,6 +63,7 @@ export function ManuscriptTree({
   };
 
   const newChapter = () => {
+    if (!sectionOpen) useSettings.getState().toggleSection("manuscrito");
     let created: Chapter | null = null;
     void change(
       (p) => {
@@ -143,7 +146,7 @@ export function ManuscriptTree({
   return (
     <nav className="tree" aria-label="Manuscrito" onDragEnd={finishDrag}>
       <div className="tree-head">
-        <span className="tree-label">Manuscrito</span>
+        <SectionToggle id="manuscrito" label="Manuscrito" />
         <button
           type="button"
           className="icon-btn"
@@ -155,166 +158,164 @@ export function ManuscriptTree({
         </button>
       </div>
 
-      <ol className="chapters">
-        {project.chapters.map((c, ci) => {
-          const open = !collapsed.has(c.id);
-          return (
-            <li key={c.id} className="chapter">
-              {confirming === c.id ? (
-                <ConfirmRow
-                  text={`Excluir "${c.title}" e ${c.scenes.length === 1 ? "1 cena" : `${c.scenes.length} cenas`}?`}
-                  onYes={() => {
-                    setConfirming(null);
-                    void change((p) => removeChapter(p, c.id));
-                  }}
-                  onNo={() => setConfirming(null)}
-                />
-              ) : (
-                <div
-                  className={"row chapter-row" + markClass(c.id)}
-                  draggable={editing !== c.id}
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", c.title);
-                    setDrag({ kind: "chapter", id: c.id });
-                  }}
-                  onDragOver={(e) => onDragOver(e, { kind: "chapter", id: c.id })}
-                  onDrop={onDrop}
-                >
-                  <button
-                    type="button"
-                    className={"chev" + (open ? " open" : "")}
-                    aria-label={open ? `Recolher ${c.title}` : `Expandir ${c.title}`}
-                    aria-expanded={open}
-                    onClick={() => toggle(c.id)}
-                  >
-                    <Icon name="chevron" size={14} />
-                  </button>
-                  {editing === c.id ? (
-                    <InlineEdit
-                      value={c.title}
-                      label="Nome do capítulo"
-                      onCommit={(t) => {
-                        setEditing(null);
-                        void change((p) => renameChapter(p, c.id, t));
-                      }}
-                      onCancel={() => setEditing(null)}
-                    />
-                  ) : (
-                    <span
-                      className="row-title chapter-title"
-                      onDoubleClick={() => setEditing(c.id)}
-                    >
-                      {c.title}
-                    </span>
-                  )}
-                  <span className="row-count">{formatCount(chapterWords(c))}</span>
-                  <RowActions
-                    name={c.title}
-                    onUp={
-                      ci > 0 ? () => void change((p) => moveChapter(p, c.id, ci - 1)) : undefined
-                    }
-                    onDown={
-                      ci < project.chapters.length - 1
-                        ? () => void change((p) => moveChapter(p, c.id, ci + 1))
-                        : undefined
-                    }
-                    onRename={() => setEditing(c.id)}
-                    onDelete={() => setConfirming(c.id)}
-                    onAdd={() => newScene(c.id)}
+      {sectionOpen && (
+        <ol className="chapters">
+          {project.chapters.map((c, ci) => {
+            const open = !collapsed.has(c.id);
+            return (
+              <li key={c.id} className="chapter">
+                {confirming === c.id ? (
+                  <ConfirmRow
+                    text={`Excluir "${c.title}" e ${c.scenes.length === 1 ? "1 cena" : `${c.scenes.length} cenas`}?`}
+                    onYes={() => {
+                      setConfirming(null);
+                      void change((p) => removeChapter(p, c.id));
+                    }}
+                    onNo={() => setConfirming(null)}
                   />
-                </div>
-              )}
-
-              {open && (
-                <ol className="scenes">
-                  {c.scenes.map((s, si) =>
-                    confirming === s.id ? (
-                      <li key={s.id}>
-                        <ConfirmRow
-                          text={`Excluir "${s.title}"?`}
-                          onYes={() => {
-                            setConfirming(null);
-                            void change((p) => removeScene(p, s.id));
-                          }}
-                          onNo={() => setConfirming(null)}
-                        />
-                      </li>
-                    ) : (
-                      <li
-                        key={s.id}
-                        className={
-                          "row scene-row" +
-                          (s.id === activeDocId ? " active" : "") +
-                          markClass(s.id)
-                        }
-                        draggable={editing !== s.id}
-                        onDragStart={(e) => {
-                          e.stopPropagation();
-                          e.dataTransfer.effectAllowed = "move";
-                          e.dataTransfer.setData("text/plain", s.title);
-                          setDrag({ kind: "scene", id: s.id });
+                ) : (
+                  <div
+                    className={"row chapter-row" + markClass(c.id)}
+                    draggable={editing !== c.id}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", c.title);
+                      setDrag({ kind: "chapter", id: c.id });
+                    }}
+                    onDragOver={(e) => onDragOver(e, { kind: "chapter", id: c.id })}
+                    onDrop={onDrop}
+                  >
+                    <button
+                      type="button"
+                      className={"chev" + (open ? " open" : "")}
+                      aria-label={open ? `Recolher ${c.title}` : `Expandir ${c.title}`}
+                      aria-expanded={open}
+                      onClick={() => toggle(c.id)}
+                    >
+                      <Icon name="chevron" size={14} />
+                    </button>
+                    {editing === c.id ? (
+                      <InlineEdit
+                        value={c.title}
+                        label="Nome do capítulo"
+                        onCommit={(t) => {
+                          setEditing(null);
+                          void change((p) => renameChapter(p, c.id, t));
                         }}
-                        onDragOver={(e) => onDragOver(e, { kind: "scene", id: s.id })}
-                        onDrop={onDrop}
+                        onCancel={() => setEditing(null)}
+                      />
+                    ) : (
+                      <span
+                        className="row-title chapter-title"
+                        onDoubleClick={() => setEditing(c.id)}
                       >
-                        {editing === s.id ? (
-                          <InlineEdit
-                            value={s.title}
-                            label="Nome da cena"
-                            onCommit={(t) => {
-                              setEditing(null);
-                              void renameDocAndLinks((p) => renameScene(p, s.id, t), s.id);
-                            }}
-                            onCancel={() => setEditing(null)}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            className="row-title scene-open"
-                            aria-current={s.id === activeDocId ? "page" : undefined}
-                            onClick={() => {
-                              openDoc(s.id);
-                              onOpenScene();
-                            }}
-                            onDoubleClick={() => setEditing(s.id)}
-                          >
-                            <Icon name="file" size={15} />
-                            <span>{s.title}</span>
-                          </button>
-                        )}
-                        <span className="row-count">{formatCount(words[s.id] ?? 0)}</span>
-                        <RowActions
-                          name={s.title}
-                          onUp={si > 0 || ci > 0 ? () => moveSceneBy(c, si, -1) : undefined}
-                          onDown={
-                            si < c.scenes.length - 1 || ci < project.chapters.length - 1
-                              ? () => moveSceneBy(c, si, 1)
-                              : undefined
-                          }
-                          onRename={() => setEditing(s.id)}
-                          onDelete={() => setConfirming(s.id)}
-                        />
-                      </li>
-                    ),
-                  )}
-                  {c.scenes.length === 0 && (
-                    <li className="empty-chapter">
-                      <button type="button" className="link-btn" onClick={() => newScene(c.id)}>
-                        + Adicionar a primeira cena
-                      </button>
-                    </li>
-                  )}
-                </ol>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+                        {c.title}
+                      </span>
+                    )}
+                    <span className="row-count">{formatCount(chapterWords(c))}</span>
+                    <RowActions
+                      name={c.title}
+                      onUp={
+                        ci > 0 ? () => void change((p) => moveChapter(p, c.id, ci - 1)) : undefined
+                      }
+                      onDown={
+                        ci < project.chapters.length - 1
+                          ? () => void change((p) => moveChapter(p, c.id, ci + 1))
+                          : undefined
+                      }
+                      onRename={() => setEditing(c.id)}
+                      onDelete={() => setConfirming(c.id)}
+                      onAdd={() => newScene(c.id)}
+                    />
+                  </div>
+                )}
 
-      <button type="button" className="add-chapter" onClick={newChapter}>
-        <Icon name="plus" size={16} /> Novo capítulo
-      </button>
+                {open && (
+                  <ol className="scenes">
+                    {c.scenes.map((s, si) =>
+                      confirming === s.id ? (
+                        <li key={s.id}>
+                          <ConfirmRow
+                            text={`Excluir "${s.title}"?`}
+                            onYes={() => {
+                              setConfirming(null);
+                              void change((p) => removeScene(p, s.id));
+                            }}
+                            onNo={() => setConfirming(null)}
+                          />
+                        </li>
+                      ) : (
+                        <li
+                          key={s.id}
+                          className={
+                            "row scene-row" +
+                            (s.id === activeDocId ? " active" : "") +
+                            markClass(s.id)
+                          }
+                          draggable={editing !== s.id}
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", s.title);
+                            setDrag({ kind: "scene", id: s.id });
+                          }}
+                          onDragOver={(e) => onDragOver(e, { kind: "scene", id: s.id })}
+                          onDrop={onDrop}
+                        >
+                          {editing === s.id ? (
+                            <InlineEdit
+                              value={s.title}
+                              label="Nome da cena"
+                              onCommit={(t) => {
+                                setEditing(null);
+                                void renameDocAndLinks((p) => renameScene(p, s.id, t), s.id);
+                              }}
+                              onCancel={() => setEditing(null)}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="row-title scene-open"
+                              aria-current={s.id === activeDocId ? "page" : undefined}
+                              onClick={() => {
+                                openDoc(s.id);
+                                onOpenScene();
+                              }}
+                              onDoubleClick={() => setEditing(s.id)}
+                            >
+                              <Icon name="file" size={15} />
+                              <span>{s.title}</span>
+                            </button>
+                          )}
+                          <span className="row-count">{formatCount(words[s.id] ?? 0)}</span>
+                          <RowActions
+                            name={s.title}
+                            onUp={si > 0 || ci > 0 ? () => moveSceneBy(c, si, -1) : undefined}
+                            onDown={
+                              si < c.scenes.length - 1 || ci < project.chapters.length - 1
+                                ? () => moveSceneBy(c, si, 1)
+                                : undefined
+                            }
+                            onRename={() => setEditing(s.id)}
+                            onDelete={() => setConfirming(s.id)}
+                          />
+                        </li>
+                      ),
+                    )}
+                    {c.scenes.length === 0 && (
+                      <li className="empty-chapter">
+                        <button type="button" className="link-btn" onClick={() => newScene(c.id)}>
+                          + Adicionar a primeira cena
+                        </button>
+                      </li>
+                    )}
+                  </ol>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </nav>
   );
 }
@@ -412,5 +413,22 @@ export function ConfirmRow({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Título de uma seção da barra lateral que recolhe e expande o conteúdo. */
+export function SectionToggle({ id, label }: { id: SectionId; label: string }) {
+  const open = !useSettings((s) => s.collapsed.includes(id));
+  const toggle = useSettings((s) => s.toggleSection);
+  return (
+    <button
+      type="button"
+      className={"section-toggle" + (open ? " open" : "")}
+      aria-expanded={open}
+      onClick={() => toggle(id)}
+    >
+      <Icon name="chevron" size={13} />
+      <span className="tree-label">{label}</span>
+    </button>
   );
 }

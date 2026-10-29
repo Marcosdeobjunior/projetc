@@ -1,5 +1,6 @@
 import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
+import { useSettings } from "../state/settings";
 import {
   BLOCK_STYLES,
   blockStyle,
@@ -28,6 +29,8 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
           }
         : null,
   });
+  const minimap = useSettings((s) => s.minimap);
+  const setSettings = useSettings((s) => s.set);
   if (!editor || !state) return <div className="toolbar" />;
   const chain = () => editor.chain().focus();
 
@@ -101,6 +104,13 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
         label={`Refazer (${shortcut("Mod+Shift+Z")})`}
         icon="redo"
         run={() => editor.commands.redo()}
+      />
+      <span className="toolbar-spacer" />
+      <ToolButton
+        label={minimap ? "Esconder minimapa" : "Mostrar minimapa"}
+        icon="graph"
+        on={minimap}
+        run={() => setSettings({ minimap: !minimap })}
       />
     </div>
   );

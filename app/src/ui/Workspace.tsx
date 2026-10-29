@@ -9,7 +9,7 @@ import { NotesTree } from "./NotesTree";
 import { GraphView } from "./GraphView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
-import { ThemeToggle } from "./ThemeToggle";
+import { Settings } from "./Settings";
 import { Icon } from "./Icon";
 import { shortcut } from "../editor/formatting";
 
@@ -124,7 +124,17 @@ export function Workspace({ session }: { session: Session }) {
         </div>
 
         <div className="side-foot">
-          <ThemeToggle />
+          <button
+            type="button"
+            className={"foot-btn" + (view === "settings" ? " on" : "")}
+            aria-pressed={view === "settings"}
+            onClick={() => {
+              setView(view === "settings" ? "editor" : "settings");
+              closeNav();
+            }}
+          >
+            <Icon name="settings" size={17} /> Configurações
+          </button>
         </div>
       </aside>
 
@@ -141,9 +151,11 @@ export function Workspace({ session }: { session: Session }) {
           >
             <Icon name="sidebar" />
           </button>
-          {view === "graph" ? (
+          {view !== "editor" ? (
             <div className="crumbs">
-              <span className="crumb-title">Grafo de conexões</span>
+              <span className="crumb-title">
+                {view === "graph" ? "Grafo de conexões" : "Configurações"}
+              </span>
             </div>
           ) : active ? (
             <div className="crumbs">
@@ -177,7 +189,7 @@ export function Workspace({ session }: { session: Session }) {
           ) : (
             <div className="crumbs" />
           )}
-          {view === "graph" ? (
+          {view !== "editor" ? (
             <button type="button" className="btn ghost sm" onClick={() => setView("editor")}>
               Voltar ao texto
             </button>
@@ -189,6 +201,8 @@ export function Workspace({ session }: { session: Session }) {
         <section className="editor-area">
           {view === "graph" ? (
             <GraphView session={session} />
+          ) : view === "settings" ? (
+            <Settings />
           ) : active ? (
             <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (

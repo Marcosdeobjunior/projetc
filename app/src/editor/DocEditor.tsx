@@ -21,6 +21,8 @@ import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
 import { ContextMenu } from "./ContextMenu";
+import { MiniMap } from "../ui/MiniMap";
+import { useSettings } from "../state/settings";
 
 const SAVE_DELAY_MS = 700;
 
@@ -77,6 +79,8 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const diskText = useRef(loaded.diskText);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const minimap = useSettings((s) => s.minimap);
+  const minimapPos = useSettings((s) => s.minimapPos);
 
   const editor = useEditor(
     {
@@ -212,20 +216,23 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   return (
     <>
       <Toolbar editor={editor} />
-      <div
-        className="page"
-        onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
-      >
-        <EditorContent
-          editor={editor}
-          className="page-body"
-          onContextMenu={(e) => {
-            // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
-            if (!editor || e.shiftKey || editor.state.selection.empty) return;
-            e.preventDefault();
-            setMenu({ x: e.clientX, y: e.clientY });
-          }}
-        />
+      <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
+        <div
+          className="page"
+          onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
+        >
+          <EditorContent
+            editor={editor}
+            className="page-body"
+            onContextMenu={(e) => {
+              // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
+              if (!editor || e.shiftKey || editor.state.selection.empty) return;
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY });
+            }}
+          />
+        </div>
+        {minimap && <MiniMap session={session} docId={sceneId} />}
       </div>
       {menu && editor && (
         <ContextMenu

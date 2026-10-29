@@ -25,7 +25,7 @@ const TYPES: { type: NodeType; label: string; color: string }[] = [
   { type: "lugares", label: KIND_LABEL.lugares.many, color: "--node-place" },
   { type: "ideias", label: KIND_LABEL.ideias.many, color: "--node-idea" },
 ];
-const COLOR_VAR = Object.fromEntries(TYPES.map((t) => [t.type, t.color])) as Record<
+export const COLOR_VAR = Object.fromEntries(TYPES.map((t) => [t.type, t.color])) as Record<
   NodeType,
   string
 >;

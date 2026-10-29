@@ -141,6 +141,19 @@ export function buildGraph(
   };
 }
 
+/** Recorte do grafo em volta de um texto: ele, os vizinhos diretos e as ligações entre eles. */
+export function egoGraph(graph: Graph, id: string): Graph {
+  const keep = new Set([id]);
+  for (const e of graph.edges) {
+    if (e.source === id) keep.add(e.target);
+    if (e.target === id) keep.add(e.source);
+  }
+  return {
+    nodes: graph.nodes.filter((n) => keep.has(n.id)),
+    edges: graph.edges.filter((e) => keep.has(e.source) && keep.has(e.target)),
+  };
+}
+
 const sameTitle = (a: string, b: string) => key(a) === key(b);
 
 /**
