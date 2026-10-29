@@ -23,6 +23,7 @@ function escapeText(text: string): string {
 /** Escapa o que só tem sentido especial no começo da linha. */
 function escapeLineStart(line: string): string {
   return line
+    .replace(/^(\s*)!\[/, "$1\\![")
     .replace(/^(\s*)(#{1,6}\s|>|[-+*]\s|\d+[.)]\s)/, (_, sp: string, m: string) => {
       if (/^\d/.test(m)) return sp + m.replace(/([.)])/, "\\$1");
       return sp + "\\" + m;
@@ -119,6 +120,12 @@ function block(node: PMNode, prefix = ""): string[] {
     }
     case "horizontalRule":
       return ["* * *"];
+    case "attachment": {
+      // ![nome](anexos/arquivo.ext); caminhos com espaço ou parênteses vão entre < >.
+      const name = String(node.attrs?.name ?? "").replace(/[\\[\]]/g, "\\$&");
+      const src = String(node.attrs?.src ?? "");
+      return [`![${name}](${/[\s()<>]/.test(src) ? `<${src}>` : src})`];
+    }
     default:
       return c.length ? [blocks(c)] : [];
   }

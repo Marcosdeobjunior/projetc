@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
 import { useSettings } from "../state/settings";
@@ -12,7 +13,14 @@ import {
   type BlockStyle,
 } from "./formatting";
 
-export function Toolbar({ editor }: { editor: Editor | null }) {
+export function Toolbar({
+  editor,
+  onAttach,
+}: {
+  editor: Editor | null;
+  onAttach(files: File[]): void;
+}) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) =>
@@ -94,6 +102,22 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
         <ToolButton key={t.id} label={t.label} icon={t.icon} on={t.on} run={t.run} />
       ))}
       <ToolButton label="Limpar formatação" icon="clear" run={() => clearFormatting(editor)} />
+      <span className="toolbar-sep" />
+      <ToolButton
+        label="Anexar arquivo (imagem, vídeo, áudio…). Também dá para arrastar ou colar no texto."
+        icon="paperclip"
+        run={() => fileInput.current?.click()}
+      />
+      <input
+        ref={fileInput}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          onAttach([...(e.target.files ?? [])]);
+          e.target.value = "";
+        }}
+      />
       <span className="toolbar-sep" />
       <ToolButton
         label={`Desfazer (${shortcut("Mod+Z")})`}

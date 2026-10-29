@@ -10,6 +10,9 @@ import { GraphView } from "./GraphView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
 import { Settings } from "./Settings";
+import { SearchPanel } from "./SearchPanel";
+import { AttachmentsTree } from "./AttachmentsTree";
+import { useSearch } from "../state/search";
 import { Icon } from "./Icon";
 import { shortcut } from "../editor/formatting";
 
@@ -29,6 +32,7 @@ export function Workspace({ session }: { session: Session }) {
   const saveState = useApp((s) => s.saveState);
   const setView = useApp((s) => s.setView);
   const [navOpen, setNavOpen] = useState(false);
+  const searching = useSearch((s) => s.open);
   /** Barra lateral recolhida no computador (no celular ela é uma gaveta). */
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [editingProject, setEditingProject] = useState(false);
@@ -54,10 +58,22 @@ export function Workspace({ session }: { session: Session }) {
     }
   }, [collapsed]);
 
-  // Ctrl/⌘ + \ mostra ou esconde a barra lateral.
+  const openSearch = () => {
+    useSearch.getState().show();
+    if (isPhone()) setNavOpen(true);
+    else setCollapsed(false);
+  };
+
+  // Ctrl/⌘ + \ mostra ou esconde a barra lateral; Ctrl/⌘ + Shift + F abre a busca.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "\\" || !(e.ctrlKey || e.metaKey) || isPhone()) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.shiftKey && e.code === "KeyF") {
+        e.preventDefault();
+        openSearch();
+        return;
+      }
+      if (e.key !== "\\" || isPhone()) return;
       e.preventDefault();
       setCollapsed((c) => !c);
     };
@@ -107,6 +123,29 @@ export function Workspace({ session }: { session: Session }) {
           <span className="project-total">{formatCount(total)} palavras</span>
           <button
             type="button"
+            className={"icon-btn sm" + (searching ? " on" : "")}
+            aria-pressed={searching}
+            title={`Buscar no projeto (${shortcut("Mod+Shift+F")})`}
+            aria-label="Buscar no projeto"
+            onClick={() => (searching ? useSearch.getState().close() : openSearch())}
+          >
+            <Icon name="search" size={16} />
+          </button>
+          <button
+            type="button"
+            className={"icon-btn sm" + (view === "history" ? " on" : "")}
+            aria-pressed={view === "history"}
+            title="Histórico de versões"
+            aria-label="Histórico de versões"
+            onClick={() => {
+              setView(view === "history" ? "editor" : "history");
+              closeNav();
+            }}
+          >
+            <Icon name="history" size={16} />
+          </button>
+          <button
+            type="button"
             className={"graph-btn" + (view === "graph" ? " on" : "")}
             aria-pressed={view === "graph"}
             onClick={() => {
@@ -118,10 +157,15 @@ export function Workspace({ session }: { session: Session }) {
           </button>
         </div>
 
-        <div className="side-scroll">
-          <ManuscriptTree session={session} onOpenScene={closeNav} />
-          <NotesTree session={session} onOpen={closeNav} />
-        </div>
+        {searching ? (
+          <SearchPanel session={session} onOpen={closeNav} />
+        ) : (
+          <div className="side-scroll">
+            <ManuscriptTree session={session} onOpenScene={closeNav} />
+            <NotesTree session={session} onOpen={closeNav} />
+            <AttachmentsTree session={session} />
+          </div>
+        )}
 
         <div className="side-foot">
           <button

@@ -23,7 +23,7 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
 ];
 
 /** Seções da barra lateral que podem ser recolhidas. */
-export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias";
+export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
 
 interface Prefs {
   theme: Theme;

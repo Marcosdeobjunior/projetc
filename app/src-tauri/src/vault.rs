@@ -9,6 +9,7 @@ use std::io::{ErrorKind, Write};
 use std::path::{Component, Path, PathBuf};
 
 use tauri::ipc::{InvokeBody, Request, Response};
+use tauri_plugin_opener::OpenerExt;
 
 type CmdResult<T> = Result<T, String>;
 
@@ -84,6 +85,24 @@ fn remove(root: &str, path: &str) -> CmdResult<()> {
     }
 }
 
+/// Nomes dos arquivos direto dentro de uma pasta (sem as subpastas), em ordem.
+fn list(root: &str, path: &str) -> CmdResult<Vec<String>> {
+    let dir = match fs::read_dir(resolve(root, path)?) {
+        Ok(d) => d,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(vec![]),
+        Err(e) => return Err(err(e)),
+    };
+    let mut names = vec![];
+    for entry in dir {
+        let entry = entry.map_err(err)?;
+        if entry.file_type().map_err(err)?.is_file() {
+            names.push(entry.file_name().to_string_lossy().into_owned());
+        }
+    }
+    names.sort();
+    Ok(names)
+}
+
 fn header(request: &Request<'_>, name: &str) -> CmdResult<String> {
     let raw = request
         .headers()
@@ -145,6 +164,23 @@ pub async fn vault_exists(root: String, path: String) -> CmdResult<bool> {
 }
 
 #[tauri::command]
+pub async fn vault_list(root: String, path: String) -> CmdResult<Vec<String>> {
+    list(&root, &path)
+}
+
+/// Abre um arquivo do vault (um anexo) no programa padrão do sistema.
+#[tauri::command]
+pub async fn vault_open(app: tauri::AppHandle, root: String, path: String) -> CmdResult<()> {
+    let target = resolve(&root, &path)?;
+    if !target.is_file() {
+        return Err(format!("arquivo não encontrado: {path}"));
+    }
+    app.opener()
+        .open_path(target.to_string_lossy(), None::<&str>)
+        .map_err(err)
+}
+
+#[tauri::command]
 pub async fn vault_rename(root: String, from: String, to: String) -> CmdResult<()> {
     rename(&root, &from, &to)
 }
@@ -194,6 +230,16 @@ mod tests {
         remove(&r, ".inkflow").unwrap();
         assert!(!resolve(&r, ".inkflow").unwrap().exists());
         assert!(remove(&r, "").is_err());
+    }
+
+    #[test]
+    fn lista_so_arquivos_da_pasta() {
+        let (_d, r) = root();
+        write_atomic(&resolve(&r, "anexos/b.png").unwrap(), b"b").unwrap();
+        write_atomic(&resolve(&r, "anexos/a.mp3").unwrap(), b"a").unwrap();
+        write_atomic(&resolve(&r, "anexos/sub/c.txt").unwrap(), b"c").unwrap();
+        assert_eq!(list(&r, "anexos").unwrap(), vec!["a.mp3", "b.png"]);
+        assert!(list(&r, "nao-existe").unwrap().is_empty());
     }
 
     #[test]

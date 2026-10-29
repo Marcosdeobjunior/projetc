@@ -81,6 +81,14 @@ export class KeyValueFs implements VaultFs {
     return (await this.filesUnder(path)).length > 0;
   }
 
+  async list(dir: string) {
+    const prefix = this.key(dir) + (normalizePath(dir) ? "/" : "");
+    const names = (await this.filesUnder(dir))
+      .map((k) => k.slice(prefix.length))
+      .filter((rest) => rest && !rest.includes("/"));
+    return [...new Set(names)].sort();
+  }
+
   async rename(from: string, to: string) {
     const src = this.key(from);
     const dst = this.key(to);

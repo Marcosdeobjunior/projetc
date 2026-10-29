@@ -56,6 +56,10 @@ class TauriFs implements VaultFs {
     return invoke<boolean>("vault_exists", { root: this.root, path });
   }
 
+  list(dir: string) {
+    return invoke<string[]>("vault_list", { root: this.root, path: dir });
+  }
+
   rename(from: string, to: string) {
     return invoke<void>("vault_rename", { root: this.root, from, to });
   }
@@ -108,6 +112,10 @@ export function createDesktopPlatform(): Platform {
 
     fs(root: string) {
       return new TauriFs(root);
+    },
+
+    openFile(root: string, path: string) {
+      return invoke<void>("vault_open", { root, path });
     },
 
     onClose(beforeClose) {

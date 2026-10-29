@@ -27,6 +27,13 @@ import {
 } from "../vault/vault";
 import { createSampleVault } from "../vault/sample";
 import { flushAll, serial } from "./writes";
+import {
+  ATTACHMENTS_DIR,
+  forgetAttachment,
+  importFiles,
+  setAttachmentSource,
+} from "../editor/attachments";
+import { TRASH_DIR } from "../vault/paths";
 import { renameLinksInOpenEditors } from "./openEditors";
 
 export interface Session {
@@ -38,7 +45,9 @@ export interface Session {
   /** Texto puro de cada cena e nota, para os links e o grafo. */
   texts: Record<string, string>;
   activeDocId: string | null;
-  view: "editor" | "graph" | "settings";
+  /** Arquivos da pasta anexos/. */
+  attachments: string[];
+  view: "editor" | "graph" | "settings" | "history";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -74,6 +83,10 @@ interface AppState {
   /** Cria uma nota (sem abrir). Devolve o id, ou o id da que já existe com esse título. */
   createNote(kind: NoteKind, title: string): Promise<string | null>;
   keepExternalCopy(sceneId: string, diskText: string): Promise<void>;
+  /** Copia arquivos para anexos/. Devolve os blocos a inserir no texto. */
+  addAttachments(files: File[]): Promise<{ src: string; name: string }[]>;
+  /** Manda um anexo para a lixeira. */
+  removeAttachment(name: string): Promise<void>;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null, tone?: "info" | "error"): void;
 }
@@ -116,6 +129,8 @@ export const useApp = create<AppState>((set, get) => {
     const fs = platform.fs(root);
     const project = await loadProject(fs);
     const { words, texts } = await readProjectTexts(fs, project);
+    const attachments = await fs.list(ATTACHMENTS_DIR);
+    setAttachmentSource({ fs, open: (path) => void platform.openFile(root, path) });
     await platform.rememberVault({
       root,
       title: project.title,
@@ -131,6 +146,7 @@ export const useApp = create<AppState>((set, get) => {
         words,
         texts,
         activeDocId: firstScene(project),
+        attachments,
         view: "editor",
       },
       saveState: "idle",
@@ -270,6 +286,35 @@ export const useApp = create<AppState>((set, get) => {
     cancelFolderToConvert() {
       set({ folderToConvert: null });
     },
+
+    async addAttachments(files) {
+      const session = get().session;
+      if (!session || files.length === 0) return [];
+      try {
+        const added = await serial(() => importFiles(session.fs, files));
+        const attachments = await session.fs.list(ATTACHMENTS_DIR);
+        const now = get().session;
+        if (now?.root === session.root) set({ session: { ...now, attachments } });
+        return added;
+      } catch (err) {
+        set({ message: describe(err), messageTone: "error" });
+        return [];
+      }
+    },
+
+    removeAttachment: (name) =>
+      guarded(async () => {
+        const session = get().session;
+        if (!session) return;
+        const src = `${ATTACHMENTS_DIR}/${name}`;
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        await serial(() => session.fs.rename(src, `${TRASH_DIR}/${stamp}-${name}`));
+        forgetAttachment(src);
+        const now = get().session;
+        if (now?.root === session.root) {
+          set({ session: { ...now, attachments: now.attachments.filter((a) => a !== name) } });
+        }
+      }),
 
     async closeVault() {
       if (!(await flushPending())) return;

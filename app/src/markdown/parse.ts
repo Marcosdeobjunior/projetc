@@ -127,6 +127,17 @@ function parseBlocks(lines: string[]): PMNode[] {
       continue;
     }
 
+    const embed = line.match(/^!\[((?:\\.|[^\]\\])*)\]\((<[^>]+>|[^)\s]+)\)\s*$/);
+    if (embed) {
+      const src = embed[2]!.replace(/^<|>$/g, "");
+      out.push({
+        type: "attachment",
+        attrs: { src, name: embed[1]!.replace(/\\(.)/g, "$1") },
+      });
+      i++;
+      continue;
+    }
+
     if (/^\s*([*\-_])(\s*\1){2,}\s*$/.test(line)) {
       out.push({ type: "horizontalRule" });
       i++;

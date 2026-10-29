@@ -8,6 +8,8 @@ export interface VaultFs {
   readBytes(path: string): Promise<Uint8Array | null>;
   writeBytes(path: string, data: Uint8Array): Promise<void>;
   exists(path: string): Promise<boolean>;
+  /** Nomes dos arquivos (não das pastas) direto dentro de uma pasta. Pasta inexistente: []. */
+  list(dir: string): Promise<string[]>;
   /** Move um arquivo ou pasta. Cria as pastas de destino se preciso. */
   rename(from: string, to: string): Promise<void>;
   /** Remove um arquivo ou uma pasta inteira. */
@@ -37,6 +39,8 @@ export interface Platform {
   /** Tira o vault da lista. No navegador também apaga os arquivos. */
   forgetVault(root: string): Promise<void>;
   fs(root: string): VaultFs;
+  /** Abre um arquivo do vault no programa padrão do computador (no navegador, baixa). */
+  openFile(root: string, path: string): Promise<void>;
   /**
    * Chama `beforeClose` quando o usuário fecha a janela do app. Se devolver
    * false, a janela continua aberta. Só existe no desktop; no navegador o

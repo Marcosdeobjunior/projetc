@@ -1,6 +1,7 @@
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Highlight from "@tiptap/extension-highlight";
+import { Attachment } from "./attachments";
 
 /** Nome do fragmento Yjs onde o texto da cena fica guardado. */
 export const YDOC_FIELD = "default";
@@ -22,6 +23,8 @@ export const textExtensions = [
   }),
   // Destaque (marca-texto), salvo como ==texto==.
   Highlight,
+  // Imagens, vídeos, áudios e outros arquivos da pasta anexos/.
+  Attachment,
 ];
 
 export const textSchema = getSchema(textExtensions);

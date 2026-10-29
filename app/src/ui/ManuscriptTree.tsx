@@ -393,17 +393,19 @@ export function RowActions(props: {
 
 export function ConfirmRow({
   text,
+  detail = "O texto vai para a lixeira dentro da pasta do projeto.",
   onYes,
   onNo,
 }: {
   text: string;
+  detail?: string;
   onYes: () => void;
   onNo: () => void;
 }) {
   return (
     <div className="confirm-row" role="alertdialog" aria-label={text}>
       <p>{text}</p>
-      <small>O texto vai para a lixeira dentro da pasta do projeto.</small>
+      <small>{detail}</small>
       <div className="confirm-actions">
         <button type="button" className="btn danger sm" onClick={onYes} autoFocus>
           Excluir

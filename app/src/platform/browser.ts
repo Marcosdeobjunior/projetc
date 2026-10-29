@@ -56,5 +56,16 @@ export async function createBrowserPlatform(): Promise<Platform & { persistent: 
     fs(root: string) {
       return new KeyValueFs(store, root);
     },
+
+    async openFile(root: string, path: string) {
+      const bytes = await new KeyValueFs(store, root).readBytes(path);
+      if (!bytes) return;
+      const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = path.split("/").pop()!;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    },
   };
 }
