@@ -72,3 +72,23 @@ describe("sugestões de [[", () => {
     expect(created.map((s) => s.create)).toEqual(["personagens", "lugares", "ideias"]);
   });
 });
+
+describe("renomear links", () => {
+  it("troca [[Antigo]] e [[antigo|texto]], mantendo o texto alternativo", async () => {
+    const { renameLinksInText, linkEdits } = await import("./links");
+    const r = renameLinksInText(
+      "Ver [[Helena]], [[helena|a amiga]] e [[Helenas]]. Helena sem link fica.",
+      "Helena",
+      "Helena Prado $1",
+    );
+    expect(r.text).toBe(
+      "Ver [[Helena Prado $1]], [[Helena Prado $1|a amiga]] e [[Helenas]]. Helena sem link fica.",
+    );
+    expect(r.count).toBe(2);
+    const text = "a [[ Helena ]] b [[Helena]]";
+    expect(linkEdits(text, "helena").map((e) => text.slice(e.from, e.to))).toEqual([
+      "Helena",
+      "Helena",
+    ]);
+  });
+});

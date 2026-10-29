@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from "react";
-import { renameSceneAndHeader, useApp, type Session } from "../state/store";
+import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import {
   addChapter,
   addScene,
@@ -264,7 +264,7 @@ export function ManuscriptTree({
                             label="Nome da cena"
                             onCommit={(t) => {
                               setEditing(null);
-                              void renameSceneAndHeader((p) => renameScene(p, s.id, t), s.id);
+                              void renameDocAndLinks((p) => renameScene(p, s.id, t), s.id);
                             }}
                             onCancel={() => setEditing(null)}
                           />

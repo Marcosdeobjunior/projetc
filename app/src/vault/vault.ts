@@ -8,6 +8,7 @@ import { toMarkdown, toPlainText } from "../markdown/serialize";
 import type { PMNode } from "../markdown/types";
 import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
+import { renameLinksInText } from "../links/links";
 import { PROJECT_FILE, TRASH_DIR, ydocPath } from "./paths";
 
 /*
@@ -222,4 +223,44 @@ export async function readProjectTexts(
     }),
   );
   return { words, texts };
+}
+
+function renameLinksInNode(node: PMNode, oldTitle: string, newTitle: string): number {
+  let count = 0;
+  if (node.type === "text" && node.text) {
+    const r = renameLinksInText(node.text, oldTitle, newTitle);
+    node.text = r.text;
+    count += r.count;
+  }
+  for (const child of node.content ?? []) count += renameLinksInNode(child, oldTitle, newTitle);
+  return count;
+}
+
+/**
+ * Depois de renomear uma cena ou nota, troca [[Antigo]] por [[Novo]] nos
+ * arquivos dos outros textos. `skip` são os textos abertos no editor, que
+ * fazem a troca por conta própria.
+ *
+ * O estado Yjs desses textos não é tocado: ao abrir, o app percebe que o .md
+ * mudou e aplica a diferença como uma edição (veja loadSceneDoc).
+ */
+export async function renameLinksInFiles(
+  fs: VaultFs,
+  project: Project,
+  oldTitle: string,
+  newTitle: string,
+  skip: Set<string>,
+): Promise<{ id: string; text: string; count: number }[]> {
+  const changed: { id: string; text: string; count: number }[] = [];
+  for (const d of allDocs(project)) {
+    if (skip.has(d.id)) continue;
+    const md = await fs.readText(d.path);
+    if (!md || !md.includes("[[")) continue;
+    const json = parseMarkdown(md);
+    const count = renameLinksInNode(json, oldTitle, newTitle);
+    if (count === 0) continue;
+    await fs.writeText(d.path, sceneFile(d, toMarkdown(json)));
+    changed.push({ id: d.id, text: toPlainText(json), count });
+  }
+  return changed;
 }

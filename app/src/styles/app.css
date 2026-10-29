@@ -248,6 +248,9 @@ p {
 .toast span {
   flex: 1;
 }
+.toast.info {
+  border-color: var(--accent);
+}
 
 /* ---------- Início ---------- */
 .home {

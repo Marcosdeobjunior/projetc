@@ -8,6 +8,7 @@ export function App() {
   const platform = useApp((s) => s.platform);
   const session = useApp((s) => s.session);
   const message = useApp((s) => s.message);
+  const tone = useApp((s) => s.messageTone);
   const showMessage = useApp((s) => s.showMessage);
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export function App() {
   return (
     <>
       {message && (
-        <div className="toast" role="alert">
+        <div className={"toast " + tone} role={tone === "error" ? "alert" : "status"}>
           <span>{message}</span>
           <button
             type="button"

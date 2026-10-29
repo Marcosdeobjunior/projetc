@@ -140,3 +140,33 @@ export function buildGraph(
     edges: [...edges.values()],
   };
 }
+
+const sameTitle = (a: string, b: string) => key(a) === key(b);
+
+/**
+ * Troca os links [[Antigo]] (e [[Antigo|texto]]) por [[Novo]] num texto.
+ * O texto alternativo depois da barra é mantido.
+ */
+export function renameLinksInText(text: string, oldTitle: string, newTitle: string) {
+  let count = 0;
+  const out = text.replace(WIKILINK, (whole, target: string) => {
+    if (!sameTitle(target, oldTitle)) return whole;
+    count++;
+    // Função em vez de texto: "$" no título não pode virar padrão de troca.
+    return whole.replace(target, () => newTitle);
+  });
+  return { text: out, count };
+}
+
+/** Os trechos de um texto que precisam mudar, do fim para o começo. */
+export function linkEdits(text: string, oldTitle: string) {
+  return findWikiLinks(text)
+    .filter((l) => sameTitle(l.target, oldTitle))
+    .map((l) => {
+      // Posição exata do título dentro de [[ ... ]], ignorando espaços.
+      const inner = text.slice(l.from + 2, l.to - 2);
+      const start = l.from + 2 + inner.indexOf(l.target);
+      return { from: start, to: start + l.target.length };
+    })
+    .reverse();
+}

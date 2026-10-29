@@ -14,6 +14,8 @@ import {
 import { parseMarkdown } from "../markdown/parse";
 import { useApp, type Session } from "../state/store";
 import { registerFlush, serial } from "../state/writes";
+import { registerOpenEditor } from "../state/openEditors";
+import { linkEdits } from "../links/links";
 import { allDocs, findDoc } from "../manuscript/tree";
 import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
@@ -173,12 +175,28 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
     window.addEventListener("focus", onFocus);
     window.addEventListener("beforeunload", saveQuietly);
     const unregister = registerFlush(() => save());
+    // Um texto foi renomeado: troca os [[links]] deste texto como uma edição normal.
+    const unregisterOpen = registerOpenEditor(sceneId, (oldTitle, newTitle) => {
+      const edits: { from: number; to: number }[] = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isText) return;
+        for (const e of linkEdits(node.text!, oldTitle)) {
+          edits.push({ from: pos + e.from, to: pos + e.to });
+        }
+      });
+      if (edits.length === 0) return 0;
+      const tr = editor.state.tr;
+      for (const e of edits.sort((a, b) => b.from - a.from)) tr.insertText(newTitle, e.from, e.to);
+      editor.view.dispatch(tr);
+      return edits.length;
+    });
 
     // O .md foi alterado fora do app desde a última gravação: aplica como edição.
     if (loaded.external) editor.commands.setContent(loaded.external);
 
     return () => {
       unregister();
+      unregisterOpen();
       doc.off("update", onUpdate);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", onFocus);

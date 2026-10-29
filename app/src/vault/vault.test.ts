@@ -9,11 +9,12 @@ import {
   loadProject,
   loadSceneDoc,
   readProjectTexts,
+  renameLinksInFiles,
   rewriteSceneHeader,
   saveScene,
 } from "./vault";
 import { createSampleVault } from "./sample";
-import { removeScene, renameScene, scenePath } from "../manuscript/tree";
+import { removeScene, renameNote, renameScene, scenePath } from "../manuscript/tree";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { ydocPath } from "./paths";
 
@@ -168,6 +169,32 @@ describe("vault", () => {
     expect(await fs.exists("notas/personagens/helena.md")).toBe(true);
     expect(texts[helena.id]).toContain("[[O segredo do pai]]");
     expect(words[helena.id]).toBeGreaterThan(5);
+  });
+
+  it("renomear uma nota troca os links nos arquivos dos outros textos", async () => {
+    const fs = fsFor();
+    const p = await createSampleVault(fs);
+    const segredo = p.notes.find((n) => n.title === "O segredo do pai")!;
+    const helena = p.notes.find((n) => n.title === "Helena")!;
+    const renamed = renameNote(p, segredo.id, "O segredo de Arnaldo").project;
+    const changed = await renameLinksInFiles(
+      fs,
+      renamed,
+      "O segredo do pai",
+      "O segredo de Arnaldo",
+      new Set(),
+    );
+    expect(changed.map((c) => c.id)).toEqual([helena.id]);
+    expect(await fs.readText("notas/personagens/helena.md")).toContain("[[O segredo de Arnaldo]]");
+    // O texto aberto no editor não é mexido no disco.
+    const again = await renameLinksInFiles(
+      fs,
+      renamed,
+      "O segredo de Arnaldo",
+      "X",
+      new Set([helena.id]),
+    );
+    expect(again).toEqual([]);
   });
 
   it("renomear e excluir movem os arquivos", async () => {

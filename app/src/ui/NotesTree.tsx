@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { renameSceneAndHeader, useApp, type Session } from "../state/store";
+import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import { addNote, removeNote, renameNote } from "../manuscript/tree";
 import { NOTE_KINDS, type Note, type NoteKind } from "../manuscript/types";
 import { KIND_LABEL } from "../links/context";
@@ -114,7 +114,7 @@ export function NotesTree({ session, onOpen }: { session: Session; onOpen: () =>
                             label="Nome da nota"
                             onCommit={(t) => {
                               setEditing(null);
-                              void renameSceneAndHeader((p) => renameNote(p, n.id, t), n.id);
+                              void renameDocAndLinks((p) => renameNote(p, n.id, t), n.id);
                             }}
                             onCancel={() => setEditing(null)}
                           />

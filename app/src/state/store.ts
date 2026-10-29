@@ -20,12 +20,14 @@ import {
   ensureChapterDirs,
   loadProject,
   rewriteSceneHeader,
+  renameLinksInFiles,
   saveProject,
   VaultError,
   writeSceneMarkdown,
 } from "../vault/vault";
 import { createSampleVault } from "../vault/sample";
 import { flushAll, serial } from "./writes";
+import { renameLinksInOpenEditors } from "./openEditors";
 
 export interface Session {
   root: string;
@@ -47,6 +49,8 @@ interface AppState {
   session: Session | null;
   saveState: SaveState;
   message: string | null;
+  /** "info" para avisos comuns; "error" (padrão) para problemas. */
+  messageTone: "info" | "error";
   busy: boolean;
   /** Pasta escolhida em "Abrir projeto existente" que ainda não é um projeto. */
   folderToConvert: ChosenFolder | null;
@@ -71,7 +75,7 @@ interface AppState {
   createNote(kind: NoteKind, title: string): Promise<string | null>;
   keepExternalCopy(sceneId: string, diskText: string): Promise<void>;
   setSaveState(state: SaveState): void;
-  showMessage(message: string | null): void;
+  showMessage(message: string | null, tone?: "info" | "error"): void;
 }
 
 const SAMPLE_FLAG = "inkflow.sampleCreated";
@@ -207,6 +211,7 @@ export const useApp = create<AppState>((set, get) => {
     session: null,
     saveState: "idle",
     message: null,
+    messageTone: "error",
     busy: false,
     folderToConvert: null,
 
@@ -386,19 +391,35 @@ export const useApp = create<AppState>((set, get) => {
       set({ saveState });
     },
 
-    showMessage(message) {
-      set({ message });
+    showMessage(message, tone = "error") {
+      set({ message, messageTone: tone });
     },
   };
 });
 
-/** Renomeia uma cena e atualiza o título dentro do arquivo .md. */
-export function renameSceneAndHeader(
-  edit: (p: Project) => TreeChange,
-  sceneId: string,
-): Promise<void> {
+/**
+ * Renomeia uma cena ou nota: atualiza o título dentro do .md e troca os links
+ * [[Nome antigo]] por [[Nome novo]] em todos os textos do projeto.
+ */
+export function renameDocAndLinks(edit: (p: Project) => TreeChange, id: string): Promise<void> {
+  const before = useApp.getState().session?.project;
+  const oldTitle = before ? findDoc(before, id)?.title : undefined;
   return useApp.getState().change(edit, async (project) => {
-    const session = useApp.getState().session;
-    if (session) await rewriteSceneHeader(session.fs, project, sceneId);
+    const { session, setDocText, showMessage } = useApp.getState();
+    if (!session) return;
+    await rewriteSceneHeader(session.fs, project, id);
+    const newTitle = findDoc(project, id)?.title;
+    if (!oldTitle || !newTitle || oldTitle === newTitle) return;
+
+    const open = renameLinksInOpenEditors(oldTitle, newTitle);
+    const files = await renameLinksInFiles(session.fs, project, oldTitle, newTitle, open.ids);
+    for (const f of files) setDocText(f.id, f.text);
+    const links = open.count + files.reduce((n, f) => n + f.count, 0);
+    if (links > 0) {
+      showMessage(
+        `${links === 1 ? "1 link atualizado" : `${links} links atualizados`} para [[${newTitle}]].`,
+        "info",
+      );
+    }
   });
 }

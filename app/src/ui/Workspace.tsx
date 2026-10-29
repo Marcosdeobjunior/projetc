@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { renameSceneAndHeader, useApp, type Session } from "../state/store";
+import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import { findDoc, findScene, renameDoc, renameProject } from "../manuscript/tree";
 import { formatCount } from "../manuscript/wordCount";
 import { KIND_LABEL } from "../links/context";
@@ -113,7 +113,7 @@ export function Workspace({ session }: { session: Session }) {
                   label="Nome do texto"
                   onCommit={(t) => {
                     setEditingTitle(false);
-                    void renameSceneAndHeader((p) => renameDoc(p, active.id, t), active.id);
+                    void renameDocAndLinks((p) => renameDoc(p, active.id, t), active.id);
                   }}
                   onCancel={() => setEditingTitle(false)}
                 />
