@@ -7,7 +7,10 @@ import {
   type VaultRef,
 } from "../platform";
 import type { Project, TreeChange } from "../manuscript/types";
-import { findScene } from "../manuscript/tree";
+import { addScene, findScene, moveScene } from "../manuscript/tree";
+import { countWords } from "../manuscript/wordCount";
+import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
+import { toPlainText } from "../markdown/serialize";
 import { folderName } from "../vault/paths";
 import {
   applyOps,
@@ -18,6 +21,7 @@ import {
   rewriteSceneHeader,
   saveProject,
   VaultError,
+  writeSceneMarkdown,
 } from "../vault/vault";
 import { createSampleVault } from "../vault/sample";
 import { flushAll, serial } from "./writes";
@@ -50,6 +54,7 @@ interface AppState {
   change(edit: (p: Project) => TreeChange, after?: (p: Project) => Promise<void>): Promise<void>;
   selectScene(sceneId: string | null): void;
   setSceneWords(sceneId: string, words: number): void;
+  keepExternalCopy(sceneId: string, diskText: string): Promise<void>;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null): void;
 }
@@ -131,11 +136,12 @@ export const useApp = create<AppState>((set, get) => {
       }
     }
 
-    // Primeira visita à prévia no navegador: abre um projeto de exemplo.
+    // Primeira visita à prévia no navegador: abre um projeto de exemplo. Se o
+    // navegador não guarda dados, os projetos somem e o exemplo volta sempre.
     if (
       platform.kind === "browser" &&
       get().vaults.length === 0 &&
-      storageGet(SAMPLE_FLAG) !== "1"
+      (storageGet(SAMPLE_FLAG) !== "1" || !platform.persistent)
     ) {
       const root = await platform.chooseNewVaultRoot("exemplo");
       if (root) {
@@ -225,6 +231,15 @@ export const useApp = create<AppState>((set, get) => {
           if (activeSceneId && !findScene(project, activeSceneId))
             activeSceneId = firstScene(project);
           set({ session: { ...session, project, activeSceneId } });
+          if (project.title !== session.project.title) {
+            // Mantém a lista de projetos recentes com o nome novo.
+            await get().platform?.rememberVault({
+              root: session.root,
+              title: project.title,
+              location: get().platform?.kind === "desktop" ? session.root : "Salvo neste navegador",
+              openedAt: Date.now(),
+            });
+          }
           await after?.(project);
         } catch (err) {
           set({ message: describe(err) });
@@ -240,6 +255,30 @@ export const useApp = create<AppState>((set, get) => {
       const session = get().session;
       if (!session || session.words[sceneId] === words) return;
       set({ session: { ...session, words: { ...session.words, [sceneId]: words } } });
+    },
+
+    async keepExternalCopy(sceneId, diskText) {
+      const found = get().session && findScene(get().session!.project, sceneId);
+      if (!found) return;
+      const title = `${found.scene.title} (versão externa)`;
+      const body = splitFrontmatter(diskText).body.replace(/^\n/, "");
+      let copyId = "";
+      await get().change(
+        (p) => {
+          const added = addScene(p, found.chapter.id, title);
+          copyId = added.scene.id;
+          // Logo abaixo da cena original.
+          return moveScene(added.project, copyId, found.chapter.id, found.index + 1);
+        },
+        async (project) => {
+          const session = get().session!;
+          await writeSceneMarkdown(session.fs, project, copyId, body);
+          get().setSceneWords(copyId, countWords(toPlainText(parseMarkdown(body))));
+        },
+      );
+      set({
+        message: `"${found.scene.title}" foi alterada fora do InkFlow enquanto estava aberta. Para não perder nada, a versão de fora foi guardada como "${title}".`,
+      });
     },
 
     setSaveState(saveState) {

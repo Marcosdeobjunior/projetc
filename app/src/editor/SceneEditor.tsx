@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
-import type * as Y from "yjs";
 import { textExtensions, YDOC_FIELD } from "./extensions";
-import { loadSceneDoc, saveScene } from "../vault/vault";
+import {
+  ExternalChangeError,
+  loadSceneDoc,
+  readSceneFile,
+  sameText,
+  saveScene,
+  type LoadedScene,
+} from "../vault/vault";
+import { parseMarkdown } from "../markdown/parse";
 import { useApp, type Session } from "../state/store";
 import { registerFlush, serial } from "../state/writes";
 import { countWords } from "../manuscript/wordCount";
@@ -20,7 +27,7 @@ interface Props {
 
 /** Carrega a cena do vault e mostra o editor. Use `key={sceneId}`: uma instância por cena. */
 export function SceneEditor({ session, sceneId }: Props) {
-  const [doc, setDoc] = useState<Y.Doc | null>(null);
+  const [loaded, setLoaded] = useState<LoadedScene | null>(null);
   const [failed, setFailed] = useState(false);
   const { fs, root } = session;
 
@@ -28,8 +35,8 @@ export function SceneEditor({ session, sceneId }: Props) {
     let cancelled = false;
     serial(() => loadSceneDoc(fs, useApp.getState().session!.project, sceneId))
       .then((d) => {
-        if (cancelled) d.destroy();
-        else setDoc(d);
+        if (cancelled) d.doc.destroy();
+        else setLoaded(d);
       })
       .catch((err) => {
         console.error(err);
@@ -48,15 +55,18 @@ export function SceneEditor({ session, sceneId }: Props) {
       </div>
     );
   }
-  if (!doc) return <div className="editor-state" aria-busy="true" />;
-  return <LoadedEditor key={sceneId} doc={doc} session={session} sceneId={sceneId} />;
+  if (!loaded) return <div className="editor-state" aria-busy="true" />;
+  return <LoadedEditor key={sceneId} loaded={loaded} session={session} sceneId={sceneId} />;
 }
 
-function LoadedEditor({ doc, session, sceneId }: Props & { doc: Y.Doc }) {
+function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScene }) {
+  const { doc } = loaded;
   const setSaveState = useApp((s) => s.setSaveState);
   const setSceneWords = useApp((s) => s.setSceneWords);
   const timer = useRef<number | undefined>(undefined);
   const dirty = useRef(false);
+  /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
+  const diskText = useRef(loaded.diskText);
 
   const editor = useEditor(
     {
@@ -80,8 +90,10 @@ function LoadedEditor({ doc, session, sceneId }: Props & { doc: Y.Doc }) {
   );
 
   useEffect(() => {
+    if (!editor) return;
+
     /** Grava agora o que estiver pendente. Rejeita se a gravação falhar. */
-    const save = async (): Promise<void> => {
+    const save = async (retry = true): Promise<void> => {
       window.clearTimeout(timer.current);
       if (!dirty.current) return;
       dirty.current = false;
@@ -91,15 +103,38 @@ function LoadedEditor({ doc, session, sceneId }: Props & { doc: Y.Doc }) {
           const project = useApp.getState().session?.project;
           // A cena pode ter sido excluída enquanto estava aberta.
           if (project && findScene(project, sceneId)) {
-            await saveScene(session.fs, project, sceneId, doc);
+            const r = await saveScene(session.fs, project, sceneId, doc, diskText.current);
+            diskText.current = r.written;
           }
         });
         setSaveState(dirty.current ? "saving" : "saved");
       } catch (err) {
-        console.error(err);
         dirty.current = true;
+        if (err instanceof ExternalChangeError && retry) {
+          // Os dois lados mudaram: guarda a versão de fora como outra cena e
+          // depois grava a versão do editor no arquivo original.
+          await useApp.getState().keepExternalCopy(sceneId, err.diskText);
+          diskText.current = err.diskText;
+          return save(false);
+        }
+        console.error(err);
         setSaveState("error");
         throw err;
+      }
+    };
+
+    /** Ao voltar para o app, confere se o .md mudou por fora. */
+    const checkDisk = async () => {
+      const project = useApp.getState().session?.project;
+      if (!project || !findScene(project, sceneId)) return;
+      const disk = await serial(() => readSceneFile(session.fs, project, sceneId));
+      if (disk === null || sameText(disk, diskText.current)) return;
+      if (dirty.current) {
+        await save().catch(() => undefined);
+      } else {
+        // Só mudou por fora: traz o texto novo para o editor como uma edição.
+        diskText.current = disk;
+        editor.commands.setContent(parseMarkdown(disk));
       }
     };
     const saveQuietly = () => void save().catch(() => undefined);
@@ -109,22 +144,30 @@ function LoadedEditor({ doc, session, sceneId }: Props & { doc: Y.Doc }) {
       window.clearTimeout(timer.current);
       timer.current = window.setTimeout(saveQuietly, SAVE_DELAY_MS);
     };
-    const onHide = () => {
+    const onVisibility = () => {
       if (document.visibilityState === "hidden") saveQuietly();
+      else void checkDisk();
     };
+    const onFocus = () => void checkDisk();
     doc.on("update", onUpdate);
-    document.addEventListener("visibilitychange", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
     window.addEventListener("beforeunload", saveQuietly);
-    const unregister = registerFlush(save);
+    const unregister = registerFlush(() => save());
+
+    // O .md foi alterado fora do app desde a última gravação: aplica como edição.
+    if (loaded.external) editor.commands.setContent(loaded.external);
+
     return () => {
       unregister();
       doc.off("update", onUpdate);
-      document.removeEventListener("visibilitychange", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
       window.removeEventListener("beforeunload", saveQuietly);
       saveQuietly();
       void serial(async () => doc.destroy());
     };
-  }, [doc, session.fs, sceneId, setSaveState]);
+  }, [editor, doc, loaded, session.fs, sceneId, setSaveState]);
 
   return (
     <>

@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { prosemirrorJSONToYDoc } from "@tiptap/y-tiptap";
 import { KeyValueFs, MemoryStore } from "../platform/kvFs";
-import { applyOps, createVault, loadProject, loadSceneDoc, saveScene } from "./vault";
+import {
+  applyOps,
+  createVault,
+  ExternalChangeError,
+  loadProject,
+  loadSceneDoc,
+  rewriteSceneHeader,
+  saveScene,
+} from "./vault";
 import { createSampleVault } from "./sample";
 import { removeScene, renameScene, scenePath } from "../manuscript/tree";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
@@ -38,49 +46,97 @@ describe("vault", () => {
     expect(await fs.exists("LEIA-ME.md")).toBe(true);
   });
 
+  const docWith = (text: string) =>
+    prosemirrorJSONToYDoc(
+      textSchema,
+      { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+      YDOC_FIELD,
+    );
+
   it("grava a cena em .md e em Yjs, e reabre igual", async () => {
     const fs = fsFor();
     const p = await createVault(fs, "x");
     const sc = p.chapters[0]!.scenes[0]!;
-    const doc = prosemirrorJSONToYDoc(
-      textSchema,
-      {
-        type: "doc",
-        content: [{ type: "paragraph", content: [{ type: "text", text: "Era uma vez." }] }],
-      },
-      YDOC_FIELD,
-    );
-    const { words } = await saveScene(fs, p, sc.id, doc);
+    const before = await loadSceneDoc(fs, p, sc.id);
+    const doc = docWith("Era uma vez.");
+    const { words, written } = await saveScene(fs, p, sc.id, doc, before.diskText);
     expect(words).toBe(3);
-    expect(await fs.readText(scenePath(p.chapters[0]!, sc))).toBe(
-      `---\nid: ${sc.id}\ntitle: "Cena 1"\n---\n\nEra uma vez.\n`,
-    );
+    expect(written).toBe(`---\nid: ${sc.id}\ntitle: "Cena 1"\n---\n\nEra uma vez.\n`);
+    expect(await fs.readText(scenePath(p.chapters[0]!, sc))).toBe(written);
     const again = await loadSceneDoc(fs, p, sc.id);
-    expect(Y.encodeStateAsUpdate(again)).toEqual(Y.encodeStateAsUpdate(doc));
+    expect(again.external).toBeNull();
+    expect(Y.encodeStateAsUpdate(again.doc)).toEqual(Y.encodeStateAsUpdate(doc));
   });
 
-  it("se o .md foi editado fora do app, o .md prevalece", async () => {
+  it("ao abrir, uma edição feita fora do app vem como texto externo", async () => {
     const fs = fsFor();
     const p = await createVault(fs, "x");
     const ch = p.chapters[0]!;
     const sc = ch.scenes[0]!;
-    await saveScene(
+    const { written } = await saveScene(
       fs,
       p,
       sc.id,
-      prosemirrorJSONToYDoc(
-        textSchema,
-        {
-          type: "doc",
-          content: [{ type: "paragraph", content: [{ type: "text", text: "antigo" }] }],
-        },
-        YDOC_FIELD,
-      ),
+      docWith("antigo"),
+      (await loadSceneDoc(fs, p, sc.id)).diskText,
     );
-    await fs.writeText(scenePath(ch, sc), "---\nid: x\n---\n\nnovo *texto*\n");
-    const doc = await loadSceneDoc(fs, p, sc.id);
-    expect(doc.getXmlFragment(YDOC_FIELD).toString()).toContain("novo");
-    expect(doc.getXmlFragment(YDOC_FIELD).toString()).not.toContain("antigo");
+    await fs.writeText(scenePath(ch, sc), written.replace("antigo", "novo *texto*"));
+    const loaded = await loadSceneDoc(fs, p, sc.id);
+    // O doc Yjs continua o mesmo (histórico preservado); o texto novo é aplicado pelo editor.
+    expect(loaded.doc.getXmlFragment(YDOC_FIELD).toString()).toContain("antigo");
+    expect(JSON.stringify(loaded.external)).toContain("novo");
+  });
+
+  it("não grava por cima de uma edição feita fora do app", async () => {
+    const fs = fsFor();
+    const p = await createVault(fs, "x");
+    const ch = p.chapters[0]!;
+    const sc = ch.scenes[0]!;
+    const loaded = await loadSceneDoc(fs, p, sc.id);
+    const { written } = await saveScene(fs, p, sc.id, docWith("do app"), loaded.diskText);
+    const outside = written.replace("do app", "escrito em outro editor");
+    await fs.writeText(scenePath(ch, sc), outside);
+
+    const err = await saveScene(fs, p, sc.id, docWith("do app, mais"), written).catch((e) => e);
+    expect(err).toBeInstanceOf(ExternalChangeError);
+    expect((err as ExternalChangeError).diskText).toBe(outside);
+    expect(await fs.readText(scenePath(ch, sc))).toBe(outside);
+  });
+
+  it("renomear a cena (só o cabeçalho muda) não conta como edição externa", async () => {
+    const fs = fsFor();
+    const p = await createVault(fs, "x");
+    const sc = p.chapters[0]!.scenes[0]!;
+    const { written } = await saveScene(
+      fs,
+      p,
+      sc.id,
+      docWith("texto"),
+      (await loadSceneDoc(fs, p, sc.id)).diskText,
+    );
+    const renamed = renameScene(p, sc.id, "A carta");
+    await applyOps(fs, renamed.ops);
+    await rewriteSceneHeader(fs, renamed.project, sc.id);
+    await expect(
+      saveScene(fs, renamed.project, sc.id, docWith("texto 2"), written),
+    ).resolves.toBeTruthy();
+  });
+
+  it("arquivo apagado por fora é recriado sem conflito", async () => {
+    const fs = fsFor();
+    const p = await createVault(fs, "x");
+    const ch = p.chapters[0]!;
+    const sc = ch.scenes[0]!;
+    const { written } = await saveScene(
+      fs,
+      p,
+      sc.id,
+      docWith("texto"),
+      (await loadSceneDoc(fs, p, sc.id)).diskText,
+    );
+    await fs.remove(scenePath(ch, sc));
+    await saveScene(fs, p, sc.id, docWith("texto"), written);
+    expect(await fs.readText(scenePath(ch, sc))).toBe(written);
   });
 
   it("renomear e excluir movem os arquivos", async () => {
@@ -108,7 +164,7 @@ describe("vault", () => {
     expect(await fs.exists("manuscrito/capitulo-1")).toBe(false);
     for (const c of p.chapters) {
       for (const s of c.scenes) {
-        const doc = await loadSceneDoc(fs, p, s.id);
+        const { doc } = await loadSceneDoc(fs, p, s.id);
         expect(doc.getXmlFragment(YDOC_FIELD).length).toBeGreaterThan(0);
       }
     }

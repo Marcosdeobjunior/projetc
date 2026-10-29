@@ -106,11 +106,47 @@ export async function writeSceneMarkdown(
   await fs.writeText(scenePath(found.chapter, found.scene), sceneFile(found.scene, markdown));
 }
 
+/** O .md da cena mudou no disco desde a última vez que o app leu ou gravou. */
+export class ExternalChangeError extends Error {
+  constructor(readonly diskText: string) {
+    super("A cena foi alterada fora do InkFlow.");
+  }
+}
+
 /**
- * Carrega o documento Yjs de uma cena. Se o .md foi alterado fora do app
- * (ou o estado Yjs não existe), o texto do .md prevalece.
+ * Compara só o texto, sem o cabeçalho. O cabeçalho muda quando a cena é
+ * renomeada e isso não é uma edição de texto.
  */
-export async function loadSceneDoc(fs: VaultFs, project: Project, sceneId: string): Promise<Y.Doc> {
+export function sameText(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b;
+  return splitFrontmatter(a).body.trim() === splitFrontmatter(b).body.trim();
+}
+
+export async function readSceneFile(
+  fs: VaultFs,
+  project: Project,
+  sceneId: string,
+): Promise<string | null> {
+  const found = findScene(project, sceneId);
+  return found ? fs.readText(scenePath(found.chapter, found.scene)) : null;
+}
+
+export interface LoadedScene {
+  doc: Y.Doc;
+  /** Conteúdo do .md quando a cena foi carregada (null se não existia). */
+  diskText: string | null;
+  /**
+   * Texto do .md quando ele foi alterado fora do app. O editor aplica esse
+   * texto como uma edição, para o histórico Yjs (e o futuro sync) continuar.
+   */
+  external: PMNode | null;
+}
+
+export async function loadSceneDoc(
+  fs: VaultFs,
+  project: Project,
+  sceneId: string,
+): Promise<LoadedScene> {
   const found = findScene(project, sceneId);
   if (!found) throw new VaultError("Cena não encontrada.");
   const [bytes, md] = await Promise.all([
@@ -121,31 +157,41 @@ export async function loadSceneDoc(fs: VaultFs, project: Project, sceneId: strin
   if (bytes) {
     const doc = new Y.Doc();
     Y.applyUpdate(doc, bytes);
-    if (md === null) return doc;
-    const fromDoc = toMarkdown(yDocToProsemirrorJSON(doc, YDOC_FIELD) as PMNode).trim();
-    if (fromDoc === splitFrontmatter(md).body.trim()) return doc;
-    doc.destroy();
+    const fromDoc = toMarkdown(yDocToProsemirrorJSON(doc, YDOC_FIELD) as PMNode);
+    const external = md !== null && !sameText(fromDoc, md) ? parseMarkdown(md) : null;
+    return { doc, diskText: md, external };
   }
-  // TODO(sync): ao reconstruir a partir do .md o histórico Yjs recomeça; quando
-  // o sync existir, aplicar a diferença como uma edição em vez de trocar o doc.
-  return prosemirrorJSONToYDoc(textSchema, parseMarkdown(md ?? ""), YDOC_FIELD);
+  return {
+    doc: prosemirrorJSONToYDoc(textSchema, parseMarkdown(md ?? ""), YDOC_FIELD),
+    diskText: md,
+    external: null,
+  };
 }
 
+/**
+ * Grava a cena. `expected` é o conteúdo que o app sabe que está no disco; se
+ * o .md tiver outro texto, alguém mudou o arquivo por fora e nada é gravado
+ * (ExternalChangeError), para não apagar essa mudança.
+ */
 export async function saveScene(
   fs: VaultFs,
   project: Project,
   sceneId: string,
   doc: Y.Doc,
-): Promise<{ words: number }> {
+  expected: string | null,
+): Promise<{ words: number; written: string }> {
   const found = findScene(project, sceneId);
   if (!found) throw new VaultError("Cena não encontrada.");
+  const path = scenePath(found.chapter, found.scene);
+  const current = await fs.readText(path);
+  // Arquivo apagado por fora não é conflito: nenhum texto se perde ao recriá-lo.
+  if (current !== null && !sameText(current, expected)) throw new ExternalChangeError(current);
+
   const json = yDocToProsemirrorJSON(doc, YDOC_FIELD) as PMNode;
+  const written = sceneFile(found.scene, toMarkdown(json));
   await fs.writeBytes(ydocPath(sceneId), Y.encodeStateAsUpdate(doc));
-  await fs.writeText(
-    scenePath(found.chapter, found.scene),
-    sceneFile(found.scene, toMarkdown(json)),
-  );
-  return { words: countWords(toPlainText(json)) };
+  await fs.writeText(path, written);
+  return { words: countWords(toPlainText(json)), written };
 }
 
 /** Conta as palavras de todas as cenas a partir dos arquivos .md. */
