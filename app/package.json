@@ -22,6 +22,7 @@
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tiptap/core": "^3.32.1",
     "@tiptap/extension-collaboration": "^3.32.1",
+    "@tiptap/extension-highlight": "^3.32.1",
     "@tiptap/extensions": "^3.32.1",
     "@tiptap/pm": "^3.32.1",
     "@tiptap/react": "^3.32.1",

@@ -1,5 +1,6 @@
 import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import Highlight from "@tiptap/extension-highlight";
 
 /** Nome do fragmento Yjs onde o texto da cena fica guardado. */
 export const YDOC_FIELD = "default";
@@ -19,6 +20,8 @@ export const textExtensions = [
     codeBlock: false,
     heading: { levels: [1, 2, 3] },
   }),
+  // Destaque (marca-texto), salvo como ==texto==.
+  Highlight,
 ];
 
 export const textSchema = getSchema(textExtensions);

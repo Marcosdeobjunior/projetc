@@ -38,7 +38,7 @@ export interface Session {
   /** Texto puro de cada cena e nota, para os links e o grafo. */
   texts: Record<string, string>;
   activeDocId: string | null;
-  view: "editor" | "graph";
+  view: "editor" | "graph" | "settings";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";

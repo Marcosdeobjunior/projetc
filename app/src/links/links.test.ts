@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addChapter, addNote, addScene, createProject } from "../manuscript/tree";
-import { buildGraph, findMentions, findWikiLinks } from "./links";
+import { buildGraph, egoGraph, findMentions, findWikiLinks } from "./links";
 
 function sample() {
   let p = createProject("x");
@@ -90,5 +90,18 @@ describe("renomear links", () => {
       "Helena",
       "Helena",
     ]);
+  });
+
+  it("recorta o grafo em volta de um texto", () => {
+    const { p, scene, helena, vila, chegada } = sample();
+    const g = buildGraph(p, {
+      [scene.id]: "[[Helena]] saiu.",
+      [helena.id]: "Nasceu em [[Vila Serena]].",
+      [chegada.id]: "A estação de [[Vila Serena]].",
+    });
+    const ego = egoGraph(g, helena.id);
+    expect(ego.nodes.map((n) => n.id).sort()).toEqual([scene.id, helena.id, vila.id].sort());
+    // A ligação Chegada–Vila fica de fora: Chegada não é vizinha de Helena.
+    expect(ego.edges).toHaveLength(2);
   });
 });

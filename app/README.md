@@ -95,6 +95,8 @@ Regras:
   Assim, reordenar não renomeia arquivos (melhor para o sync).
 - **Renomear** uma cena ou capítulo renomeia o arquivo ou a pasta junto.
 - **Nada é apagado de verdade:** excluir move para `.inkflow/lixeira/`.
+- **Formatação:** negrito, itálico, ~~tachado~~, ==destaque== (como no Obsidian), títulos,
+  listas, citações e o separador de cena `* * *` ficam em Markdown comum.
 - **Links:** `[[Nome]]` (ou `[[Nome|texto]]`) liga a uma cena ou nota pelo título, como no
   Obsidian. Além disso, o nome de uma nota aparecendo no texto conta como menção. Os dois
   aparecem no grafo; os links ficam no `.md` como texto comum.

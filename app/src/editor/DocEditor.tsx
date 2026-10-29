@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
 import { textExtensions, YDOC_FIELD } from "./extensions";
@@ -19,7 +19,10 @@ import { linkEdits } from "../links/links";
 import { allDocs, findDoc } from "../manuscript/tree";
 import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
-import { Icon } from "../ui/Icon";
+import { Toolbar } from "./Toolbar";
+import { ContextMenu } from "./ContextMenu";
+import { MiniMap } from "../ui/MiniMap";
+import { useSettings } from "../state/settings";
 
 const SAVE_DELAY_MS = 700;
 
@@ -74,6 +77,10 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const dirty = useRef(false);
   /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
   const diskText = useRef(loaded.diskText);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const minimap = useSettings((s) => s.minimap);
+  const minimapPos = useSettings((s) => s.minimapPos);
 
   const editor = useEditor(
     {
@@ -91,11 +98,17 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
           lang: "pt-BR",
         },
       },
-      onCreate: ({ editor }) => setDocText(sceneId, editor.getText()),
-      onUpdate: ({ editor }) => setDocText(sceneId, editor.getText()),
+      // Durante a criação o texto chega como uma atualização; quem cuida dele é o efeito abaixo.
+      onUpdate: ({ editor }) => editor.isInitialized && setDocText(sceneId, editor.getText()),
     },
     [doc],
   );
+
+  // O editor é criado durante a renderização: o texto inicial vai para o estado
+  // do app depois dela (atualizar o app no meio da renderização gera aviso do React).
+  useEffect(() => {
+    if (editor) setDocText(sceneId, editor.getText());
+  }, [editor, sceneId, setDocText]);
 
   // Títulos mudaram (nota criada ou renomeada): redesenha os links do texto.
   const titles = useApp((s) =>
@@ -209,107 +222,33 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   return (
     <>
       <Toolbar editor={editor} />
-      <div
-        className="page"
-        onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
-      >
-        <EditorContent editor={editor} className="page-body" />
-      </div>
-    </>
-  );
-}
-
-function Toolbar({ editor }: { editor: Editor | null }) {
-  const state = useEditorState({
-    editor,
-    selector: ({ editor: e }) =>
-      e
-        ? {
-            bold: e.isActive("bold"),
-            italic: e.isActive("italic"),
-            heading: e.isActive("heading", { level: 2 }),
-            quote: e.isActive("blockquote"),
-          }
-        : null,
-  });
-  if (!editor || !state) return <div className="toolbar" />;
-  const chain = () => editor.chain().focus();
-
-  const tools = [
-    {
-      id: "bold",
-      label: "Negrito (Ctrl+B)",
-      icon: "bold",
-      on: state.bold,
-      run: () => chain().toggleBold().run(),
-    },
-    {
-      id: "italic",
-      label: "Itálico (Ctrl+I)",
-      icon: "italic",
-      on: state.italic,
-      run: () => chain().toggleItalic().run(),
-    },
-    {
-      id: "heading",
-      label: "Subtítulo",
-      icon: "heading",
-      on: state.heading,
-      run: () => chain().toggleHeading({ level: 2 }).run(),
-    },
-    {
-      id: "quote",
-      label: "Citação",
-      icon: "quote",
-      on: state.quote,
-      run: () => chain().toggleBlockquote().run(),
-    },
-    {
-      id: "break",
-      label: "Separador de cena (* * *)",
-      icon: "separator",
-      on: false,
-      run: () => chain().setHorizontalRule().run(),
-    },
-  ] as const;
-
-  return (
-    <div className="toolbar" role="toolbar" aria-label="Formatação">
-      {tools.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          className="tool"
-          title={t.label}
-          aria-label={t.label}
-          aria-pressed={t.on}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={t.run}
+      <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
+        <div
+          className="page"
+          onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
         >
-          <Icon name={t.icon} />
-        </button>
-      ))}
-      <span className="toolbar-sep" />
-      <button
-        type="button"
-        className="tool"
-        title="Desfazer (Ctrl+Z)"
-        aria-label="Desfazer"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.commands.undo()}
-      >
-        <Icon name="undo" />
-      </button>
-      <button
-        type="button"
-        className="tool"
-        title="Refazer (Ctrl+Shift+Z)"
-        aria-label="Refazer"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => editor.commands.redo()}
-      >
-        <Icon name="redo" />
-      </button>
-    </div>
+          <EditorContent
+            editor={editor}
+            className="page-body"
+            onContextMenu={(e) => {
+              // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
+              if (!editor || e.shiftKey || editor.state.selection.empty) return;
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY });
+            }}
+          />
+        </div>
+        {minimap && <MiniMap session={session} docId={sceneId} />}
+      </div>
+      {menu && editor && (
+        <ContextMenu
+          editor={editor}
+          links={linkContext}
+          x={menu.x}
+          y={menu.y}
+          onClose={closeMenu}
+        />
+      )}
+    </>
   );
 }

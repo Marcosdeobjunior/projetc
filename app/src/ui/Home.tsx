@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../state/store";
 import { Icon, Quill } from "./Icon";
-import { ThemeToggle } from "./ThemeToggle";
+import { Settings } from "./Settings";
 
 const dateFmt = new Intl.DateTimeFormat("pt-BR", {
   day: "numeric",
@@ -23,7 +23,29 @@ export function Home() {
   const forgetVault = useApp((s) => s.forgetVault);
   const [title, setTitle] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [settings, setSettings] = useState(false);
   const desktop = platform?.kind === "desktop";
+
+  if (settings) {
+    return (
+      <div className="home">
+        <div className="home-inner">
+          <header className="home-brand">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Voltar"
+              onClick={() => setSettings(false)}
+            >
+              <Icon name="back" />
+            </button>
+            <h1 className="brand-text">Configurações</h1>
+          </header>
+          <Settings />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="home">
@@ -34,7 +56,15 @@ export function Home() {
             <h1>InkFlow</h1>
             <p>Seus projetos de escrita, guardados no seu computador.</p>
           </div>
-          <ThemeToggle />
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Configurações"
+            title="Configurações"
+            onClick={() => setSettings(true)}
+          >
+            <Icon name="settings" />
+          </button>
         </header>
 
         {!desktop && (
