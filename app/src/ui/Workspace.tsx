@@ -12,11 +12,13 @@ import { InlineEdit } from "./InlineEdit";
 import { Settings } from "./Settings";
 import { SearchPanel } from "./SearchPanel";
 import { AttachmentsTree } from "./AttachmentsTree";
+import { HistoryView } from "./HistoryView";
 import { useSearch } from "../state/search";
 import { Icon } from "./Icon";
 import { shortcut } from "../editor/formatting";
 
 const COLLAPSED_KEY = "inkflow.sidebarCollapsed";
+const VERSION_EVERY_MS = 10 * 60 * 1000;
 const isPhone = () => window.matchMedia("(max-width: 760px)").matches;
 
 function readCollapsed() {
@@ -57,6 +59,15 @@ export function Workspace({ session }: { session: Session }) {
       // sem armazenamento: vale só nesta sessão
     }
   }, [collapsed]);
+
+  // A cada 10 minutos guarda uma versão no histórico (só se algo mudou).
+  useEffect(() => {
+    const t = window.setInterval(
+      () => void useApp.getState().saveVersion("Automática", true),
+      VERSION_EVERY_MS,
+    );
+    return () => window.clearInterval(t);
+  }, []);
 
   const openSearch = () => {
     useSearch.getState().show();
@@ -198,7 +209,11 @@ export function Workspace({ session }: { session: Session }) {
           {view !== "editor" ? (
             <div className="crumbs">
               <span className="crumb-title">
-                {view === "graph" ? "Grafo de conexões" : "Configurações"}
+                {view === "graph"
+                  ? "Grafo de conexões"
+                  : view === "history"
+                    ? "Histórico de versões"
+                    : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -247,6 +262,8 @@ export function Workspace({ session }: { session: Session }) {
             <GraphView session={session} />
           ) : view === "settings" ? (
             <Settings />
+          ) : view === "history" ? (
+            <HistoryView session={session} />
           ) : active ? (
             <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (

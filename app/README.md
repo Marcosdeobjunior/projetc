@@ -45,6 +45,7 @@ src/
   vault/       Formato do projeto em disco: criar, abrir, salvar cenas
   manuscript/  Estrutura de capítulos, cenas e notas (funções puras) e contagem de palavras
   links/       Links [[Nome]], menções automáticas e montagem do grafo
+  search/      Busca no projeto (ignora maiúsculas e acentos)
   markdown/    Conversão entre o documento do editor e Markdown
   editor/      Editor de texto (TipTap + Yjs)
   state/       Estado do app (zustand)
@@ -70,10 +71,13 @@ A Casa das Marés/
     personagens/helena.md     ← notas: personagens, lugares e ideias
     lugares/vila-serena.md
     ideias/o-segredo-do-pai.md
+  anexos/
+    mapa-da-vila.png          ← imagens, vídeos, áudios e outros arquivos
   .inkflow/
     project.json              ← título, ordem dos capítulos e das cenas
     ydoc/<id-da-cena>.yjs     ← estado do editor de cada cena (para o sync)
-    lixeira/                  ← cenas e capítulos excluídos
+    versoes/                  ← histórico: uma versão do projeto inteiro por arquivo
+    lixeira/                  ← cenas, capítulos e anexos excluídos
 ```
 
 Cada cena `.md` começa com um cabeçalho:
@@ -97,6 +101,12 @@ Regras:
 - **Nada é apagado de verdade:** excluir move para `.inkflow/lixeira/`.
 - **Formatação:** negrito, itálico, ~~tachado~~, ==destaque== (como no Obsidian), títulos,
   listas, citações e o separador de cena `* * *` ficam em Markdown comum.
+- **Anexos** ficam em `anexos/` e entram no texto como `![nome](anexos/arquivo.ext)` numa
+  linha própria (a mesma sintaxe de imagem do Markdown e do Obsidian).
+- **Histórico:** cada versão em `.inkflow/versoes/` guarda a estrutura e o texto de todas as
+  cenas e notas (os anexos não). O app guarda versões ao abrir e fechar o projeto e a cada
+  10 minutos, só quando algo mudou; das automáticas antigas fica uma por dia. Restaurar o
+  projeto inteiro guarda antes a situação atual e manda `manuscrito/` e `notas/` para a lixeira.
 - **Links:** `[[Nome]]` (ou `[[Nome|texto]]`) liga a uma cena ou nota pelo título, como no
   Obsidian. Além disso, o nome de uma nota aparecendo no texto conta como menção. Os dois
   aparecem no grafo; os links ficam no `.md` como texto comum.

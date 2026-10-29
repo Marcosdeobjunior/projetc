@@ -90,7 +90,7 @@ export async function ensureChapterDirs(fs: VaultFs, project: Project) {
   }
 }
 
-function sceneFile(doc: { id: string; title: string }, markdown: string) {
+export function sceneFile(doc: { id: string; title: string }, markdown: string) {
   return `---\nid: ${doc.id}\ntitle: ${JSON.stringify(doc.title)}\n---\n\n${markdown}`;
 }
 

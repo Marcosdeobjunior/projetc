@@ -4,6 +4,8 @@ import { Home } from "./ui/Home";
 import { Workspace } from "./ui/Workspace";
 import { Icon } from "./ui/Icon";
 
+const INFO_MS = 5000;
+
 export function App() {
   const platform = useApp((s) => s.platform);
   const session = useApp((s) => s.session);
@@ -14,6 +16,13 @@ export function App() {
   useEffect(() => {
     void useApp.getState().init();
   }, []);
+
+  // Avisos informativos somem sozinhos; os de erro ficam até serem fechados.
+  useEffect(() => {
+    if (!message || tone !== "info") return;
+    const t = window.setTimeout(() => showMessage(null), INFO_MS);
+    return () => window.clearTimeout(t);
+  }, [message, tone, showMessage]);
 
   return (
     <>

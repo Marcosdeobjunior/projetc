@@ -8,7 +8,7 @@ import {
   type VaultRef,
 } from "../platform";
 import type { NoteKind, Project, TreeChange } from "../manuscript/types";
-import { addNote, addScene, findDoc, findScene, moveScene } from "../manuscript/tree";
+import { addChapter, addNote, addScene, findDoc, findScene, moveScene } from "../manuscript/tree";
 import { countWords } from "../manuscript/wordCount";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toPlainText } from "../markdown/serialize";
@@ -34,6 +34,7 @@ import {
   setAttachmentSource,
 } from "../editor/attachments";
 import { TRASH_DIR } from "../vault/paths";
+import { restoreProjectFiles, saveVersion, type Version } from "../vault/history";
 import { renameLinksInOpenEditors } from "./openEditors";
 
 export interface Session {
@@ -87,6 +88,12 @@ interface AppState {
   addAttachments(files: File[]): Promise<{ src: string; name: string }[]>;
   /** Manda um anexo para a lixeira. */
   removeAttachment(name: string): Promise<void>;
+  /** Guarda uma versão do projeto no histórico. Automática: só se algo mudou. */
+  saveVersion(label: string, auto?: boolean): Promise<void>;
+  /** Volta um texto para como estava numa versão (recria se foi excluído). */
+  restoreText(version: Version, docId: string): Promise<void>;
+  /** Volta o projeto inteiro para uma versão (a situação atual vira uma versão antes). */
+  restoreVersion(version: Version): Promise<void>;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null, tone?: "info" | "error"): void;
 }
@@ -123,7 +130,7 @@ function firstScene(p: Project) {
 }
 
 export const useApp = create<AppState>((set, get) => {
-  async function open(root: string) {
+  async function open(root: string, opts: { version?: boolean } = {}) {
     const { platform } = get();
     if (!platform) return;
     const fs = platform.fs(root);
@@ -152,7 +159,29 @@ export const useApp = create<AppState>((set, get) => {
       saveState: "idle",
       message: null,
     });
+    if (opts.version !== false) {
+      void serial(() =>
+        saveVersion(fs, project, { label: "Ao abrir o projeto", auto: true }),
+      ).catch((err) => console.error(err));
+    }
   }
+
+  /** Fecha o texto aberto e espera o editor gravar o que tinha pendente. */
+  async function closeEditor() {
+    const session = get().session;
+    if (session?.activeDocId) set({ session: { ...session, activeDocId: null } });
+    // O editor sai da tela na próxima renderização e grava ao sair.
+    await new Promise((r) => setTimeout(r, 0));
+    return flushPending();
+  }
+
+  const versionDate = (v: Version) =>
+    new Date(v.createdAt).toLocaleString("pt-BR", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   async function initialize() {
     const platform = await createPlatform();
@@ -316,8 +345,87 @@ export const useApp = create<AppState>((set, get) => {
         }
       }),
 
+    async saveVersion(label, auto = false) {
+      const session = get().session;
+      if (!session || !(await flushAll())) return;
+      try {
+        const saved = await serial(() =>
+          saveVersion(session.fs, get().session?.project ?? session.project, { label, auto }),
+        );
+        if (!auto && saved) set({ message: "Versão salva no histórico.", messageTone: "info" });
+      } catch (err) {
+        if (!auto) set({ message: describe(err), messageTone: "error" });
+        else console.error(err);
+      }
+    },
+
+    restoreText: (version, docId) =>
+      guarded(async () => {
+        if (!get().session || !(await closeEditor())) return;
+        const body = version.texts[docId] ?? "";
+        const old = findDoc(version.project, docId);
+        let target = docId;
+        const session = get().session!;
+        if (findDoc(session.project, docId)) {
+          await serial(() => writeSceneMarkdown(session.fs, session.project, docId, body));
+        } else if (old) {
+          // Foi excluído depois: recria no mesmo capítulo (ou num com o mesmo nome).
+          await get().change(
+            (p) => {
+              if (old.type !== "scene") {
+                const r = addNote(p, old.type, old.title);
+                target = r.note.id;
+                return r;
+              }
+              const thenChapter = findScene(version.project, docId)!.chapter;
+              const chapter =
+                p.chapters.find((c) => c.id === thenChapter.id) ??
+                p.chapters.find((c) => c.title === thenChapter.title);
+              if (chapter) {
+                const r = addScene(p, chapter.id, old.title);
+                target = r.scene.id;
+                return r;
+              }
+              const c = addChapter(p, thenChapter.title);
+              const r = addScene(c.project, c.chapter.id, old.title);
+              target = r.scene.id;
+              return { project: r.project, ops: [...c.ops, ...r.ops] };
+            },
+            async (next) => {
+              await writeSceneMarkdown(get().session!.fs, next, target, body);
+            },
+          );
+        }
+        get().setDocText(target, toPlainText(parseMarkdown(body)));
+        get().openDoc(target);
+        set({
+          message: `"${old?.title ?? "Texto"}" voltou a ser como estava em ${versionDate(version)}.`,
+          messageTone: "info",
+        });
+      }),
+
+    restoreVersion: (version) =>
+      guarded(async () => {
+        const session = get().session;
+        if (!session || !(await closeEditor())) return;
+        // Guarda como está agora, para dar para desfazer a restauração.
+        await serial(() =>
+          saveVersion(session.fs, get().session!.project, {
+            label: `Antes de voltar para "${version.label}"`,
+            auto: false,
+          }),
+        );
+        await serial(() => restoreProjectFiles(session.fs, version));
+        await open(session.root, { version: false });
+        set({
+          message: `O projeto voltou a ser como estava em ${versionDate(version)}. A situação anterior ficou guardada no histórico.`,
+          messageTone: "info",
+        });
+      }),
+
     async closeVault() {
       if (!(await flushPending())) return;
+      await get().saveVersion("Ao fechar o projeto", true);
       storageSet(LAST_KEY, null);
       set({ session: null, saveState: "idle" });
       await get().refreshVaults();
@@ -327,6 +435,7 @@ export const useApp = create<AppState>((set, get) => {
       guarded(async () => {
         if (root === get().session?.root) return;
         if (!(await flushPending())) return;
+        await get().saveVersion("Ao fechar o projeto", true);
         await open(root);
         await get().refreshVaults();
       }),
