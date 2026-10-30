@@ -12,6 +12,8 @@ export interface Project {
   chapters: Chapter[];
   /** Personagens, lugares e ideias. Projetos antigos não têm (lido como []). */
   notes: Note[];
+  /** Nome do autor, usado na exportação. */
+  author?: string;
 }
 
 export interface Chapter {

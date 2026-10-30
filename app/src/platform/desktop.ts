@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { basename, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import type { Platform, VaultFs, VaultRef } from "./types";
 import { PlatformError } from "./types";
 import { PROJECT_FILE } from "../vault/paths";
@@ -118,6 +118,15 @@ export function createDesktopPlatform(): Platform {
 
     fs(root: string) {
       return new TauriFs(root);
+    },
+
+    async saveFile(name, data, filter) {
+      const path = await save({ defaultPath: name, filters: [filter], title: "Exportar" });
+      if (!path) return false;
+      await invoke<void>("export_write", data, {
+        headers: { "x-path": encodeURIComponent(path) },
+      });
+      return true;
     },
 
     openFile(root: string, path: string) {

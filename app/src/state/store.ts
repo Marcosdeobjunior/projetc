@@ -48,7 +48,7 @@ export interface Session {
   activeDocId: string | null;
   /** Arquivos da pasta anexos/. */
   attachments: string[];
-  view: "editor" | "graph" | "settings" | "history" | "trash";
+  view: "editor" | "graph" | "settings" | "history" | "trash" | "export";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";

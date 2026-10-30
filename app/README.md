@@ -36,6 +36,23 @@ O primeiro `tauri dev` demora alguns minutos para compilar a parte em Rust. Os s
 | `cargo test` (em `src-tauri/`)                 | Testes da parte em Rust                                                           |
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | Qualidade de código                                                               |
 
+## Exportar o livro
+
+Botão de download na barra lateral. Formatos:
+
+- **Word (.docx)**: estilo "Livro" (serifa, recuo, página 14×21, A5 ou A4) ou "Manuscrito padrão"
+  (Times 12, espaço duplo, margens de 2,5 cm, cabeçalho "Sobrenome / TÍTULO / página"). O
+  sumário é um campo do Word: ao abrir, o Word pergunta se quer atualizar os campos (diga sim
+  para aparecerem os números de página).
+- **PDF**: abre a janela de impressão do sistema com o livro paginado (folha de rosto, sumário,
+  números de página); escolha "Salvar como PDF".
+- **E-book (.epub)**: EPUB 3, para Kindle (via "Enviar para Kindle"), Kobo, Apple Livros etc.
+- **Markdown** e **texto** num arquivo só.
+
+Escolhe-se quais capítulos entram, título e autor (o autor fica guardado no projeto), folha de
+rosto, sumário, "Capítulo 1" antes do título, títulos das cenas (ou separador `* * *`) e
+imagens. Os `[[links]]` viram texto comum e o marca-texto não sai no livro.
+
 ## Sincronização com o Google Drive
 
 Cada projeto pode ser ligado a uma pasta `InkFlow/<nome do projeto>` no Google Drive
@@ -87,6 +104,7 @@ src/
   manuscript/  Estrutura de capítulos, cenas e notas (funções puras) e contagem de palavras
   links/       Links [[Nome]], menções automáticas e montagem do grafo
   search/      Busca no projeto (ignora maiúsculas e acentos)
+  export/      Exportação: Word, PDF (impressão), EPUB, Markdown e texto
   sync/        Sincronização com o Google Drive: cliente do Drive, decisão arquivo a arquivo
                e junção de project.json
   markdown/    Conversão entre o documento do editor e Markdown

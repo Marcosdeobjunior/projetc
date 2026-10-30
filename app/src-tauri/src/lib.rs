@@ -15,6 +15,7 @@ pub fn run() {
             vault::vault_list,
             vault::vault_open,
             vault::vault_walk,
+            vault::export_write,
             google::google_sign_in,
             google::google_refresh,
             google::google_revoke,

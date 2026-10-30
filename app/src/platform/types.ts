@@ -41,6 +41,15 @@ export interface Platform {
   /** Tira o vault da lista. No navegador também apaga os arquivos. */
   forgetVault(root: string): Promise<void>;
   fs(root: string): VaultFs;
+  /**
+   * Salva um arquivo fora do projeto (exportação): no desktop pergunta onde,
+   * no navegador baixa. Devolve false se a pessoa cancelou.
+   */
+  saveFile(
+    name: string,
+    data: Uint8Array,
+    filter: { name: string; extensions: string[] },
+  ): Promise<boolean>;
   /** Abre um arquivo do vault no programa padrão do computador (no navegador, baixa). */
   openFile(root: string, path: string): Promise<void>;
   /**

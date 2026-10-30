@@ -14,6 +14,7 @@ import { SearchPanel } from "./SearchPanel";
 import { AttachmentsTree } from "./AttachmentsTree";
 import { HistoryView } from "./HistoryView";
 import { TrashView } from "./TrashView";
+import { ExportView } from "./ExportView";
 import { useSearch } from "../state/search";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
@@ -161,6 +162,19 @@ export function Workspace({ session }: { session: Session }) {
           </button>
           <button
             type="button"
+            className={"icon-btn sm" + (view === "export" ? " on" : "")}
+            aria-pressed={view === "export"}
+            title="Exportar livro (Word, PDF, e-book)"
+            aria-label="Exportar livro"
+            onClick={() => {
+              setView(view === "export" ? "editor" : "export");
+              closeNav();
+            }}
+          >
+            <Icon name="export" size={16} />
+          </button>
+          <button
+            type="button"
             className={"graph-btn" + (view === "graph" ? " on" : "")}
             aria-pressed={view === "graph"}
             onClick={() => {
@@ -223,7 +237,9 @@ export function Workspace({ session }: { session: Session }) {
                     ? "Histórico de versões"
                     : view === "trash"
                       ? "Lixeira"
-                      : "Configurações"}
+                      : view === "export"
+                        ? "Exportar livro"
+                        : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -279,6 +295,8 @@ export function Workspace({ session }: { session: Session }) {
             <HistoryView session={session} />
           ) : view === "trash" ? (
             <TrashView session={session} />
+          ) : view === "export" ? (
+            <ExportView session={session} />
           ) : active ? (
             <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (

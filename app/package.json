@@ -30,6 +30,8 @@
     "@tiptap/suggestion": "^3.32.1",
     "@tiptap/y-tiptap": "^3.0.11",
     "d3-force": "^3.0.0",
+    "docx": "^9.15.0",
+    "fflate": "^0.8.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "yjs": "^13.6.33",

@@ -212,6 +212,19 @@ pub async fn vault_write_bytes(request: Request<'_>) -> CmdResult<()> {
     write_atomic(&resolve(&root, &path)?, data)
 }
 
+/// Grava a exportação no caminho escolhido na caixa "Salvar como" (fora do vault).
+#[tauri::command]
+pub async fn export_write(request: Request<'_>) -> CmdResult<()> {
+    let InvokeBody::Raw(data) = request.body() else {
+        return Err("esperado corpo binário".into());
+    };
+    let path = PathBuf::from(header(&request, "x-path")?);
+    if !path.is_absolute() {
+        return Err("caminho de exportação inválido".into());
+    }
+    write_atomic(&path, data)
+}
+
 #[tauri::command]
 pub async fn vault_exists(root: String, path: String) -> CmdResult<bool> {
     Ok(resolve(&root, &path)?.exists())
