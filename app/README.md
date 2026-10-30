@@ -36,6 +36,47 @@ O primeiro `tauri dev` demora alguns minutos para compilar a parte em Rust. Os s
 | `cargo test` (em `src-tauri/`)                 | Testes da parte em Rust                                                           |
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | Qualidade de código                                                               |
 
+## Sincronização com o Google Drive
+
+Cada projeto pode ser ligado a uma pasta `InkFlow/<nome do projeto>` no Google Drive
+(Configurações → Sincronização). O app sincroniza ao abrir e ao fechar o projeto, de tempos em
+tempos (5, 15 ou 30 minutos) e quando você pede. Em outro computador, conecte a mesma conta e
+use **Baixar** em "No Google Drive", na tela inicial.
+
+- Edições no mesmo texto feitas em dois computadores são **mescladas** (o `.yjs` de cada cena é
+  um documento Yjs). Se algum parágrafo de um dos lados não couber na mescla (por exemplo, um
+  lado dividiu o parágrafo que o outro editou), a versão inteira daquele lado vai para a Lixeira
+  e o app avisa.
+- Mudanças na estrutura (capítulos, cenas, notas) dos dois lados são juntadas pelo id.
+- Outros arquivos alterados nos dois lados: fica o deste computador; o do Drive vai para a Lixeira.
+- O que for excluído em outro computador vai para a Lixeira deste, em vez de sumir.
+- A Lixeira e `.inkflow/sync.json` ficam só no computador.
+
+### Credenciais do Google (uma vez só)
+
+O InkFlow usa o acesso `drive.file`: só enxerga as pastas e arquivos que ele mesmo criou no
+seu Drive. Para isso o app precisa de um "ID do cliente OAuth":
+
+1. Em https://console.cloud.google.com crie um projeto (ex.: "InkFlow").
+2. Em **APIs e serviços → Biblioteca**, ative a **Google Drive API**.
+3. Em **APIs e serviços → Tela de consentimento OAuth** (ou "Google Auth Platform"), escolha
+   "Externo", preencha o nome do app e o seu e-mail, e em **Público-alvo / Usuários de teste**
+   adicione as contas Google que vão usar o app.
+4. Em **Credenciais → Criar credenciais → ID do cliente OAuth**, escolha o tipo
+   **App para computador**. Copie o **ID do cliente** e a **Chave secreta do cliente**.
+5. No InkFlow: Configurações → Sincronização → cole os dois e clique em **Conectar conta Google**.
+
+Enquanto o app estiver em modo "Teste" no Google Cloud, o Google pede para entrar de novo a
+cada 7 dias. Para quem vai distribuir o app, as credenciais também podem vir na compilação, em
+`app/.env.local` (não vai para o Git):
+
+```
+VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_SECRET=...
+```
+
+A conta conectada (o token de renovação) fica guardada só neste computador.
+
 ## Organização do código
 
 ```
@@ -46,12 +87,15 @@ src/
   manuscript/  Estrutura de capítulos, cenas e notas (funções puras) e contagem de palavras
   links/       Links [[Nome]], menções automáticas e montagem do grafo
   search/      Busca no projeto (ignora maiúsculas e acentos)
+  sync/        Sincronização com o Google Drive: cliente do Drive, decisão arquivo a arquivo
+               e junção de project.json
   markdown/    Conversão entre o documento do editor e Markdown
   editor/      Editor de texto (TipTap + Yjs)
   state/       Estado do app (zustand)
   ui/          Telas e componentes
 src-tauri/
-  src/vault.rs Comandos Rust que leem e gravam os arquivos do vault
+  src/vault.rs  Comandos Rust que leem e gravam os arquivos do vault
+  src/google.rs Login no Google (navegador + endereço local, com PKCE)
 ```
 
 A interface nunca acessa arquivos diretamente: ela usa a interface `VaultFs`
@@ -77,6 +121,7 @@ A Casa das Marés/
     project.json              ← título, ordem dos capítulos e das cenas
     ydoc/<id-da-cena>.yjs     ← estado do editor de cada cena (para o sync)
     versoes/                  ← histórico: uma versão do projeto inteiro por arquivo
+    sync.json                 ← estado da sincronização com o Drive (só neste computador)
     lixeira/                  ← cenas, capítulos e anexos excluídos
 ```
 

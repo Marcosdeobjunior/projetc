@@ -26,7 +26,7 @@ import {
   writeSceneMarkdown,
 } from "../vault/vault";
 import { createSampleVault } from "../vault/sample";
-import { flushAll, serial } from "./writes";
+import { flushAll, runBeforeClose, serial } from "./writes";
 import {
   ATTACHMENTS_DIR,
   forgetAttachment,
@@ -94,6 +94,10 @@ interface AppState {
   restoreText(version: Version, docId: string): Promise<void>;
   /** Volta o projeto inteiro para uma versão (a situação atual vira uma versão antes). */
   restoreVersion(version: Version): Promise<void>;
+  /** Fecha o texto aberto e espera ele gravar. Devolve false se a gravação falhou. */
+  closeEditor(): Promise<boolean>;
+  /** Relê o projeto do disco (depois de a sincronização trazer mudanças). */
+  reloadFromDisk(openId?: string | null): Promise<void>;
   /** Põe de volta no projeto um item da lixeira. */
   restoreFromTrash(entry: TrashEntry): Promise<void>;
   setSaveState(state: SaveState): void;
@@ -190,7 +194,10 @@ export const useApp = create<AppState>((set, get) => {
     set({ platform });
     // Ao fechar o app, grava o que estiver pendente. Se falhar, a janela não fecha.
     platform.onClose?.(async () => {
-      if (await flushAll()) return true;
+      if (await flushAll()) {
+        await runBeforeClose();
+        return true;
+      }
       set({
         message:
           "Não foi possível salvar as últimas alterações, então o app não foi fechado. Verifique se a pasta do projeto está acessível e tente de novo.",
@@ -435,6 +442,31 @@ export const useApp = create<AppState>((set, get) => {
         });
       }),
 
+    closeEditor,
+
+    async reloadFromDisk(openId) {
+      const session = get().session;
+      if (!session) return;
+      const { fs } = session;
+      const [project, attachments] = await serial(
+        async () => [await loadProject(fs), await fs.list(ATTACHMENTS_DIR)] as const,
+      );
+      const { words, texts } = await serial(() => readProjectTexts(fs, project));
+      const now = get().session;
+      if (!now || now.root !== session.root) return;
+      const wanted = openId ?? now.activeDocId;
+      set({
+        session: {
+          ...now,
+          project,
+          words,
+          texts,
+          attachments,
+          activeDocId: wanted && findDoc(project, wanted) ? wanted : firstScene(project),
+        },
+      });
+    },
+
     restoreFromTrash: (entry) =>
       guarded(async () => {
         const session = get().session;
@@ -460,6 +492,7 @@ export const useApp = create<AppState>((set, get) => {
     async closeVault() {
       if (!(await flushPending())) return;
       await get().saveVersion("Ao fechar o projeto", true);
+      await runBeforeClose();
       storageSet(LAST_KEY, null);
       set({ session: null, saveState: "idle" });
       await get().refreshVaults();
@@ -470,6 +503,7 @@ export const useApp = create<AppState>((set, get) => {
         if (root === get().session?.root) return;
         if (!(await flushPending())) return;
         await get().saveVersion("Ao fechar o projeto", true);
+        await runBeforeClose();
         await open(root);
         await get().refreshVaults();
       }),

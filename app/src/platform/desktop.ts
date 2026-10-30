@@ -56,6 +56,12 @@ class TauriFs implements VaultFs {
     return invoke<boolean>("vault_exists", { root: this.root, path });
   }
 
+  walk() {
+    return invoke<{ path: string; size: number; mtime: number }[]>("vault_walk", {
+      root: this.root,
+    });
+  }
+
   list(dir: string) {
     return invoke<string[]>("vault_list", { root: this.root, path: dir });
   }

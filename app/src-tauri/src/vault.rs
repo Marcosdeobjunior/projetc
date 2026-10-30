@@ -103,6 +103,60 @@ fn list(root: &str, path: &str) -> CmdResult<Vec<String>> {
     Ok(names)
 }
 
+#[derive(serde::Serialize, PartialEq, Debug)]
+pub struct FileInfo {
+    path: String,
+    size: u64,
+    /// Última modificação, em milissegundos desde 1970.
+    mtime: u64,
+}
+
+/// Todos os arquivos do vault (caminhos relativos com "/"), sem os temporários.
+fn walk(root: &str) -> CmdResult<Vec<FileInfo>> {
+    let base = resolve(root, "")?;
+    let mut out = vec![];
+    let mut stack = vec![base.clone()];
+    while let Some(dir) = stack.pop() {
+        let entries = match fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(e) if e.kind() == ErrorKind::NotFound => continue,
+            Err(e) => return Err(err(e)),
+        };
+        for entry in entries {
+            let entry = entry.map_err(err)?;
+            let kind = entry.file_type().map_err(err)?;
+            if kind.is_dir() {
+                stack.push(entry.path());
+            } else if kind.is_file() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.ends_with(".inkflow-tmp") {
+                    continue;
+                }
+                let meta = entry.metadata().map_err(err)?;
+                let mtime = meta
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map_or(0, |d| d.as_millis() as u64);
+                let rel = entry.path();
+                let rel = rel.strip_prefix(&base).map_err(err)?;
+                let path = rel
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/");
+                out.push(FileInfo {
+                    path,
+                    size: meta.len(),
+                    mtime,
+                });
+            }
+        }
+    }
+    out.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(out)
+}
+
 fn header(request: &Request<'_>, name: &str) -> CmdResult<String> {
     let raw = request
         .headers()
@@ -181,6 +235,11 @@ pub async fn vault_open(app: tauri::AppHandle, root: String, path: String) -> Cm
 }
 
 #[tauri::command]
+pub async fn vault_walk(root: String) -> CmdResult<Vec<FileInfo>> {
+    walk(&root)
+}
+
+#[tauri::command]
 pub async fn vault_rename(root: String, from: String, to: String) -> CmdResult<()> {
     rename(&root, &from, &to)
 }
@@ -240,6 +299,22 @@ mod tests {
         write_atomic(&resolve(&r, "anexos/sub/c.txt").unwrap(), b"c").unwrap();
         assert_eq!(list(&r, "anexos").unwrap(), vec!["a.mp3", "b.png"]);
         assert!(list(&r, "nao-existe").unwrap().is_empty());
+    }
+
+    #[test]
+    fn percorre_todas_as_pastas() {
+        let (_d, r) = root();
+        write_atomic(&resolve(&r, "manuscrito/cap/cena.md").unwrap(), b"abc").unwrap();
+        write_atomic(&resolve(&r, ".inkflow/project.json").unwrap(), b"{}").unwrap();
+        fs::write(resolve(&r, "manuscrito/.x.inkflow-tmp").unwrap(), b"tmp").unwrap();
+        let files = walk(&r).unwrap();
+        let paths: Vec<_> = files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(
+            paths,
+            vec![".inkflow/project.json", "manuscrito/cap/cena.md"]
+        );
+        assert_eq!(files[1].size, 3);
+        assert!(files[1].mtime > 0);
     }
 
     #[test]

@@ -1214,6 +1214,7 @@ p {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+    animation: none !important;
   }
 }
 
@@ -1922,6 +1923,72 @@ p {
   background: var(--panel-2);
   color: var(--faint);
   font-size: 11px;
+}
+
+.setting-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.setting-error {
+  margin: 0;
+  padding: 10px 18px 14px;
+  color: var(--danger);
+  font-size: 13px;
+}
+.client-form {
+  flex-direction: column;
+  align-items: stretch;
+}
+.client-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.client-form input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--page);
+  color: var(--fg);
+}
+.client-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.client-form .setting-actions {
+  justify-content: flex-end;
+}
+.sync-indicator {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ok);
+  cursor: pointer;
+}
+.sync-indicator:hover {
+  background: var(--panel-2);
+}
+.sync-indicator.syncing {
+  color: var(--accent-hi);
+}
+.sync-indicator.syncing svg {
+  animation: spin 1.2s linear infinite;
+}
+.sync-indicator.error {
+  color: var(--danger);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---------- Página + minimapa ---------- */

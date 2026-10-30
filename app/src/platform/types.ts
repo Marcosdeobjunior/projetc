@@ -8,6 +8,8 @@ export interface VaultFs {
   readBytes(path: string): Promise<Uint8Array | null>;
   writeBytes(path: string, data: Uint8Array): Promise<void>;
   exists(path: string): Promise<boolean>;
+  /** Todos os arquivos do vault, com tamanho e data de modificação (null se não houver). */
+  walk(): Promise<{ path: string; size: number; mtime: number | null }[]>;
   /** Nomes dos arquivos (não das pastas) direto dentro de uma pasta. Pasta inexistente: []. */
   list(dir: string): Promise<string[]>;
   /** Move um arquivo ou pasta. Cria as pastas de destino se preciso. */

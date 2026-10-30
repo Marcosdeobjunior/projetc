@@ -1,3 +1,4 @@
+mod google;
 mod vault;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -13,6 +14,10 @@ pub fn run() {
             vault::vault_exists,
             vault::vault_list,
             vault::vault_open,
+            vault::vault_walk,
+            google::google_sign_in,
+            google::google_refresh,
+            google::google_revoke,
             vault::vault_rename,
             vault::vault_remove,
         ])

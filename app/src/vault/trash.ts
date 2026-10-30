@@ -93,6 +93,22 @@ export async function moveToTrash(
   return entry;
 }
 
+/** Guarda na lixeira um conteúdo que não está em nenhum arquivo (ex.: a versão do Drive num conflito). */
+export async function saveToTrash(fs: VaultFs, path: string, data: Uint8Array, label: string) {
+  const stamp = trashStamp();
+  const entry: TrashEntry = {
+    id: `${stamp}-${crypto.randomUUID().slice(0, 8)}`,
+    deletedAt: Date.now(),
+    title: label,
+    item: { kind: "backup", label },
+    path: `${TRASH_DIR}/${stamp}-${path.split("/").pop()}`,
+    ydocs: {},
+  };
+  await fs.writeBytes(entry.path, data);
+  await writeIndex(fs, [entry, ...(await listTrash(fs))]);
+  return entry;
+}
+
 /** Apaga de vez uma entrada da lixeira. */
 export async function deleteFromTrash(fs: VaultFs, id: string) {
   const entries = await listTrash(fs);

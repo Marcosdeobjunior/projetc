@@ -4,3 +4,5 @@ dist-preview
 src-tauri/target
 src-tauri/gen
 *.log
+.env.local
+.env.*.local

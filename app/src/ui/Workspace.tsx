@@ -15,6 +15,8 @@ import { AttachmentsTree } from "./AttachmentsTree";
 import { HistoryView } from "./HistoryView";
 import { TrashView } from "./TrashView";
 import { useSearch } from "../state/search";
+import { useSync } from "../state/sync";
+import { useSettings } from "../state/settings";
 import { Icon } from "./Icon";
 import { shortcut } from "../editor/formatting";
 
@@ -60,6 +62,20 @@ export function Workspace({ session }: { session: Session }) {
       // sem armazenamento: vale só nesta sessão
     }
   }, [collapsed]);
+
+  // Sincronização com o Drive: ao abrir o projeto e de tempos em tempos.
+  const syncEvery = useSettings((s) => s.syncEvery);
+  useEffect(() => {
+    void useSync.getState().attach();
+  }, []);
+  useEffect(() => {
+    if (!syncEvery) return;
+    const t = window.setInterval(() => {
+      const { enabled, account, syncNow } = useSync.getState();
+      if (enabled && account) void syncNow();
+    }, syncEvery * 60_000);
+    return () => window.clearInterval(t);
+  }, [syncEvery]);
 
   // A cada 10 minutos guarda uma versão no histórico (só se algo mudou).
   useEffect(() => {
@@ -247,7 +263,10 @@ export function Workspace({ session }: { session: Session }) {
               Voltar ao texto
             </button>
           ) : (
-            <SaveIndicator state={saveState} />
+            <>
+              <SyncIndicator onOpen={() => setView("settings")} />
+              <SaveIndicator state={saveState} />
+            </>
           )}
         </header>
 
@@ -306,5 +325,32 @@ function SaveIndicator({ state }: { state: string }) {
       {state === "saved" && <Icon name="check" size={14} />}
       {text}
     </span>
+  );
+}
+
+function SyncIndicator({ onOpen }: { onOpen: () => void }) {
+  const { enabled, account, status, lastSync, error } = useSync();
+  if (!enabled || !account) return null;
+  const label =
+    status === "syncing"
+      ? "Sincronizando com o Drive…"
+      : status === "error"
+        ? `Não foi possível sincronizar: ${error ?? ""}`
+        : lastSync
+          ? `Sincronizado com o Drive às ${new Date(lastSync).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+          : "Sincronização ligada";
+  return (
+    <button
+      type="button"
+      className={"sync-indicator " + status}
+      title={label}
+      aria-label={label}
+      onClick={onOpen}
+    >
+      <Icon
+        name={status === "error" ? "cloudOff" : status === "syncing" ? "sync" : "cloud"}
+        size={17}
+      />
+    </button>
   );
 }

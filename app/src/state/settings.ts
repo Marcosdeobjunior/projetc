@@ -32,6 +32,8 @@ interface Prefs {
   /** Conta as menções automáticas (nomes no texto) no minimapa. */
   minimapMentions: boolean;
   collapsed: SectionId[];
+  /** De quantos em quantos minutos sincronizar com o Drive (0 = só quando pedir). */
+  syncEvery: number;
 }
 
 interface SettingsState extends Prefs {
@@ -48,6 +50,7 @@ const DEFAULTS: Prefs = {
   minimapPos: "bottom-right",
   minimapMentions: true,
   collapsed: [],
+  syncEvery: 5,
 };
 
 function load(): Prefs {
@@ -88,6 +91,7 @@ useSettings.subscribe((s, prev) => {
     minimapPos: s.minimapPos,
     minimapMentions: s.minimapMentions,
     collapsed: s.collapsed,
+    syncEvery: s.syncEvery,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));

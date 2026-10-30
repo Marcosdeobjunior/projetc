@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSettings, type MinimapPos, type Theme } from "../state/settings";
+import { useSync } from "../state/sync";
+import { useApp } from "../state/store";
 import { Icon } from "./Icon";
 
 const THEMES: { id: Theme; label: string; icon: string }[] = [
@@ -56,6 +58,8 @@ export function Settings() {
             </div>
           </Field>
         </Section>
+
+        <SyncSection />
 
         <Section title="Minimapa">
           <Field
@@ -157,5 +161,203 @@ function Switch({
     >
       <i />
     </button>
+  );
+}
+
+const SYNC_EVERY = [
+  { value: 0, label: "Só quando eu pedir" },
+  { value: 5, label: "A cada 5 minutos" },
+  { value: 15, label: "A cada 15 minutos" },
+  { value: 30, label: "A cada 30 minutos" },
+];
+
+const time = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+/** Conta Google e sincronização do projeto aberto com o Google Drive. */
+function SyncSection() {
+  const sync = useSync();
+  const session = useApp((s) => s.session);
+  const syncEvery = useSettings((s) => s.syncEvery);
+  const setSettings = useSettings((s) => s.set);
+  const [editingClient, setEditingClient] = useState(false);
+
+  if (!sync.available) {
+    return (
+      <Section title="Sincronização">
+        <Field
+          label="Google Drive"
+          hint="A sincronização funciona no app desktop. Nesta prévia no navegador ela fica desligada."
+        >
+          <span />
+        </Field>
+      </Section>
+    );
+  }
+
+  return (
+    <Section title="Sincronização">
+      {!sync.client || editingClient ? (
+        <ClientForm
+          onDone={(client) => {
+            if (client) sync.setClient(client);
+            setEditingClient(false);
+          }}
+          canCancel={!!sync.client}
+        />
+      ) : !sync.account ? (
+        <Field
+          label="Conta Google"
+          hint="Os projetos ficam numa pasta “InkFlow” do seu Google Drive. O InkFlow só enxerga os arquivos que ele mesmo criou lá."
+        >
+          <div className="setting-actions">
+            <button type="button" className="link-btn" onClick={() => setEditingClient(true)}>
+              Credenciais
+            </button>
+            <button
+              type="button"
+              className="btn primary sm"
+              disabled={sync.busy}
+              onClick={() => void sync.connect()}
+            >
+              {sync.busy ? "Esperando o login no navegador…" : "Conectar conta Google"}
+            </button>
+          </div>
+        </Field>
+      ) : (
+        <>
+          <Field label="Conta Google" hint={`Conectada: ${sync.account.email || "conta Google"}`}>
+            <button type="button" className="btn ghost sm" onClick={() => void sync.disconnect()}>
+              Desconectar
+            </button>
+          </Field>
+          {session ? (
+            <>
+              <Field
+                label="Sincronizar este projeto"
+                hint={
+                  sync.enabled
+                    ? `Pasta no Drive: InkFlow/${session.project.title}`
+                    : "Liga este projeto a uma pasta no seu Google Drive. Em outro computador, use “Baixar do Google Drive” na tela inicial."
+                }
+              >
+                <Switch
+                  label="Sincronizar este projeto"
+                  on={sync.enabled}
+                  disabled={sync.busy}
+                  onChange={(on) => void (on ? sync.enable() : sync.disable())}
+                />
+              </Field>
+              {sync.enabled && (
+                <Field
+                  label="Sincronizar agora"
+                  hint={
+                    sync.status === "syncing"
+                      ? "Sincronizando…"
+                      : sync.lastSync
+                        ? `Última sincronização: ${time.format(sync.lastSync)}. Também sincroniza ao abrir e ao fechar o projeto.`
+                        : "Ainda não sincronizado."
+                  }
+                >
+                  <div className="setting-actions">
+                    <select
+                      className="tool-select"
+                      aria-label="Frequência da sincronização"
+                      value={syncEvery}
+                      onChange={(e) => setSettings({ syncEvery: Number(e.target.value) })}
+                    >
+                      {SYNC_EVERY.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn primary sm"
+                      disabled={sync.status === "syncing"}
+                      onClick={() => void sync.syncNow()}
+                    >
+                      <Icon name="sync" size={15} />
+                      {sync.status === "syncing" ? "Sincronizando…" : "Sincronizar agora"}
+                    </button>
+                  </div>
+                </Field>
+              )}
+            </>
+          ) : (
+            <Field
+              label="Projetos no Drive"
+              hint="Abra um projeto para ligar a sincronização, ou baixe um projeto do Drive na tela inicial."
+            >
+              <span />
+            </Field>
+          )}
+        </>
+      )}
+      {sync.error && (
+        <p className="setting-error" role="alert">
+          {sync.error}
+        </p>
+      )}
+    </Section>
+  );
+}
+
+/** ID e chave do app no Google Cloud (veja o README: "Sincronização com o Google Drive"). */
+function ClientForm({
+  onDone,
+  canCancel,
+}: {
+  onDone(client: { id: string; secret: string } | null): void;
+  canCancel: boolean;
+}) {
+  const current = useSync((s) => s.client);
+  const [id, setId] = useState(current?.id ?? "");
+  const [secret, setSecret] = useState(current?.secret ?? "");
+  return (
+    <form
+      className="setting client-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onDone({ id: id.trim(), secret: secret.trim() });
+      }}
+    >
+      <div className="setting-text">
+        <span className="setting-label">Credenciais do Google</span>
+        <span className="hint">
+          Para conectar ao Drive, o InkFlow precisa de um “ID do cliente OAuth” do tipo “App para
+          computador”, criado no Google Cloud Console. O passo a passo está no README do projeto, em
+          “Sincronização com o Google Drive”.
+        </span>
+      </div>
+      <label>
+        ID do cliente
+        <input
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="…apps.googleusercontent.com"
+          required
+        />
+      </label>
+      <label>
+        Chave secreta do cliente
+        <input
+          value={secret}
+          onChange={(e) => setSecret(e.target.value)}
+          type="password"
+          required
+        />
+      </label>
+      <div className="setting-actions">
+        {canCancel && (
+          <button type="button" className="btn ghost sm" onClick={() => onDone(null)}>
+            Cancelar
+          </button>
+        )}
+        <button type="submit" className="btn primary sm">
+          Salvar
+        </button>
+      </div>
+    </form>
   );
 }

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useApp } from "../state/store";
 import { Icon, Quill } from "./Icon";
 import { Settings } from "./Settings";
+import { useSync } from "../state/sync";
+import type { RemoteProject } from "../sync/drive";
 
 const dateFmt = new Intl.DateTimeFormat("pt-BR", {
   day: "numeric",
@@ -212,7 +214,68 @@ export function Home() {
             </ul>
           )}
         </section>
+
+        <DriveProjects />
       </div>
     </div>
+  );
+}
+
+/** Projetos que estão no Google Drive, para baixar neste computador. */
+function DriveProjects() {
+  const { available, account, busy, error, listRemote, download } = useSync();
+  const vaults = useApp((s) => s.vaults);
+  const [list, setList] = useState<RemoteProject[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (!available || !account) return null;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setList(await listRemote());
+    } catch {
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="drive-title">
+      <h2 id="drive-title" className="section-title">
+        No Google Drive
+      </h2>
+      {list === null ? (
+        <button type="button" className="btn ghost" disabled={loading} onClick={() => void load()}>
+          <Icon name="cloud" size={16} /> {loading ? "Procurando…" : "Ver projetos no Drive"}
+        </button>
+      ) : list.length === 0 ? (
+        <p className="muted empty">Nenhum projeto sincronizado no Drive desta conta ainda.</p>
+      ) : (
+        <ul className="vault-list">
+          {list.map((r) => (
+            <li key={r.folderId} className="vault">
+              <div className="vault-open">
+                <span className="vault-title">{r.title}</span>
+                <span className="vault-loc">
+                  {vaults.some((v) => v.title === r.title)
+                    ? "Já existe um projeto com esse nome aqui"
+                    : "Ainda não está neste computador"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn ghost sm"
+                disabled={busy}
+                onClick={() => void download(r)}
+              >
+                Baixar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="setting-error">{error}</p>}
+    </section>
   );
 }
