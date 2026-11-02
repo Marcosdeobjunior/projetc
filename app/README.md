@@ -38,7 +38,7 @@ O primeiro `tauri dev` demora alguns minutos para compilar a parte em Rust. Os s
 
 ## Exportar o livro
 
-Botão de download na barra lateral. Formatos:
+Configurações → aba **Exportar**. Formatos:
 
 - **Word (.docx)**: estilo "Livro" (serifa, recuo, página 14×21, A5 ou A4) ou "Manuscrito padrão"
   (Times 12, espaço duplo, margens de 2,5 cm, cabeçalho "Sobrenome / TÍTULO / página"). O
@@ -55,7 +55,7 @@ imagens. Os `[[links]]` viram texto comum e o marca-texto não sai no livro.
 
 ## Diagramação (capa, lombada e miolo)
 
-Botão do livro na barra lateral. Abas:
+Configurações → aba **Diagramação**. Abas:
 
 - **Capa**: subtítulo, autor, imagem de fundo (com escurecimento), cores, fonte e posição do título.
 - **Quarta capa**: frase de destaque, sinopse, "sobre o autor", imagem de fundo e espaço para o

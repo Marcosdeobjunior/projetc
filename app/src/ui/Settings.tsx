@@ -3,6 +3,8 @@ import { useSettings, type MinimapPos, type Theme } from "../state/settings";
 import { useSync } from "../state/sync";
 import { useApp } from "../state/store";
 import { Icon } from "./Icon";
+import { BookDesignView } from "./BookDesignView";
+import { ExportView } from "./ExportView";
 
 const THEMES: { id: Theme; label: string; icon: string }[] = [
   { id: "system", label: "Sistema", icon: "monitor" },
@@ -34,86 +36,146 @@ const GRID: (MinimapPos | null)[] = [
   "bottom-right",
 ];
 
-/** Configurações gerais do app. */
+export type SettingsTab = "geral" | "sync" | "diagramacao" | "exportar";
+
+const TABS: { id: SettingsTab; label: string; icon: string; project?: boolean }[] = [
+  { id: "geral", label: "Geral", icon: "settings" },
+  { id: "sync", label: "Sincronização", icon: "cloud" },
+  { id: "diagramacao", label: "Diagramação", icon: "book", project: true },
+  { id: "exportar", label: "Exportar", icon: "export", project: true },
+];
+
+/** Aba aberta por último (volta nela ao reabrir as Configurações). */
+const TAB_KEY = "inkflow.settingsTab";
+function lastTab(): SettingsTab {
+  try {
+    return (sessionStorage.getItem(TAB_KEY) as SettingsTab | null) ?? "geral";
+  } catch {
+    return "geral";
+  }
+}
+
+/** Configurações, em abas: Geral, Sincronização e, com um projeto aberto, Diagramação e Exportar. */
 export function Settings() {
-  const s = useSettings();
+  const session = useApp((s) => s.session);
+  const tabs = TABS.filter((t) => !t.project || session);
+  const [tab, setTab] = useState<SettingsTab>(() => {
+    const last = lastTab();
+    return tabs.some((t) => t.id === last) ? last : "geral";
+  });
+  const choose = (t: SettingsTab) => {
+    try {
+      sessionStorage.setItem(TAB_KEY, t);
+    } catch {
+      // sem armazenamento: só não lembra a aba
+    }
+    setTab(t);
+  };
+  const wide = tab === "diagramacao" || tab === "exportar";
 
   return (
-    <div className="settings">
-      <div className="settings-inner">
-        <Section title="Aparência">
-          <Field label="Tema" hint="“Sistema” segue o modo claro ou escuro do computador.">
-            <div className="segmented wide" role="radiogroup" aria-label="Tema">
-              {THEMES.map((t) => (
+    <div className={"settings" + (wide ? " wide" : "")}>
+      <div className="settings-tabs" role="tablist" aria-label="Seções das configurações">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => choose(t.id)}
+          >
+            <Icon name={t.icon} size={15} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "diagramacao" && session ? (
+        <BookDesignView session={session} />
+      ) : tab === "exportar" && session ? (
+        <ExportView session={session} />
+      ) : (
+        <div className="settings-scroll" role="tabpanel">
+          <div className="settings-inner">{tab === "sync" ? <SyncSection /> : <General />}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function General() {
+  const s = useSettings();
+  return (
+    <>
+      <Section title="Aparência">
+        <Field label="Tema" hint="“Sistema” segue o modo claro ou escuro do computador.">
+          <div className="segmented wide" role="radiogroup" aria-label="Tema">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={s.theme === t.id}
+                onClick={() => s.set({ theme: t.id })}
+              >
+                <Icon name={t.icon} size={15} /> {t.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </Section>
+
+      <Section title="Minimapa">
+        <Field
+          label="Mostrar minimapa nos textos"
+          hint="Um grafo pequeno com o texto aberto e tudo o que se liga a ele."
+        >
+          <Switch
+            label="Mostrar minimapa nos textos"
+            on={s.minimap}
+            onChange={(minimap) => s.set({ minimap })}
+          />
+        </Field>
+        <Field
+          label="Posição"
+          hint="Nos cantos ele flutua sobre a página. No topo e embaixo ocupa a largura toda; nas laterais, a altura toda. Também dá para arrastar o minimapa pela barra dele."
+        >
+          <div className="pos-picker" role="radiogroup" aria-label="Posição do minimapa">
+            {GRID.map((pos, i) =>
+              pos ? (
                 <button
-                  key={t.id}
+                  key={pos}
                   type="button"
                   role="radio"
-                  aria-checked={s.theme === t.id}
-                  onClick={() => s.set({ theme: t.id })}
+                  className={"pos-" + pos}
+                  aria-checked={s.minimapPos === pos}
+                  aria-label={POS_LABEL[pos]}
+                  title={POS_LABEL[pos]}
+                  disabled={!s.minimap}
+                  onClick={() => s.set({ minimapPos: pos })}
                 >
-                  <Icon name={t.icon} size={15} /> {t.label}
+                  <i />
                 </button>
-              ))}
-            </div>
-          </Field>
-        </Section>
-
-        <SyncSection />
-
-        <Section title="Minimapa">
-          <Field
-            label="Mostrar minimapa nos textos"
-            hint="Um grafo pequeno com o texto aberto e tudo o que se liga a ele."
-          >
-            <Switch
-              label="Mostrar minimapa nos textos"
-              on={s.minimap}
-              onChange={(minimap) => s.set({ minimap })}
-            />
-          </Field>
-          <Field
-            label="Posição"
-            hint="Nos cantos ele flutua sobre a página. No topo e embaixo ocupa a largura toda; nas laterais, a altura toda. Também dá para arrastar o minimapa pela barra dele."
-          >
-            <div className="pos-picker" role="radiogroup" aria-label="Posição do minimapa">
-              {GRID.map((pos, i) =>
-                pos ? (
-                  <button
-                    key={pos}
-                    type="button"
-                    role="radio"
-                    className={"pos-" + pos}
-                    aria-checked={s.minimapPos === pos}
-                    aria-label={POS_LABEL[pos]}
-                    title={POS_LABEL[pos]}
-                    disabled={!s.minimap}
-                    onClick={() => s.set({ minimapPos: pos })}
-                  >
-                    <i />
-                  </button>
-                ) : (
-                  <span key={i} className="pos-page" aria-hidden="true">
-                    Página
-                  </span>
-                ),
-              )}
-            </div>
-          </Field>
-          <Field
+              ) : (
+                <span key={i} className="pos-page" aria-hidden="true">
+                  Página
+                </span>
+              ),
+            )}
+          </div>
+        </Field>
+        <Field
+          label="Incluir menções automáticas"
+          hint="Liga também os textos em que o nome de uma nota aparece, mesmo sem [[link]]."
+        >
+          <Switch
             label="Incluir menções automáticas"
-            hint="Liga também os textos em que o nome de uma nota aparece, mesmo sem [[link]]."
-          >
-            <Switch
-              label="Incluir menções automáticas"
-              on={s.minimapMentions}
-              disabled={!s.minimap}
-              onChange={(minimapMentions) => s.set({ minimapMentions })}
-            />
-          </Field>
-        </Section>
-      </div>
-    </div>
+            on={s.minimapMentions}
+            disabled={!s.minimap}
+            onChange={(minimapMentions) => s.set({ minimapMentions })}
+          />
+        </Field>
+      </Section>
+    </>
   );
 }
 

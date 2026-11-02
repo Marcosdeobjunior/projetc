@@ -2308,13 +2308,60 @@ p {
 /* ---------- Configurações ---------- */
 .settings {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--page);
+}
+.settings-tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  overflow-x: auto;
+}
+.settings-tabs button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.settings-tabs button:hover {
+  color: var(--fg);
+}
+.settings-tabs button[aria-selected="true"] {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+.settings-tabs button[aria-selected="true"] svg {
+  color: var(--accent-hi);
+}
+.settings-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 32px 16px 64px;
 }
 .home .settings {
   background: none;
+}
+.home .settings-tabs {
   padding: 0;
+  margin-bottom: 8px;
+  background: none;
+}
+.home .settings-scroll {
+  padding: 16px 0 0;
   overflow: visible;
 }
 .settings-inner {
