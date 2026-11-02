@@ -15,9 +15,24 @@ const xhtml = (title: string, body: string) =>
 <body>${body}</body>
 </html>`;
 
-export function epub(book: Book, opts: ExportOptions, id: string, now = new Date()): Uint8Array {
+/** `cover` é a imagem PNG da capa (do projeto gráfico), se houver. */
+export function epub(
+  book: Book,
+  opts: ExportOptions,
+  id: string,
+  cover?: Uint8Array,
+  now = new Date(),
+): Uint8Array {
   const image = (src: string) => `images/${book.images.get(src)?.name ?? ""}`;
   const pages: { id: string; file: string; title: string; html: string }[] = [];
+  if (cover) {
+    pages.push({
+      id: "capa",
+      file: "capa.xhtml",
+      title: book.title,
+      html: '<div class="cover"><img src="images/capa.png" alt="Capa"/></div>',
+    });
+  }
   if (opts.titlePage) {
     pages.push({
       id: "titulo",
@@ -62,8 +77,14 @@ export function epub(book: Book, opts: ExportOptions, id: string, now = new Date
     ...images.map(
       (img, i) => `<item id="img${i + 1}" href="images/${img.name}" media-type="${img.mime}"/>`,
     ),
+    ...(cover
+      ? [
+          '<item id="cover-img" href="images/capa.png" media-type="image/png" properties="cover-image"/>',
+        ]
+      : []),
   ];
   const spine = [
+    ...(cover ? ['<itemref idref="capa"/>'] : []),
     ...(opts.titlePage ? ['<itemref idref="titulo"/>'] : []),
     ...(opts.toc ? ['<itemref idref="nav"/>'] : []),
     ...book.chapters.map((c) => `<itemref idref="cap${c.number}"/>`),
@@ -75,6 +96,7 @@ export function epub(book: Book, opts: ExportOptions, id: string, now = new Date
 <dc:title>${esc(book.title)}</dc:title>
 ${book.author ? `<dc:creator>${esc(book.author)}</dc:creator>` : ""}
 <dc:language>pt-BR</dc:language>
+${cover ? '<meta name="cover" content="cover-img"/>' : ""}
 <meta property="dcterms:modified">${now.toISOString().replace(/\.\d+Z$/, "Z")}</meta>
 </metadata>
 <manifest>
@@ -94,9 +116,13 @@ ${spine.join("\n")}
     "OEBPS/content.opf": strToU8(opf),
     "OEBPS/nav.xhtml": strToU8(nav),
     "OEBPS/toc.ncx": strToU8(ncx),
-    "OEBPS/style.css": strToU8(bookCss(book, { ...opts, style: "book" }, false)),
+    "OEBPS/style.css": strToU8(
+      bookCss(book, { ...opts, style: "book" }, false) +
+        ".cover { text-align: center; margin: 0; } .cover img { max-width: 100%; max-height: 100vh; }",
+    ),
   };
   for (const p of pages) files[`OEBPS/${p.file}`] = strToU8(xhtml(p.title, p.html));
   for (const img of images) files[`OEBPS/images/${img.name}`] = [img.bytes, { level: 0 }];
+  if (cover) files["OEBPS/images/capa.png"] = [cover, { level: 0 }];
   return zipSync(files, { level: 6 });
 }

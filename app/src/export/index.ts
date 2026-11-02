@@ -6,6 +6,8 @@ import { docx, prepareImage } from "./docx";
 import { epub } from "./epub";
 import { printPdf } from "./pdf";
 import { textExport } from "./text";
+import { DESIGN_FILE, loadDesign, TRIM } from "../book/design";
+import { renderPart, toPng } from "../book/cover";
 
 export type { ExportFormat, ExportOptions } from "./book";
 
@@ -24,8 +26,10 @@ export async function exportBook(
   opts: ExportOptions,
 ): Promise<boolean> {
   const book = await buildBook(fs, project, opts);
+  // Projeto gráfico (aba Diagramação), se já foi feito.
+  const design = (await fs.exists(DESIGN_FILE)) ? await loadDesign(fs) : null;
   if (opts.format === "pdf") {
-    await printPdf(book, opts);
+    await printPdf(book, opts, design?.layout);
     return true;
   }
   let data: Uint8Array;
@@ -37,7 +41,14 @@ export async function exportBook(
     );
     data = await docx(book, opts, images);
   } else if (opts.format === "epub") {
-    data = epub(book, opts, project.id);
+    let cover: Uint8Array | undefined;
+    if (design) {
+      const trim = TRIM[design.layout.trim];
+      // 1600 px de largura, o tamanho que as lojas de e-book pedem.
+      const canvas = await renderPart("front", design, book, (1600 / trim.w) * 25.4);
+      cover = await toPng(canvas);
+    }
+    data = epub(book, opts, project.id, cover);
   } else {
     data = strToU8(textExport(book, opts, opts.format === "md"));
   }

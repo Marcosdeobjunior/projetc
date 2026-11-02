@@ -1,5 +1,7 @@
 import type { PMNode } from "../markdown/types";
 import { chapterHeading, type Book, type BookChapter, type ExportOptions } from "./book";
+import type { LayoutDesign } from "../book/design";
+import { interiorCss } from "../book/interior";
 
 /*
  * O livro em (X)HTML. O mesmo texto serve para o PDF (impressão com CSS de
@@ -82,11 +84,15 @@ export function chapterHtml(c: BookChapter, opts: ExportOptions, image: (src: st
   );
 }
 
-export function titlePageHtml(book: Book) {
+export function titlePageHtml(book: Book, credits = false) {
   return (
     `<section class="title-page"><h1>${esc(book.title)}</h1>` +
     (book.author ? `<p class="author">${esc(book.author)}</p>` : "") +
-    `</section>`
+    `</section>` +
+    (credits
+      ? `<section class="credits"><p>© ${new Date().getFullYear()} ${esc(book.author || book.title)}</p>` +
+        `<p>Todos os direitos reservados. Nenhuma parte desta obra pode ser reproduzida sem autorização.</p></section>`
+      : "")
   );
 }
 
@@ -107,7 +113,8 @@ const PAGE: Record<ExportOptions["pageSize"], string> = {
 };
 
 /** Estilos do livro. `print` acrescenta tamanho de página, margens e números de página. */
-export function bookCss(book: Book, opts: ExportOptions, print: boolean) {
+export function bookCss(book: Book, opts: ExportOptions, print: boolean, layout?: LayoutDesign) {
+  if (layout && opts.style === "book" && print) return interiorCss(book, layout);
   const manuscript = opts.style === "manuscript";
   const running = [book.author.split(/\s+/).pop(), book.title.toUpperCase()]
     .filter(Boolean)

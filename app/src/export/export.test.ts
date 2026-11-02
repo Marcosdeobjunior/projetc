@@ -91,6 +91,20 @@ describe("exportação", () => {
     expect(opf).toContain("<dc:creator>Ana Souza</dc:creator>");
   });
 
+  it("põe a capa do projeto gráfico no EPUB", async () => {
+    const { fs, p, chapters } = await sample();
+    const opts = options({ chapterIds: chapters });
+    const files = unzipSync(
+      epub(await buildBook(fs, p, opts), opts, p.id, new Uint8Array([1, 2, 3])),
+    );
+    expect(files["OEBPS/images/capa.png"]).toEqual(new Uint8Array([1, 2, 3]));
+    const opf = strFromU8(files["OEBPS/content.opf"]!);
+    expect(opf).toContain('properties="cover-image"');
+    expect(opf).toContain('<meta name="cover" content="cover-img"/>');
+    // A capa é a primeira página.
+    expect(opf.indexOf('idref="capa"')).toBeLessThan(opf.indexOf('idref="titulo"'));
+  });
+
   it("gera Markdown, texto e o HTML de impressão", async () => {
     const { fs, p, chapters } = await sample();
     const opts = options({ chapterIds: chapters, sceneTitles: true });

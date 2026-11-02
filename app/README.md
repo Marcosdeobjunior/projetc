@@ -53,6 +53,26 @@ Escolhe-se quais capítulos entram, título e autor (o autor fica guardado no pr
 rosto, sumário, "Capítulo 1" antes do título, títulos das cenas (ou separador `* * *`) e
 imagens. Os `[[links]]` viram texto comum e o marca-texto não sai no livro.
 
+## Diagramação (capa, lombada e miolo)
+
+Botão do livro na barra lateral. Abas:
+
+- **Capa**: subtítulo, autor, imagem de fundo (com escurecimento), cores, fonte e posição do título.
+- **Quarta capa**: frase de destaque, sinopse, "sobre o autor", imagem de fundo e espaço para o
+  código de barras (ISBN).
+- **Lombada e orelhas**: papel (offset ou pólen) e número de páginas (estimado pelo texto ou
+  digitado), que dão a largura da lombada; orelhas opcionais.
+- **Miolo**: tamanho do livro (14×21, 16×23, A5, A4), fonte, corpo, entrelinha, margens com
+  medianiz, ornamento entre cenas, capitular, cabeçalhos e 1º capítulo na página da direita.
+
+A prévia mostra o **livro em 3D** (arraste para girar), a **capa aberta** e uma página do miolo.
+Arquivos gerados: **PDF do miolo**, **PDF da capa aberta** (300 dpi, com 3 mm de sangria) e a
+**capa para e-book** (PNG de 1600 px de largura). Com o projeto gráfico feito, a capa entra no EPUB
+e a exportação em PDF usa a diagramação. Tudo fica em `.inkflow/livro.json`.
+
+Limites do PDF gerado pelo app (motor de impressão do Chromium): só o 1º capítulo tem garantia de
+começar na página da direita, e o cabeçalho aparece também na página de abertura de capítulo.
+
 ## Sincronização com o Google Drive
 
 Cada projeto pode ser ligado a uma pasta `InkFlow/<nome do projeto>` no Google Drive
@@ -105,6 +125,7 @@ src/
   links/       Links [[Nome]], menções automáticas e montagem do grafo
   search/      Busca no projeto (ignora maiúsculas e acentos)
   export/      Exportação: Word, PDF (impressão), EPUB, Markdown e texto
+  book/        Projeto gráfico: capa desenhada em canvas, lombada, diagramação do miolo
   sync/        Sincronização com o Google Drive: cliente do Drive, decisão arquivo a arquivo
                e junção de project.json
   markdown/    Conversão entre o documento do editor e Markdown
@@ -140,6 +161,7 @@ A Casa das Marés/
     ydoc/<id-da-cena>.yjs     ← estado do editor de cada cena (para o sync)
     versoes/                  ← histórico: uma versão do projeto inteiro por arquivo
     sync.json                 ← estado da sincronização com o Drive (só neste computador)
+    livro.json                ← projeto gráfico: capa, lombada e diagramação
     lixeira/                  ← cenas, capítulos e anexos excluídos
 ```
 

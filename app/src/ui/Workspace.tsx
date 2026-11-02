@@ -15,6 +15,7 @@ import { AttachmentsTree } from "./AttachmentsTree";
 import { HistoryView } from "./HistoryView";
 import { TrashView } from "./TrashView";
 import { ExportView } from "./ExportView";
+import { BookDesignView } from "./BookDesignView";
 import { useSearch } from "../state/search";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
@@ -162,6 +163,19 @@ export function Workspace({ session }: { session: Session }) {
           </button>
           <button
             type="button"
+            className={"icon-btn sm" + (view === "design" ? " on" : "")}
+            aria-pressed={view === "design"}
+            title="Diagramação: capa, lombada, miolo e o livro em 3D"
+            aria-label="Diagramação"
+            onClick={() => {
+              setView(view === "design" ? "editor" : "design");
+              closeNav();
+            }}
+          >
+            <Icon name="book" size={16} />
+          </button>
+          <button
+            type="button"
             className={"icon-btn sm" + (view === "export" ? " on" : "")}
             aria-pressed={view === "export"}
             title="Exportar livro (Word, PDF, e-book)"
@@ -239,7 +253,9 @@ export function Workspace({ session }: { session: Session }) {
                       ? "Lixeira"
                       : view === "export"
                         ? "Exportar livro"
-                        : "Configurações"}
+                        : view === "design"
+                          ? "Diagramação"
+                          : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -297,6 +313,8 @@ export function Workspace({ session }: { session: Session }) {
             <TrashView session={session} />
           ) : view === "export" ? (
             <ExportView session={session} />
+          ) : view === "design" ? (
+            <BookDesignView session={session} />
           ) : active ? (
             <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (
