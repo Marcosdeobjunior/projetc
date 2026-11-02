@@ -26,6 +26,8 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)
     .replace(/-+$/g, "");
+  // Nomes reservados no Windows (con, aux, nul...) não podem ser arquivo nem pasta.
+  if (/^(con|prn|aux|nul|com\d|lpt\d)$/.test(s)) return `${s}-1`;
   return s || "sem-titulo";
 }
 

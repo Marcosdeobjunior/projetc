@@ -194,6 +194,72 @@ describe("sincronização", () => {
     ]);
   });
 
+  it("duas cenas novas com o mesmo nome, uma em cada computador, ficam separadas", async () => {
+    const { a, b, drive } = await twoComputers();
+    let sa = "";
+    let sb = "";
+    await change(a, (p) => {
+      const r = addScene(p, p.chapters[0]!.id, "Cena 2");
+      sa = r.scene.id;
+      return r;
+    });
+    await change(b, (p) => {
+      const r = addScene(p, p.chapters[0]!.id, "Cena 2");
+      sb = r.scene.id;
+      return r;
+    });
+    await type(a, sa, "Texto de A.");
+    await type(b, sb, "Texto de B.");
+    await sync(a, drive);
+    await sync(b, drive);
+    await sync(a, drive);
+    for (const fs of [a, b]) {
+      const p = await loadProject(fs);
+      const files = p.chapters[0]!.scenes.map((s) => s.file);
+      expect(new Set(files).size).toBe(files.length);
+      expect(await readSceneFile(fs, p, sa)).toContain("Texto de A.");
+      expect(await readSceneFile(fs, p, sb)).toContain("Texto de B.");
+    }
+  });
+
+  it("uma cena excluída lá mas editada aqui continua no projeto", async () => {
+    const { a, b, drive, scene } = await twoComputers();
+    await change(b, (p) => removeScene(p, scene));
+    await type(a, scene, "Edição importante.");
+    await sync(b, drive);
+    await sync(a, drive);
+    const p = await loadProject(a);
+    expect(await readSceneFile(a, p, scene)).toContain("Edição importante.");
+  });
+
+  it("não sobrescreve o que foi salvo enquanto a sincronização planejava", async () => {
+    const { a, b, drive, scene } = await twoComputers();
+    await type(b, scene, "Edição em B.");
+    await sync(b, drive);
+    const state = (await readSyncState(a))!;
+    const plan = await planSync(a, drive, state, await a.walk(), await loadProject(a));
+    await type(a, scene, "Digitado durante a sincronização.");
+    const r = await applySync(a, drive, state, plan);
+    await writeSyncState(a, r.state);
+    const md = (await readSceneFile(a, await loadProject(a), scene))!;
+    expect(md).toContain("Digitado durante a sincronização.");
+    expect(md).toContain("Edição em B.");
+  });
+
+  it("um .md editado fora do app vai para a lixeira antes de ser refeito", async () => {
+    const { a, b, drive, scene } = await twoComputers();
+    await type(b, scene, "Edição em B.");
+    await sync(b, drive);
+    const p = await loadProject(a);
+    const path = p.chapters[0]!.scenes[0]!.file;
+    const full = `manuscrito/${p.chapters[0]!.dir}/${path}`;
+    await a.writeText(full, (await a.readText(full)) + "\nEditado no Obsidian.\n");
+    const r = await sync(a, drive);
+    expect(r.keptBoth).toBe(1);
+    const [entry] = await listTrash(a);
+    expect(await a.readText(entry!.path)).toContain("Editado no Obsidian.");
+  });
+
   it("o histórico de versões vai junto", async () => {
     const { a, b, drive } = await twoComputers();
     await saveVersion(a, await loadProject(a), { label: "Rascunho do notebook", auto: false });

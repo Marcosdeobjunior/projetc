@@ -76,14 +76,16 @@ interface AppState {
   closeVault(): Promise<void>;
   switchVault(root: string): Promise<void>;
   forgetVault(root: string): Promise<void>;
-  change(edit: (p: Project) => TreeChange, after?: (p: Project) => Promise<void>): Promise<void>;
+  /** Muda a estrutura e os arquivos. Devolve false se algo falhou (a mensagem já aparece). */
+  change(edit: (p: Project) => TreeChange, after?: (p: Project) => Promise<void>): Promise<boolean>;
   /** Abre uma cena ou nota no editor. */
   openDoc(id: string): void;
   setView(view: Session["view"]): void;
   setDocText(id: string, text: string): void;
   /** Cria uma nota (sem abrir). Devolve o id, ou o id da que já existe com esse título. */
   createNote(kind: NoteKind, title: string): Promise<string | null>;
-  keepExternalCopy(sceneId: string, diskText: string): Promise<void>;
+  /** Guarda a versão de fora como outro texto. Devolve false se não deu para guardar. */
+  keepExternalCopy(sceneId: string, diskText: string): Promise<boolean>;
   /** Copia arquivos para anexos/. Devolve os blocos a inserir no texto. */
   addAttachments(files: File[]): Promise<{ src: string; name: string }[]>;
   /** Manda um anexo para a lixeira. */
@@ -476,8 +478,9 @@ export const useApp = create<AppState>((set, get) => {
         if (plan.project === session.project) {
           // Só arquivos (um anexo): nada muda na estrutura.
           await serial(() => applyOps(session.fs, plan.ops));
-        } else {
-          await get().change(() => ({ project: plan.project, ops: plan.ops }));
+        } else if (!(await get().change(() => ({ project: plan.project, ops: plan.ops })))) {
+          // Não deu para pôr de volta: o item continua na lixeira.
+          return;
         }
         const now = get().session!;
         const [{ words, texts }, attachments] = await serial(async () => {
@@ -517,10 +520,10 @@ export const useApp = create<AppState>((set, get) => {
     change: (edit, after) =>
       serial(async () => {
         const session = get().session;
-        if (!session) return;
+        if (!session) return false;
         try {
           const { project, ops } = edit(session.project);
-          if (project === session.project) return;
+          if (project === session.project) return true;
           await applyOps(session.fs, ops);
           await ensureChapterDirs(session.fs, project);
           await saveProject(session.fs, project);
@@ -537,8 +540,10 @@ export const useApp = create<AppState>((set, get) => {
             });
           }
           await after?.(project);
+          return true;
         } catch (err) {
           set({ message: describe(err) });
+          return false;
         }
       }),
 
@@ -581,11 +586,11 @@ export const useApp = create<AppState>((set, get) => {
     async keepExternalCopy(id, diskText) {
       const project = get().session?.project;
       const doc = project && findDoc(project, id);
-      if (!project || !doc) return;
+      if (!project || !doc) return false;
       const title = `${doc.title} (versão externa)`;
       const body = splitFrontmatter(diskText).body.replace(/^\n/, "");
       let copyId = "";
-      await get().change(
+      const ok = await get().change(
         (p) => {
           const scene = findScene(p, id);
           if (scene) {
@@ -604,9 +609,11 @@ export const useApp = create<AppState>((set, get) => {
           get().setDocText(copyId, toPlainText(parseMarkdown(body)));
         },
       );
+      if (!ok) return false;
       set({
         message: `"${doc.title}" foi alterada fora do InkFlow enquanto estava aberta. Para não perder nada, a versão de fora foi guardada como "${title}".`,
       });
+      return true;
     },
 
     setSaveState(saveState) {
@@ -623,7 +630,7 @@ export const useApp = create<AppState>((set, get) => {
  * Renomeia uma cena ou nota: atualiza o título dentro do .md e troca os links
  * [[Nome antigo]] por [[Nome novo]] em todos os textos do projeto.
  */
-export function renameDocAndLinks(edit: (p: Project) => TreeChange, id: string): Promise<void> {
+export function renameDocAndLinks(edit: (p: Project) => TreeChange, id: string): Promise<boolean> {
   const before = useApp.getState().session?.project;
   const oldTitle = before ? findDoc(before, id)?.title : undefined;
   return useApp.getState().change(edit, async (project) => {

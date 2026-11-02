@@ -1,5 +1,6 @@
 import type { Book } from "../export/book";
 import { FONTS, TRIM, type LayoutDesign } from "./design";
+import { cssString } from "../export/html";
 
 /*
  * CSS da diagramação do miolo para impressão: margens espelhadas (medianiz
@@ -7,7 +8,7 @@ import { FONTS, TRIM, type LayoutDesign } from "./design";
  * ímpares), número de página no canto de fora, capitular e ornamento.
  */
 
-const q = (s: string) => `"${s.replace(/["\\\n]/g, " ")}"`;
+const q = cssString;
 
 export function interiorCss(book: Book, l: LayoutDesign): string {
   const trim = TRIM[l.trim];

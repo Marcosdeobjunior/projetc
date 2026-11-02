@@ -86,7 +86,8 @@ function block(node: PMNode, prefix = ""): string[] {
       return [
         text
           .split("\n")
-          .map((l, i) => (i === 0 ? escapeLineStart(l) : l))
+          // Depois de uma quebra de linha, cada linha também não pode virar título, citação ou lista.
+          .map((l) => escapeLineStart(l))
           .join("\n" + prefix),
       ];
     }

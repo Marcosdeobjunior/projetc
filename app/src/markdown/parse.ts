@@ -58,6 +58,13 @@ function parseInline(src: string): PMNode[] {
   let i = 0;
   while (i < src.length) {
     const ch = src[i]!;
+    // Barra no fim do parágrafo: era uma quebra de linha no final.
+    if (ch === "\\" && i + 1 === src.length) {
+      flush();
+      out.push({ type: "hardBreak" });
+      i++;
+      continue;
+    }
     if (ch === "\\" && i + 1 < src.length) {
       if (src[i + 1] === "\n") {
         flush();
@@ -159,12 +166,30 @@ function parseBlocks(lines: string[]): PMNode[] {
       const ordered = /\d/.test(listMatch[1]!);
       const items: PMNode[] = [];
       while (i < lines.length) {
-        const m = lines[i]!.match(/^([-+*]|\d+[.)])\s+(.*)$/);
+        const m = lines[i]!.match(/^([-+*]|\d+[.)])(\s+)(.*)$/);
         if (!m || /\d/.test(m[1]!) !== ordered) break;
-        const itemLines = [m[2]!];
+        // Conteúdo do item: a 1ª linha e as seguintes recuadas (inclusive depois de
+        // linha em branco), que podem ter outros parágrafos e listas dentro.
+        const indent = m[1]!.length + m[2]!.length;
+        const itemLines = [m[3]!];
         i++;
-        while (i < lines.length && /^\s{2,}\S/.test(lines[i]!)) itemLines.push(lines[i++]!.trim());
-        items.push({ type: "listItem", content: [paragraph(itemLines.join("\n"))] });
+        while (i < lines.length) {
+          const l = lines[i]!;
+          if (isBlank(l)) {
+            const next = lines[i + 1];
+            if (next !== undefined && /^\s{2,}\S/.test(next)) {
+              itemLines.push("");
+              i++;
+              continue;
+            }
+            break;
+          }
+          if (!/^\s{2,}\S/.test(l)) break;
+          itemLines.push(l.replace(new RegExp(`^ {1,${Math.max(2, indent)}}`), ""));
+          i++;
+        }
+        const inner = parseBlocks(itemLines);
+        items.push({ type: "listItem", content: inner.length ? inner : [{ type: "paragraph" }] });
         while (isBlank(lines[i]) && lines[i + 1]?.match(/^([-+*]|\d+[.)])\s+/)) i++;
       }
       const node: PMNode = { type: ordered ? "orderedList" : "bulletList", content: items };

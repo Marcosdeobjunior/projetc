@@ -1,4 +1,5 @@
 import type { Chapter, Note, Project, Scene } from "../manuscript/types";
+import { uniqueName } from "../vault/paths";
 
 /*
  * Junta duas versões de project.json que mudaram desde a última
@@ -30,6 +31,8 @@ function mergeById<T extends { id: string }>(
   local: T[],
   remote: T[],
   merge: (b: T | undefined, l: T, r: T) => T,
+  /** Excluído de um lado mas alterado do outro: fica (não some texto). */
+  keep: Changed = NONE,
 ): T[] {
   const b = new Map(base.map((x) => [x.id, x]));
   const l = new Map(local.map((x) => [x.id, x]));
@@ -39,17 +42,30 @@ function mergeById<T extends { id: string }>(
   for (const x of local) {
     const other = r.get(x.id);
     if (other) out.push(merge(b.get(x.id), x, other));
-    else if (!b.has(x.id)) out.push(x); // criado aqui
+    else if (!b.has(x.id) || keep.local.has(x.id)) out.push(x); // criado ou alterado aqui
     // senão: excluído no remoto
   }
   remote.forEach((x, i) => {
-    if (l.has(x.id) || b.has(x.id)) return; // já está, ou foi excluído aqui
+    // Já está, ou foi excluído aqui (a não ser que o outro lado tenha alterado).
+    if (l.has(x.id) || (b.has(x.id) && !keep.remote.has(x.id))) return;
     out.splice(Math.min(i, out.length), 0, x);
   });
   return out;
 }
 
-export function mergeProjects(base: Project | null, local: Project, remote: Project): Project {
+/** Ids de cenas e notas cujo texto mudou de cada lado desde a base. */
+export interface Changed {
+  local: Set<string>;
+  remote: Set<string>;
+}
+const NONE: Changed = { local: new Set(), remote: new Set() };
+
+export function mergeProjects(
+  base: Project | null,
+  local: Project,
+  remote: Project,
+  changed: Changed = NONE,
+): Project {
   const b = base ?? { ...local, chapters: [], notes: [] };
 
   // Capítulos (sem as cenas, que são resolvidas à parte porque podem mudar de capítulo).
@@ -69,7 +85,9 @@ export function mergeProjects(base: Project | null, local: Project, remote: Proj
     const bs = bp.get(id);
     const ls = lp.get(id);
     const rs = rp.get(id);
-    if (bs && (!ls || !rs)) continue; // excluída de um dos lados
+    // Excluída de um lado: sai, a não ser que o outro lado tenha mexido no texto dela.
+    if (bs && !rs && !(ls && changed.local.has(id))) continue;
+    if (bs && !ls && !(rs && changed.remote.has(id))) continue;
     if (ls && rs) {
       const remoteMoved =
         bs &&
@@ -92,6 +110,14 @@ export function mergeProjects(base: Project | null, local: Project, remote: Proj
       const only = (ls ?? rs)!;
       placed.push({ ...only, order: ls ? 0 : 1 });
     }
+  }
+  if (chapters.length === 0 && placed.length > 0) {
+    chapters.push({
+      id: `ch_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
+      title: "Recuperados",
+      dir: "recuperados",
+      scenes: [],
+    });
   }
   const byChapter = new Map(chapters.map((c) => [c.id, [] as typeof placed]));
   for (const p of placed) {
@@ -116,13 +142,44 @@ export function mergeProjects(base: Project | null, local: Project, remote: Proj
       file: pick(bn?.file, ln.file, rn.file),
       kind: pick(bn?.kind, ln.kind, rn.kind),
     }),
+    changed,
   );
 
-  return {
+  return uniqueNames({
     ...local,
     title: pick(base?.title, local.title, remote.title),
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
     chapters: merged,
     notes,
-  };
+  });
+}
+
+/**
+ * Depois de juntar, dois itens podem ter o mesmo nome de arquivo ou pasta
+ * (ex.: os dois computadores criaram "Cena 2"). Cada um ganha um nome só seu;
+ * a sincronização depois põe o texto certo em cada arquivo.
+ */
+function uniqueNames(p: Project): Project {
+  const dirs = new Set<string>();
+  const chapters = p.chapters.map((c) => {
+    const dir = uniqueName(c.dir, dirs);
+    dirs.add(dir);
+    const files = new Set<string>();
+    const scenes = c.scenes.map((s) => {
+      const base = s.file.replace(/\.md$/, "");
+      const file = uniqueName(base, files, ".md");
+      files.add(file);
+      return file === s.file ? s : { ...s, file };
+    });
+    return { ...c, dir, scenes };
+  });
+  const byKind = new Map<string, Set<string>>();
+  const notes = p.notes.map((n) => {
+    const taken = byKind.get(n.kind) ?? new Set<string>();
+    byKind.set(n.kind, taken);
+    const file = uniqueName(n.file.replace(/\.md$/, ""), taken, ".md");
+    taken.add(file);
+    return file === n.file ? n : { ...n, file };
+  });
+  return { ...p, chapters, notes };
 }

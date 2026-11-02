@@ -52,6 +52,8 @@ export async function printPdf(book: Book, opts: ExportOptions, layout?: LayoutD
   }
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
+  // Sem scripts: o livro é só para imprimir.
+  frame.setAttribute("sandbox", "allow-same-origin allow-modals");
   frame.style.cssText =
     "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   frame.srcdoc = bookHtml(book, opts, (src) => urls.get(src) ?? "", layout);

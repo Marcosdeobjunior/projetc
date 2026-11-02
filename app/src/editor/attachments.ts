@@ -59,7 +59,8 @@ export function attachmentName(original: string, taken: Set<string>): string {
 
 /** Copia arquivos para `anexos/`. Devolve os atributos dos blocos a inserir no texto. */
 export async function importFiles(fs: VaultFs, files: File[]) {
-  const taken = new Set(await fs.list(ATTACHMENTS_DIR));
+  // Sem diferenciar maiúsculas: no Windows e no macOS "Mapa.png" e "mapa.png" são o mesmo arquivo.
+  const taken = new Set((await fs.list(ATTACHMENTS_DIR)).map((n) => n.toLowerCase()));
   const out: { src: string; name: string }[] = [];
   for (const file of files) {
     const name = attachmentName(file.name || "colado.png", taken);

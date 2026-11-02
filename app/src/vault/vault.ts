@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { prosemirrorJSONToYDoc, yDocToProsemirrorJSON } from "@tiptap/y-tiptap";
 import type { VaultFs } from "../platform/types";
-import type { FsOp, Project } from "../manuscript/types";
+import { NOTE_KINDS, type FsOp, type Project } from "../manuscript/types";
 import { allDocs, chapterDirPath, createProject, findDoc, scenePath } from "../manuscript/tree";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toMarkdown, toPlainText } from "../markdown/serialize";
@@ -58,7 +58,54 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
     throw new VaultError("Este projeto foi criado por uma versão mais nova do InkFlow.");
   }
   // Projetos criados antes das notas existirem.
-  return { ...data, notes: data.notes ?? [] };
+  const project = { ...data, notes: data.notes ?? [] };
+  validateProject(project);
+  return project;
+}
+
+/** Nome de pasta ou arquivo que não sai do lugar (sem "/", "\\", ":", "..", controle). */
+const safeName = (n: unknown) =>
+  // eslint-disable-next-line no-control-regex -- caracteres de controle não podem estar em nomes
+  typeof n === "string" && n !== "" && n !== "." && n !== ".." && !/[/\\:\u0000-\u001f]/.test(n);
+
+/**
+ * Confere a estrutura de um project.json (editado fora do app ou vindo do
+ * Drive): nomes de pasta e de arquivo seguros, ids e listas no lugar.
+ */
+export function validateProject(p: Project): void {
+  const bad = (what: string) => {
+    throw new VaultError(`O arquivo .inkflow/project.json tem um problema (${what}).`);
+  };
+  if (!p || typeof p !== "object" || !Array.isArray(p.chapters) || !Array.isArray(p.notes ?? []))
+    bad("estrutura");
+  if (typeof p.title !== "string") bad("título");
+  for (const c of p.chapters) {
+    if (
+      typeof c.id !== "string" ||
+      typeof c.title !== "string" ||
+      !safeName(c.dir) ||
+      !Array.isArray(c.scenes)
+    )
+      bad("capítulo");
+    for (const s of c.scenes) {
+      if (
+        typeof s.id !== "string" ||
+        typeof s.title !== "string" ||
+        !safeName(s.file) ||
+        !s.file.endsWith(".md")
+      )
+        bad("cena");
+    }
+  }
+  for (const n of p.notes ?? []) {
+    if (
+      typeof n.id !== "string" ||
+      typeof n.title !== "string" ||
+      !safeName(n.file) ||
+      !(NOTE_KINDS as readonly string[]).includes(n.kind)
+    )
+      bad("nota");
+  }
 }
 
 export async function saveProject(fs: VaultFs, project: Project): Promise<void> {
@@ -127,7 +174,9 @@ export class ExternalChangeError extends Error {
  */
 export function sameText(a: string | null, b: string | null): boolean {
   if (a === null || b === null) return a === b;
-  return splitFrontmatter(a).body.trim() === splitFrontmatter(b).body.trim();
+  // Arquivos salvos no Windows (Bloco de Notas, git) podem ter \r\n: não é uma edição.
+  const body = (s: string) => splitFrontmatter(s).body.replace(/\r\n?/g, "\n").trim();
+  return body(a) === body(b);
 }
 
 export async function readSceneFile(
@@ -219,17 +268,6 @@ export async function readProjectTexts(
   return { words, texts };
 }
 
-function renameLinksInNode(node: PMNode, oldTitle: string, newTitle: string): number {
-  let count = 0;
-  if (node.type === "text" && node.text) {
-    const r = renameLinksInText(node.text, oldTitle, newTitle);
-    node.text = r.text;
-    count += r.count;
-  }
-  for (const child of node.content ?? []) count += renameLinksInNode(child, oldTitle, newTitle);
-  return count;
-}
-
 /**
  * Depois de renomear uma cena ou nota, troca [[Antigo]] por [[Novo]] nos
  * arquivos dos outros textos. `skip` são os textos abertos no editor, que
@@ -250,11 +288,12 @@ export async function renameLinksInFiles(
     if (skip.has(d.id)) continue;
     const md = await fs.readText(d.path);
     if (!md || !md.includes("[[")) continue;
-    const json = parseMarkdown(md);
-    const count = renameLinksInNode(json, oldTitle, newTitle);
-    if (count === 0) continue;
-    await fs.writeText(d.path, sceneFile(d, toMarkdown(json)));
-    changed.push({ id: d.id, text: toPlainText(json), count });
+    // Troca direto no texto do .md (sem reconverter o Markdown, que poderia mudar outras coisas).
+    const { body } = splitFrontmatter(md);
+    const r = renameLinksInText(body, oldTitle, newTitle);
+    if (r.count === 0) continue;
+    await fs.writeText(d.path, md.slice(0, md.length - body.length) + r.text);
+    changed.push({ id: d.id, text: toPlainText(parseMarkdown(r.text)), count: r.count });
   }
   return changed;
 }

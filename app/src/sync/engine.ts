@@ -2,7 +2,8 @@ import * as Y from "yjs";
 import { yDocToProsemirrorJSON } from "@tiptap/y-tiptap";
 import type { VaultFs } from "../platform/types";
 import type { Project } from "../manuscript/types";
-import { findDoc } from "../manuscript/tree";
+import { allDocs, findDoc } from "../manuscript/tree";
+import { splitFrontmatter } from "../markdown/parse";
 import { toMarkdown, toPlainText } from "../markdown/serialize";
 import type { PMNode } from "../markdown/types";
 import { YDOC_FIELD } from "../editor/extensions";
@@ -15,7 +16,7 @@ import {
   slugify,
   ydocPath,
 } from "../vault/paths";
-import { sceneFile } from "../vault/vault";
+import { sceneFile, validateProject } from "../vault/vault";
 import { forgetVersionIndex } from "../vault/history";
 import { moveToTrash, saveToTrash } from "../vault/trash";
 import { md5 } from "./md5";
@@ -99,6 +100,8 @@ export interface Plan {
   touchedDocs: Set<string>;
   /** Caminho do .md → id da cena ou nota. */
   docByPath: Map<string, string>;
+  /** MD5 local de cada arquivo quando o plano foi feito. */
+  local: Map<string, string>;
 }
 
 const ydocId = (path: string) => path.match(/^\.inkflow\/ydoc\/(.+)\.yjs$/)?.[1] ?? null;
@@ -193,7 +196,7 @@ export async function planSync(
     if (id) touchedDocs.add(id);
     if (a.path === PROJECT_FILE) for (const id of docByPath.values()) touchedDocs.add(id);
   }
-  return { actions, touchedDocs, docByPath, cache };
+  return { actions, touchedDocs, docByPath, local: hashes, cache };
 }
 
 function ydocJson(update: Uint8Array) {
@@ -204,6 +207,8 @@ function ydocJson(update: Uint8Array) {
   return json;
 }
 const docText = (update: Uint8Array) => toPlainText(ydocJson(update));
+/** Palavras de um texto (para conferir se alguma ficou de fora de uma mescla). */
+const words = (text: string) => text.toLocaleLowerCase("pt-BR").match(/[\p{L}\p{N}]+/gu) ?? [];
 const docMarkdown = (update: Uint8Array) => toMarkdown(ydocJson(update));
 
 export interface SyncResult {
@@ -265,7 +270,31 @@ export async function applySync(
     if (path.startsWith(HISTORY_DIR + "/")) versionsChanged = true;
   };
 
-  for (const a of plan.actions) {
+  // .yjs de antes desta sincronização, para notar .md editado fora do app.
+  const previousYdoc = new Map<string, Uint8Array>();
+  const keepPrevious = async (path: string) => {
+    const id = ydocId(path);
+    if (!id || previousYdoc.has(id)) return;
+    const bytes = await fs.readBytes(path);
+    if (bytes) previousYdoc.set(id, bytes);
+  };
+
+  for (const planned of plan.actions) {
+    // O plano foi feito antes de pausar as gravações: se o arquivo mudou aqui
+    // nesse meio-tempo, não pode ser sobrescrito nem apagado.
+    let a = planned;
+    if (a.kind === "download" || a.kind === "deleteLocal") {
+      const now = await fs.readBytes(a.path);
+      const hash = now ? md5(now) : null;
+      if (hash !== (plan.local.get(a.path) ?? null)) {
+        a =
+          a.kind === "download"
+            ? hash === null
+              ? a
+              : { kind: "merge", path: a.path, remote: a.remote }
+            : { kind: "upload", path: a.path };
+      }
+    }
     if (a.path === PROJECT_FILE && a.kind !== "same" && a.kind !== "forget") {
       projectAction = a; // depois de todos os textos
       continue;
@@ -282,6 +311,7 @@ export async function applySync(
         break;
       }
       case "download": {
+        await keepPrevious(a.path);
         await write(a.path, await drive.download(a.remote.id));
         const id = ydocId(a.path);
         if (id) regen.add(id);
@@ -305,6 +335,7 @@ export async function applySync(
         const remote = await drive.download(a.remote.id);
         const id = ydocId(a.path);
         if (id) {
+          await keepPrevious(a.path);
           // As duas edições do mesmo texto entram (Yjs).
           const merged = Y.mergeUpdates([local, remote]);
           await write(a.path, merged);
@@ -313,15 +344,12 @@ export async function applySync(
           result.merged++;
           // Rede de segurança: se um parágrafo de um dos lados não entrou na mescla
           // (ex.: o outro lado dividiu esse parágrafo), guarda aquele lado inteiro na lixeira.
-          const mergedText = docText(merged);
+          const mergedWords = new Set(words(docText(merged)));
           for (const [side, update] of [
             ["deste computador", local],
             ["do Drive", remote],
           ] as const) {
-            const missing = docText(update)
-              .split("\n")
-              .map((p) => p.trim())
-              .filter((p) => p && !mergedText.includes(p));
+            const missing = words(docText(update)).filter((w) => !mergedWords.has(w));
             if (missing.length === 0) continue;
             const title = (await titleOf(id)) ?? "Texto";
             await saveToTrash(
@@ -345,46 +373,118 @@ export async function applySync(
     }
   }
 
+  /** .md por id (lido do cabeçalho), montado só se precisar. */
+  let mdById: Map<string, string> | null = null;
+  const findMd = async (id: string) => {
+    if (!mdById) {
+      mdById = new Map();
+      for (const f of await fs.walk()) {
+        if (!/^(manuscrito|notas)\/.+\.md$/.test(f.path)) continue;
+        const fid = splitFrontmatter((await fs.readText(f.path)) ?? "").frontmatter.id;
+        if (fid && !mdById.has(fid)) mdById.set(fid, f.path);
+      }
+    }
+    return mdById.get(id) ?? null;
+  };
+  const mdFromYdoc = (bytes: Uint8Array) => toMarkdown(ydocJson(bytes));
+  const sameBody = (a: string, b: string) =>
+    a.replace(/\r\n?/g, "\n").trim() === b.replace(/\r\n?/g, "\n").trim();
+
+  /**
+   * Garante que cada cena e nota tem o seu texto no arquivo certo: refaz o .md
+   * de quem teve o .yjs alterado e, quando a junção mudou o nome de um arquivo
+   * (ou dois textos disputavam o mesmo nome), põe cada texto no seu lugar.
+   */
+  const placeDocs = async (p: Project, regenIds: Set<string>) => {
+    const used = new Set(allDocs(p).map((d) => d.path));
+    for (const doc of allDocs(p)) {
+      const current = await fs.readText(doc.path);
+      const fm = current === null ? null : splitFrontmatter(current);
+      const mine = fm !== null && fm.frontmatter.id === doc.id;
+      const ybytes = await fs.readBytes(ydocPath(doc.id));
+      let body: string | null = null;
+      if (regenIds.has(doc.id) && ybytes) {
+        body = mdFromYdoc(ybytes);
+        // O .md tinha sido editado fora do app: guarda essa versão antes de refazer.
+        const before = previousYdoc.get(doc.id);
+        if (mine && before && !sameBody(fm.body, mdFromYdoc(before)) && !sameBody(fm.body, body)) {
+          await saveToTrash(
+            fs,
+            doc.path,
+            new TextEncoder().encode(current!),
+            `"${doc.title}" — editado fora do app antes de sincronizar`,
+          );
+          result.keptBoth++;
+        }
+      } else if (!mine) {
+        const source = await findMd(doc.id);
+        if (source && source !== doc.path) {
+          body = splitFrontmatter((await fs.readText(source)) ?? "").body.replace(/^\n+/, "");
+          if (!used.has(source)) await fs.remove(source);
+        } else if (ybytes) body = mdFromYdoc(ybytes);
+        else if (current === null) body = "";
+      }
+      if (body === null) continue;
+      const data = new TextEncoder().encode(sceneFile(doc, body));
+      if (current !== null && sameBody(current, new TextDecoder().decode(data))) continue;
+      await write(doc.path, data);
+      await upload(doc.path, data, remoteIds.get(doc.path));
+    }
+  };
+
   // Estrutura do projeto, por último.
   let project: Project | null = null;
   const projectText = async () =>
     new TextDecoder().decode((await fs.readBytes(PROJECT_FILE)) ?? new Uint8Array());
-  if (projectAction?.kind === "merge") {
-    const local = JSON.parse(await projectText()) as Project;
-    const remote = JSON.parse(
-      new TextDecoder().decode(await drive.download(projectAction.remote.id)),
-    ) as Project;
-    const baseProject = state.projectBase ? (JSON.parse(state.projectBase) as Project) : null;
-    project = mergeProjects(baseProject, local, remote);
-    const data = new TextEncoder().encode(JSON.stringify(project, null, 2) + "\n");
-    await write(PROJECT_FILE, data);
-    await upload(PROJECT_FILE, data, projectAction.remote.id);
-    result.merged++;
-  } else if (projectAction?.kind === "download") {
-    await write(PROJECT_FILE, await drive.download(projectAction.remote.id));
+  /** Lê um project.json vindo do Drive; null se estiver corrompido ou estranho. */
+  const parseRemote = (data: Uint8Array): Project | null => {
+    try {
+      const p = JSON.parse(new TextDecoder().decode(data)) as Project;
+      validateProject(p);
+      return p;
+    } catch {
+      return null;
+    }
+  };
+  // Textos que mudaram de cada lado: uma cena excluída lá mas editada aqui (ou o contrário) fica.
+  const changed = { local: new Set<string>(), remote: new Set<string>() };
+  for (const x of plan.actions) {
+    const id = ydocId(x.path) ?? plan.docByPath.get(x.path);
+    if (!id) continue;
+    if (x.kind === "upload" || x.kind === "merge") changed.local.add(id);
+    if (x.kind === "download" || x.kind === "merge") changed.remote.add(id);
+  }
+  if (projectAction?.kind === "merge" || projectAction?.kind === "download") {
+    const data = await drive.download(projectAction.remote.id);
+    const remote = parseRemote(data);
+    if (!remote) {
+      // project.json do Drive com problema: fica o daqui, e o do Drive vai para a lixeira.
+      await saveToTrash(fs, PROJECT_FILE, data, "project.json do Drive (com problema)");
+      result.keptBoth++;
+      const local = await fs.readBytes(PROJECT_FILE);
+      if (local) await upload(PROJECT_FILE, local, projectAction.remote.id);
+    } else {
+      // Mesmo quando só o Drive mudou a estrutura, junta com a daqui: uma cena
+      // que lá foi excluída mas aqui foi editada continua no projeto.
+      const localText = await projectText();
+      const local = localText ? (JSON.parse(localText) as Project) : null;
+      const baseProject = state.projectBase ? (JSON.parse(state.projectBase) as Project) : null;
+      project = local ? mergeProjects(baseProject, local, remote, changed) : remote;
+      const merged = new TextEncoder().encode(JSON.stringify(project, null, 2) + "\n");
+      const same = md5(merged) === md5(data);
+      await write(PROJECT_FILE, same ? data : merged);
+      if (!same) await upload(PROJECT_FILE, merged, projectAction.remote.id);
+      if (projectAction.kind === "merge") result.merged++;
+    }
   } else if (projectAction?.kind === "upload") {
     const data = await fs.readBytes(PROJECT_FILE);
     if (data) await upload(PROJECT_FILE, data, projectAction.remote?.id);
   }
 
-  // Refaz o .md dos textos cujo .yjs chegou do Drive ou foi mesclado.
   const text = await projectText();
   if (text) project = JSON.parse(text) as Project;
   if (project) {
-    for (const id of regen) {
-      const doc = findDoc(project, id);
-      const bytes = await fs.readBytes(ydocPath(id));
-      if (!doc || !bytes) continue;
-      const ydoc = new Y.Doc();
-      Y.applyUpdate(ydoc, bytes);
-      const md = sceneFile(doc, toMarkdown(yDocToProsemirrorJSON(ydoc, YDOC_FIELD) as PMNode));
-      ydoc.destroy();
-      const data = new TextEncoder().encode(md);
-      const current = await fs.readBytes(doc.path);
-      if (current && md5(current) === md5(data)) continue;
-      await write(doc.path, data);
-      await upload(doc.path, data, remoteIds.get(doc.path));
-    }
+    await placeDocs(project, regen);
   }
   if (versionsChanged) await forgetVersionIndex(fs);
 

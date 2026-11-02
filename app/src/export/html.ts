@@ -11,6 +11,16 @@ import { interiorCss } from "../book/interior";
 export const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/** Texto dentro de uma string CSS ("..."), sem como fechar a string nem a tag <style>. */
+export const cssString = (s: string) =>
+  `"${s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/</g, "\\3C ")
+    .replace(/>/g, "\\3E ")
+    // eslint-disable-next-line no-control-regex -- quebras e caracteres de controle viram espaço
+    .replace(/[\u0000-\u001f\u007f]/g, " ")}"`;
+
 function inline(nodes: PMNode[] = []): string {
   return nodes
     .map((n) => {
@@ -122,7 +132,7 @@ export function bookCss(book: Book, opts: ExportOptions, print: boolean, layout?
   const pageRules = print
     ? manuscript
       ? `@page { size: A4; margin: 25mm;
-           @top-right { content: "${running.replace(/["\\]/g, "")} / " counter(page); font: 10pt "Times New Roman", serif; } }
+           @top-right { content: ${cssString(running + " / ")} counter(page); font: 10pt "Times New Roman", serif; } }
          @page :first { @top-right { content: none; } }`
       : `@page { size: ${PAGE[opts.pageSize]}; margin: ${opts.pageSize === "A4" ? "25mm 22mm" : "18mm 16mm 20mm"};
            @bottom-center { content: counter(page); font: 9pt var(--serif); } }

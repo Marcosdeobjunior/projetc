@@ -6,7 +6,7 @@
 //! recebido é trocado por tokens com PKCE. As chamadas ao Drive são feitas
 //! pela interface, com o token de acesso.
 
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant};
 
@@ -126,6 +126,36 @@ fn respond(mut stream: &TcpStream, ok: bool) {
     );
 }
 
+/// Primeira linha do pedido HTTP, com limite de tamanho e de tempo (um
+/// processo local lento ou abusivo não segura o login).
+fn read_request_line(stream: &TcpStream) -> Option<String> {
+    stream.set_nonblocking(false).ok()?;
+    stream
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .ok()?;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut reader = BufReader::new(stream).take(8192);
+    let mut line = Vec::new();
+    while Instant::now() < deadline {
+        match reader.read_until(b'\n', &mut line) {
+            Ok(0) => break,
+            Ok(_) if line.ends_with(b"\n") => break,
+            Ok(_) => {}
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) => {}
+            Err(_) => return None,
+        }
+        if reader.limit() == 0 {
+            return None;
+        }
+    }
+    let line = String::from_utf8(line).ok()?;
+    line.starts_with("GET ").then_some(line)
+}
+
 /// Espera o navegador voltar com `?code=...&state=...`. Ignora outros pedidos (ex.: favicon).
 fn wait_for_code(listener: TcpListener, state: &str) -> CmdResult<String> {
     listener.set_nonblocking(true).map_err(err)?;
@@ -142,14 +172,9 @@ fn wait_for_code(listener: TcpListener, state: &str) -> CmdResult<String> {
             }
             Err(e) => return Err(err(e)),
         };
-        stream.set_nonblocking(false).map_err(err)?;
-        stream
-            .set_read_timeout(Some(Duration::from_secs(5)))
-            .map_err(err)?;
-        let mut line = String::new();
-        if BufReader::new(&stream).read_line(&mut line).is_err() {
+        let Some(line) = read_request_line(&stream) else {
             continue;
-        }
+        };
         if query_param(&line, "state").as_deref() != Some(state) {
             continue;
         }

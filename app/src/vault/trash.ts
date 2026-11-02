@@ -201,11 +201,17 @@ export function restorePlan(
 
   if (item.kind === "chapter") {
     const dir = uniqueName(slugify(item.chapter.title), new Set(p.chapters.map((c) => c.dir)));
+    // Cenas cujo id voltou a ser usado (ex.: depois de restaurar uma versão) ganham id novo.
+    const renamed: Record<string, string> = {};
     const chapter: Chapter = {
       ...item.chapter,
       id: usedIds.has(item.chapter.id) ? newId("ch") : item.chapter.id,
       dir,
-      scenes: item.chapter.scenes.filter((s) => !usedIds.has(s.id)),
+      scenes: item.chapter.scenes.map((s) => {
+        if (!usedIds.has(s.id)) return s;
+        renamed[s.id] = newId("sc");
+        return { ...s, id: renamed[s.id]! };
+      }),
     };
     const chapters = [...p.chapters];
     chapters.splice(Math.min(item.index, chapters.length), 0, chapter);
@@ -213,7 +219,7 @@ export function restorePlan(
       project: { ...p, chapters, updatedAt: now },
       ops: [
         { kind: "move", from: entry.path, to: `${MANUSCRIPT_DIR}/${dir}` },
-        ...ydocMoves(entry.ydocs),
+        ...ydocMoves(entry.ydocs, renamed),
       ],
       openId: chapter.scenes[0]?.id ?? null,
     };

@@ -139,15 +139,69 @@ export async function loadDesign(fs: VaultFs): Promise<BookDesign> {
   const raw = await fs.readText(DESIGN_FILE);
   if (!raw) return DEFAULT_DESIGN;
   try {
-    const d = JSON.parse(raw) as Partial<BookDesign>;
-    return {
-      format: 1,
-      cover: { ...DEFAULT_DESIGN.cover, ...d.cover },
-      layout: { ...DEFAULT_DESIGN.layout, ...d.layout },
-    };
+    return sanitizeDesign(JSON.parse(raw));
   } catch {
     return DEFAULT_DESIGN;
   }
+}
+
+/**
+ * O arquivo pode ter sido editado fora do app ou chegado pelo Drive: cada
+ * campo é conferido (tipo, lista de valores, faixa), e o que não servir volta ao padrão.
+ */
+export function sanitizeDesign(raw: unknown): BookDesign {
+  const obj = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
+  const pick = <T extends object>(
+    defaults: T,
+    src: Record<string, unknown>,
+    rules: Partial<Record<keyof T, (v: unknown) => boolean>>,
+  ): T => {
+    const out = { ...defaults };
+    for (const key of Object.keys(defaults) as (keyof T)[]) {
+      const v = src[key as string];
+      const ok = rules[key] ?? ((x: unknown) => typeof x === typeof defaults[key]);
+      if (v !== undefined && ok(v)) out[key] = v as T[keyof T];
+    }
+    return out;
+  };
+  const text = (max: number) => (v: unknown) => typeof v === "string" && v.length <= max;
+  const color = (v: unknown) => typeof v === "string" && /^(#[0-9a-f]{6})?$/i.test(v);
+  const num = (min: number, max: number) => (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
+  const image = (v: unknown) => typeof v === "string" && (v === "" || /^anexos\/[^/\\:]+$/.test(v));
+  const d = obj(raw);
+  return {
+    format: 1,
+    cover: pick(DEFAULT_DESIGN.cover, obj(d.cover), {
+      image,
+      backImage: image,
+      background: color,
+      background2: color,
+      textColor: color,
+      accent: color,
+      titleFont: (v) => typeof v === "string" && v in FONTS,
+      subtitle: text(300),
+      placement: (v) => v === "top" || v === "center" || v === "bottom",
+      shade: num(0, 0.8),
+      synopsis: text(5000),
+      tagline: text(300),
+      flapWidth: num(40, 120),
+      authorBio: text(3000),
+    }),
+    layout: pick(DEFAULT_DESIGN.layout, obj(d.layout), {
+      trim: (v) => typeof v === "string" && v in TRIM,
+      paper: (v) => typeof v === "string" && v in PAPER,
+      font: (v) => typeof v === "string" && v in FONTS,
+      size: num(6, 24),
+      leading: num(1, 3),
+      marginTop: num(0, 60),
+      marginBottom: num(0, 60),
+      marginInner: num(0, 60),
+      marginOuter: num(0, 60),
+      ornament: text(12),
+      pages: num(0, 5000),
+    }),
+  };
 }
 
 export async function saveDesign(fs: VaultFs, design: BookDesign) {

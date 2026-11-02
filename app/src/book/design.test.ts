@@ -20,3 +20,33 @@ describe("projeto gráfico", () => {
     expect(s.height).toBe(216);
   });
 });
+
+describe("segurança do projeto gráfico", () => {
+  it("recusa valores estranhos vindos do arquivo", async () => {
+    const { sanitizeDesign, DEFAULT_DESIGN: D } = await import("./design");
+    const d = sanitizeDesign({
+      cover: {
+        background: "red;}</style>",
+        image: "../../x.png",
+        titleFont: "comic",
+        synopsis: "ok",
+      },
+      layout: { marginTop: "0}</style><b id=x>", trim: "huge", size: 11, ornament: "✦" },
+    });
+    expect(d.cover.background).toBe(D.cover.background);
+    expect(d.cover.image).toBe("");
+    expect(d.cover.titleFont).toBe(D.cover.titleFont);
+    expect(d.cover.synopsis).toBe("ok");
+    expect(d.layout.marginTop).toBe(D.layout.marginTop);
+    expect(d.layout.trim).toBe(D.layout.trim);
+    expect(d.layout.size).toBe(11);
+    expect(d.layout.ornament).toBe("✦");
+  });
+
+  it("o título não fecha a tag <style> do PDF", async () => {
+    const { cssString } = await import("../export/html");
+    const s = cssString('Livro</style><img src=x onerror=alert(1)>"\\');
+    expect(s).not.toMatch(/<|>/);
+    expect(s.slice(1, -1)).not.toMatch(/(^|[^\\])"/);
+  });
+});

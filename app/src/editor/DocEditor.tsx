@@ -213,9 +213,11 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         if (err instanceof ExternalChangeError && retry) {
           // Os dois lados mudaram: guarda a versão de fora como outra cena e
           // depois grava a versão do editor no arquivo original.
-          await useApp.getState().keepExternalCopy(sceneId, err.diskText);
-          diskText.current = err.diskText;
-          return save(false);
+          // Só grava por cima depois que a versão de fora foi guardada.
+          if (await useApp.getState().keepExternalCopy(sceneId, err.diskText)) {
+            diskText.current = err.diskText;
+            return save(false);
+          }
         }
         console.error(err);
         setSaveState("error");
