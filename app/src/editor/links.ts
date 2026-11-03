@@ -60,7 +60,9 @@ function decorate(doc: PMNode, ctx: LinkContext): DecorationSet {
           class: id ? "wikilink" : "wikilink unresolved",
           "data-doc": id ?? "",
           "data-title": l.target,
-          title: id ? OPEN_HINT : `"${l.target}" ainda não existe. ${OPEN_HINT} para criar`,
+          title: id
+            ? OPEN_HINT
+            : `“${l.target}” ainda não existe. ${isMac ? "⌘" : "Ctrl"}+clique para criar como ideia`,
         }),
       );
     }

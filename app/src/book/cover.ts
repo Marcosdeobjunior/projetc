@@ -18,21 +18,23 @@ const px = (mm: number, dpi: number) => Math.round((mm / MM_PER_IN) * dpi);
 
 const images = new Map<string, Promise<HTMLImageElement | null>>();
 
-function loadImage(src: string): Promise<HTMLImageElement | null> {
-  if (!src) return Promise.resolve(null);
-  let p = images.get(src);
+/**
+ * Imagem de um anexo. O cache é pelo endereço blob:, que muda quando o
+ * projeto troca ou o arquivo é substituído (então nunca mostra a imagem errada).
+ */
+async function loadImage(src: string): Promise<HTMLImageElement | null> {
+  if (!src) return null;
+  const url = await attachmentUrl(src);
+  if (!url) return null;
+  let p = images.get(url);
   if (!p) {
-    p = attachmentUrl(src).then(
-      (url) =>
-        new Promise((resolve) => {
-          if (!url) return resolve(null);
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-          img.src = url;
-        }),
-    );
-    images.set(src, p);
+    p = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+    images.set(url, p);
   }
   return p;
 }
@@ -48,12 +50,30 @@ async function fontsReady(design: BookDesign) {
   ]).catch(() => undefined);
 }
 
+/** Quebra uma palavra maior que a linha em pedaços que cabem. */
+function splitWord(ctx: CanvasRenderingContext2D, word: string, max: number): string[] {
+  if (ctx.measureText(word).width <= max) return [word];
+  const out: string[] = [];
+  let piece = "";
+  for (const ch of word) {
+    if (piece && ctx.measureText(piece + ch).width > max) {
+      out.push(piece);
+      piece = ch;
+    } else piece += ch;
+  }
+  if (piece) out.push(piece);
+  return out;
+}
+
 /** Quebra o texto em linhas que cabem em `max` (respeita parágrafos). */
 export function wrap(ctx: CanvasRenderingContext2D, text: string, max: number): string[] {
   const lines: string[] = [];
   for (const para of text.split(/\n/)) {
     let line = "";
-    for (const word of para.split(/\s+/).filter(Boolean)) {
+    for (const word of para
+      .split(/\s+/)
+      .filter(Boolean)
+      .flatMap((w) => splitWord(ctx, w, max))) {
       const next = line ? `${line} ${word}` : word;
       if (ctx.measureText(next).width > max && line) {
         lines.push(line);
@@ -88,6 +108,44 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, r: Rect
   const w = img.naturalWidth * scale;
   const h = img.naturalHeight * scale;
   ctx.drawImage(img, r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h);
+}
+
+/** Linhas que cabem até `maxY`; a última leva "…" se o texto não coube todo. */
+function fitLines(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  y: number,
+  lineH: number,
+  maxY: number,
+  max: number,
+) {
+  const n = Math.max(0, Math.floor((maxY - y) / lineH) + 1);
+  if (lines.length <= n) return lines;
+  const out = lines.slice(0, n);
+  if (out.length) {
+    let last = out[out.length - 1]!;
+    while (last && ctx.measureText(last + "…").width > max) last = last.slice(0, -1);
+    out[out.length - 1] = last.trimEnd() + "…";
+  }
+  return out;
+}
+
+/** Diminui a fonte até o texto caber na largura (para nomes numa linha só). */
+function fitWidth(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: (size: number) => string,
+  size: number,
+  max: number,
+  min: number,
+) {
+  let s = size;
+  ctx.font = font(s);
+  while (s > min && ctx.measureText(text).width > max) {
+    s *= 0.92;
+    ctx.font = font(s);
+  }
+  return s;
 }
 
 function textBlock(
@@ -142,14 +200,23 @@ async function drawPart(
   ctx.fillStyle = c.textColor;
 
   if (front) {
-    const titleSize = Math.min(u(14), inner / 6.5);
-    ctx.font = `700 ${titleSize}px ${titleFont}`;
-    const titleLines = wrap(ctx, info.title, inner);
-    ctx.font = `400 ${titleSize * 0.42}px ${FONTS.literata.css}`;
-    const subLines = c.subtitle ? wrap(ctx, c.subtitle, inner) : [];
-    const blockH =
-      titleLines.length * titleSize * 1.08 +
-      (subLines.length ? titleSize * 0.4 + subLines.length * titleSize * 0.55 : 0);
+    // O bloco (título + subtítulo) diminui até caber entre o alto e o nome do autor.
+    const room = r.h - u(28) - u(46);
+    let titleSize = Math.min(u(14), inner / 6.5);
+    let titleLines: string[];
+    let subLines: string[];
+    let blockH: number;
+    for (;;) {
+      ctx.font = `700 ${titleSize}px ${titleFont}`;
+      titleLines = wrap(ctx, info.title, inner);
+      ctx.font = `400 ${titleSize * 0.42}px ${FONTS.literata.css}`;
+      subLines = c.subtitle ? wrap(ctx, c.subtitle, inner) : [];
+      blockH =
+        titleLines.length * titleSize * 1.08 +
+        (subLines.length ? titleSize * 0.4 + subLines.length * titleSize * 0.55 : 0);
+      if (blockH <= room || titleSize <= u(4)) break;
+      titleSize *= 0.9;
+    }
     const top =
       c.placement === "top"
         ? r.y + u(28)
@@ -167,37 +234,70 @@ async function drawPart(
       textBlock(ctx, subLines, r.x + r.w / 2, y + titleSize * 0.3, titleSize * 0.55);
     }
     if (info.author) {
-      ctx.font = `600 ${Math.min(u(5), titleSize * 0.38)}px ${FONTS.figtree.css}`;
       ctx.letterSpacing = `${u(0.6)}px`;
+      const author = info.author.toUpperCase();
+      fitWidth(
+        ctx,
+        author,
+        (sz) => `600 ${sz}px ${FONTS.figtree.css}`,
+        Math.min(u(5), titleSize * 0.38),
+        inner,
+        u(2.2),
+      );
       const authorY = c.placement === "bottom" ? r.y + u(26) : r.y + r.h - u(18);
-      textBlock(ctx, [info.author.toUpperCase()], r.x + r.w / 2, authorY, 0);
+      textBlock(ctx, [author], r.x + r.w / 2, authorY, 0);
       ctx.letterSpacing = "0px";
     }
   } else if (part === "back") {
+    // Espaço do código de barras (ISBN), no canto de baixo; o texto para antes dele.
+    const bw = u(42);
+    const bh = u(25);
+    const bx = r.x + r.w - pad - bw;
+    const by = r.y + r.h - u(14) - bh;
+    const maxY = (c.barcode ? by : r.y + r.h - u(10)) - u(6);
     let y = r.y + u(24);
     if (c.tagline) {
       ctx.fillStyle = c.accent;
       ctx.font = `italic 600 ${u(5)}px ${FONTS.literata.css}`;
-      y = textBlock(ctx, wrap(ctx, c.tagline, inner), r.x + r.w / 2, y, u(6.6)) + u(6);
+      y =
+        textBlock(
+          ctx,
+          fitLines(ctx, wrap(ctx, c.tagline, inner), y, u(6.6), maxY, inner),
+          r.x + r.w / 2,
+          y,
+          u(6.6),
+        ) + u(6);
       ctx.fillStyle = c.textColor;
     }
     ctx.font = `400 ${u(3.6)}px ${FONTS.literata.css}`;
-    const synopsis = c.synopsis || "Escreva a sinopse do livro na aba Capa → Quarta capa.";
+    // Sem sinopse: um lembrete só na prévia (nunca nos arquivos de impressão, a 300 dpi).
+    const preview = dpi < 200;
+    const synopsis =
+      c.synopsis || (preview ? "Escreva a sinopse em Diagramação → Quarta capa." : "");
     if (!c.synopsis) ctx.globalAlpha = 0.5;
-    y = textBlock(ctx, wrap(ctx, synopsis, inner), r.x + pad, y, u(5.4), "left");
+    y = textBlock(
+      ctx,
+      fitLines(ctx, wrap(ctx, synopsis, inner), y, u(5.4), maxY, inner),
+      r.x + pad,
+      y,
+      u(5.4),
+      "left",
+    );
     ctx.globalAlpha = 1;
-    if (c.authorBio && !c.flaps) {
+    if (c.authorBio && !c.flaps && y + u(8) < maxY) {
       ctx.font = `italic 400 ${u(3.1)}px ${FONTS.literata.css}`;
       ctx.globalAlpha = 0.85;
-      textBlock(ctx, wrap(ctx, c.authorBio, inner), r.x + pad, y + u(8), u(4.6), "left");
+      textBlock(
+        ctx,
+        fitLines(ctx, wrap(ctx, c.authorBio, inner), y + u(8), u(4.6), maxY, inner),
+        r.x + pad,
+        y + u(8),
+        u(4.6),
+        "left",
+      );
       ctx.globalAlpha = 1;
     }
     if (c.barcode) {
-      // Espaço do código de barras (ISBN), no canto de baixo.
-      const bw = u(42);
-      const bh = u(25);
-      const bx = r.x + r.w - pad - bw;
-      const by = r.y + r.h - u(14) - bh;
       ctx.fillStyle = "#fff";
       ctx.fillRect(bx, by, bw, bh);
       ctx.fillStyle = "#888";
@@ -208,25 +308,32 @@ async function drawPart(
     if (r.w > u(5)) {
       ctx.translate(r.x + r.w / 2, r.y + r.h / 2);
       ctx.rotate(Math.PI / 2); // texto de cima para baixo (ABNT NBR 12225)
-      const size = Math.min(r.w * 0.5, u(7));
+      // Autor e título numa linha só (ABNT: o nome do autor vem antes), diminuindo até caber.
       const sep = "   •   ";
-      ctx.font = `700 ${size}px ${titleFont}`;
-      const t = info.title;
-      ctx.font = `600 ${size * 0.72}px ${FONTS.figtree.css}`;
-      const a = info.author ? sep + info.author : "";
+      const a = info.author ? info.author + sep : "";
+      const room = r.h - u(20);
+      let size = Math.min(r.w * 0.5, u(7));
+      const measure = () => {
+        ctx.font = `700 ${size}px ${titleFont}`;
+        const tw = ctx.measureText(info.title).width;
+        ctx.font = `600 ${size * 0.72}px ${FONTS.figtree.css}`;
+        return { tw, aw: ctx.measureText(a).width };
+      };
+      let m = measure();
+      while (m.tw + m.aw > room && size > u(1.8)) {
+        size *= 0.92;
+        m = measure();
+      }
       ctx.textBaseline = "middle";
-      ctx.font = `700 ${size}px ${titleFont}`;
-      const tw = ctx.measureText(t).width;
-      ctx.font = `600 ${size * 0.72}px ${FONTS.figtree.css}`;
-      const aw = ctx.measureText(a).width;
-      let x = -(tw + aw) / 2;
+      let x = -(m.tw + m.aw) / 2;
       ctx.textAlign = "left";
-      ctx.font = `700 ${size}px ${titleFont}`;
-      ctx.fillText(t, x, 0);
-      x += tw;
       ctx.fillStyle = c.accent;
       ctx.font = `600 ${size * 0.72}px ${FONTS.figtree.css}`;
       ctx.fillText(a, x, 0);
+      x += m.aw;
+      ctx.fillStyle = c.textColor;
+      ctx.font = `700 ${size}px ${titleFont}`;
+      ctx.fillText(info.title, x, 0);
     }
   } else {
     // Orelhas: a da frente fala do livro; a de trás, do autor.
@@ -239,7 +346,15 @@ async function drawPart(
     y = textBlock(ctx, [heading.toUpperCase()], r.x + p, y, u(5), "left") + u(3);
     ctx.fillStyle = c.textColor;
     ctx.font = `400 ${u(3.3)}px ${FONTS.literata.css}`;
-    textBlock(ctx, wrap(ctx, text || "—", r.w - 2 * p), r.x + p, y, u(5), "left");
+    const lines = fitLines(
+      ctx,
+      wrap(ctx, text || "—", r.w - 2 * p),
+      y,
+      u(5),
+      r.y + r.h - u(16),
+      r.w - 2 * p,
+    );
+    textBlock(ctx, lines, r.x + p, y, u(5), "left");
   }
   ctx.restore();
 }

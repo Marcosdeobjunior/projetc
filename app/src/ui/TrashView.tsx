@@ -27,7 +27,7 @@ function describe(e: TrashEntry): { icon: string; what: string } {
     case "attachment":
       return { icon: ATTACHMENT_ICON[attachmentKind(item.name)], what: "Anexo" };
     case "backup":
-      return { icon: "history", what: "Cópia guardada ao restaurar uma versão" };
+      return { icon: "history", what: "Cópia de segurança" };
   }
 }
 
@@ -81,7 +81,7 @@ export function TrashView({ session }: { session: Session }) {
             entries.length > 0 &&
             (confirm === "all" ? (
               <div className="confirm-inline">
-                <span>Apagar de vez tudo o que está na lixeira?</span>
+                <span>Apagar de vez tudo o que está na Lixeira?</span>
                 <button
                   type="button"
                   className="btn danger sm"
@@ -96,7 +96,7 @@ export function TrashView({ session }: { session: Session }) {
               </div>
             ) : (
               <button type="button" className="btn ghost sm" onClick={() => setConfirm("all")}>
-                <Icon name="trash" size={15} /> Esvaziar lixeira
+                <Icon name="trash" size={15} /> Esvaziar Lixeira
               </button>
             ))}
         </header>
@@ -106,7 +106,7 @@ export function TrashView({ session }: { session: Session }) {
         ) : entries.length === 0 ? (
           <div className="trash-empty">
             <Icon name="trash" size={28} />
-            <p>A lixeira está vazia.</p>
+            <p>A Lixeira está vazia.</p>
           </div>
         ) : (
           <ol className="trash-list">

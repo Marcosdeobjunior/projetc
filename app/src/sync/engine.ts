@@ -211,6 +211,9 @@ const docText = (update: Uint8Array) => toPlainText(ydocJson(update));
 const words = (text: string) => text.toLocaleLowerCase("pt-BR").match(/[\p{L}\p{N}]+/gu) ?? [];
 const docMarkdown = (update: Uint8Array) => toMarkdown(ydocJson(update));
 
+/** Nome legível de um arquivo para a Lixeira (sem o caminho de pastas). */
+const fileLabel = (path: string) => `“${path.split("/").pop()}”`;
+
 export interface SyncResult {
   state: SyncState;
   /** Algo chegou do Drive: o app precisa reler o projeto. */
@@ -327,7 +330,7 @@ export async function applySync(
         else
           await moveToTrash(fs, a.path, {
             kind: "backup",
-            label: `${a.path} (excluído em outro computador)`,
+            label: `${fileLabel(a.path)} (excluído em outro computador)`,
           });
         break;
       case "merge": {
@@ -356,7 +359,7 @@ export async function applySync(
               fs,
               `${slugify(title)}.md`,
               new TextEncoder().encode(docMarkdown(update)),
-              `"${title}" — versão ${side} antes de mesclar (conferir)`,
+              `“${title}” — cópia ${side} antes de juntar as edições (confira)`,
             );
             result.keptBoth++;
           }
@@ -365,7 +368,12 @@ export async function applySync(
           base[a.path] = a.remote.md5;
         } else {
           await upload(a.path, local, a.remote.id);
-          await saveToTrash(fs, a.path, remote, `${a.path} — versão do Drive (conflito)`);
+          await saveToTrash(
+            fs,
+            a.path,
+            remote,
+            `${fileLabel(a.path)} — versão do Drive (alterado nos dois computadores)`,
+          );
           result.keptBoth++;
         }
         break;

@@ -251,7 +251,7 @@ export async function restoreProjectFiles(fs: VaultFs, version: Version): Promis
   for (const dir of [MANUSCRIPT_DIR, NOTES_DIR]) {
     await moveToTrash(fs, dir, {
       kind: "backup",
-      label: `${dir}/ antes de voltar para "${version.label}"`,
+      label: `${dir === "manuscrito" ? "Manuscrito" : "Notas"} antes de voltar para “${version.label}”`,
     });
   }
   const project: Project = {

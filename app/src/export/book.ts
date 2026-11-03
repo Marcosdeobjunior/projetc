@@ -98,6 +98,13 @@ export function clean(node: PMNode, images: boolean): PMNode | null {
   return { ...node, content };
 }
 
+/** Tira os anexos cujo arquivo não existe (em qualquer nível). */
+function dropMissing(nodes: PMNode[], images: Map<string, BookImage>): PMNode[] {
+  return nodes
+    .filter((n) => n.type !== "attachment" || images.has(String(n.attrs!.src)))
+    .map((n) => (n.content ? { ...n, content: dropMissing(n.content, images) } : n));
+}
+
 export async function buildBook(fs: VaultFs, project: Project, opts: ExportOptions): Promise<Book> {
   const wanted = new Set(opts.chapterIds);
   const chapters: BookChapter[] = [];
@@ -113,8 +120,14 @@ export async function buildBook(fs: VaultFs, project: Project, opts: ExportOptio
       const blocks = (doc.content ?? [])
         .map((b) => clean(b, opts.images))
         .filter((b): b is PMNode => b !== null);
-      for (const b of blocks) {
-        if (b.type !== "attachment") continue;
+      // Imagens em qualquer nível (também dentro de citações e listas).
+      const attachments: PMNode[] = [];
+      const collect = (n: PMNode) => {
+        if (n.type === "attachment") attachments.push(n);
+        n.content?.forEach(collect);
+      };
+      blocks.forEach(collect);
+      for (const b of attachments) {
         const src = String(b.attrs!.src);
         if (images.has(src)) continue;
         const bytes = await fs.readBytes(src);
@@ -124,7 +137,7 @@ export async function buildBook(fs: VaultFs, project: Project, opts: ExportOptio
       }
       scenes.push({
         title: s.title,
-        blocks: blocks.filter((b) => b.type !== "attachment" || images.has(String(b.attrs!.src))),
+        blocks: dropMissing(blocks, images),
       });
     }
     chapters.push({ number: chapters.length + 1, title: c.title, scenes });

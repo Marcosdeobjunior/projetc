@@ -95,6 +95,8 @@ export function Workspace({ session }: { session: Session }) {
   // Ctrl/⌘ + \ mostra ou esconde a barra lateral; Ctrl/⌘ + Shift + F abre a busca.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Esc fecha a gaveta do menu (telas pequenas).
+      if (e.key === "Escape") setNavOpen(false);
       if (!(e.ctrlKey || e.metaKey)) return;
       if (e.shiftKey && e.code === "KeyF") {
         e.preventDefault();
@@ -132,7 +134,7 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-close"
-            aria-label="Fechar menu"
+            aria-label="Fechar a barra lateral"
             onClick={closeNav}
           >
             <Icon name="close" />
@@ -140,8 +142,8 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-collapse"
-            aria-label="Recolher menu"
-            title={`Recolher menu (${shortcut("Mod+\\")})`}
+            aria-label="Recolher a barra lateral"
+            title={`Recolher a barra lateral (${shortcut("Mod+\\")})`}
             onClick={() => setCollapsed(true)}
           >
             <Icon name="sidebar" />
@@ -208,8 +210,8 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-toggle"
-            aria-label="Mostrar menu"
-            title={`Mostrar menu (${shortcut("Mod+\\")})`}
+            aria-label="Mostrar a barra lateral"
+            title={`Mostrar a barra lateral (${shortcut("Mod+\\")})`}
             onClick={showNav}
           >
             <Icon name="sidebar" />

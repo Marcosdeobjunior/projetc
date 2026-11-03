@@ -122,8 +122,8 @@ export function Home() {
               </p>
               <p className="muted">
                 Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
-                <code>manuscrito</code> e <code>.inkflow</code>. Os arquivos que já estão lá não são
-                alterados.
+                <code>manuscrito</code> e <code>.inkflow</code> e o arquivo <code>LEIA-ME.md</code>.
+                Os arquivos que já estão lá não são alterados.
               </p>
               <div className="convert-actions">
                 <button

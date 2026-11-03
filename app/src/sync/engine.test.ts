@@ -165,7 +165,7 @@ describe("sincronização", () => {
     const r = await sync(a, drive);
     expect(r.keptBoth).toBe(1);
     const [entry] = await listTrash(a);
-    expect(entry!.title).toBe('"Cena 1" — versão do Drive antes de mesclar (conferir)');
+    expect(entry!.title).toBe("“Cena 1” — cópia do Drive antes de juntar as edições (confira)");
     expect(await a.readText(entry!.path)).toContain("Acréscimo do PC.");
   });
 
@@ -190,7 +190,7 @@ describe("sincronização", () => {
       "Nova no notebook",
     ]);
     expect((await listTrash(b)).map((e) => e.title)).toEqual([
-      "manuscrito/capitulo-1/cena-1.md (excluído em outro computador)",
+      "“cena-1.md” (excluído em outro computador)",
     ]);
   });
 

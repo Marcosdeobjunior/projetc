@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp, type Session } from "../state/store";
-import { flushAll } from "../state/writes";
+import { flushAll, serial } from "../state/writes";
+import { DESIGN_FILE, loadDesign, type LayoutDesign } from "../book/design";
 import { exportBook, type ExportFormat, type ExportOptions } from "../export";
 import { buildBook, type Book } from "../export/book";
 import { bookHtml } from "../export/pdf";
@@ -89,16 +90,31 @@ export function ExportView({ session }: { session: Session }) {
     };
   }, [fs, project, opts]);
 
+  // Projeto gráfico (aba Diagramação): quando existe, o PDF usa ele.
+  const [layout, setLayout] = useState<LayoutDesign | null>(null);
+  useEffect(() => {
+    void serial(async () =>
+      (await fs.exists(DESIGN_FILE)) ? (await loadDesign(fs)).layout : null,
+    ).then(setLayout);
+  }, [fs]);
+  const usesDesign = opts.format === "pdf" && opts.style === "book" && layout !== null;
+
   const preview = useMemo(
     () =>
       book
-        ? bookHtml(book, opts, () => "").replace(
+        ? bookHtml(
+            book,
+            // O e-book é sempre no estilo livro.
+            opts.format === "epub" ? { ...opts, style: "book" } : opts,
+            () => "",
+            usesDesign ? layout! : undefined,
+          ).replace(
             "</style>",
             `html{background:#d9d9de} body{background:#fff;max-width:${opts.style === "manuscript" || opts.pageSize === "A4" ? 680 : 470}px;margin:24px auto;padding:56px 48px;box-shadow:0 10px 40px -20px #0006}
              .chapter,.title-page,.toc{border-bottom:1px dashed #ccc;padding-bottom:48px;margin-bottom:48px}</style>`,
           )
         : "",
-    [book, opts],
+    [book, opts, usesDesign, layout],
   );
 
   const chapters = project.chapters;
@@ -119,7 +135,9 @@ export function ExportView({ session }: { session: Session }) {
         showMessage(
           opts.format === "pdf"
             ? "Na janela de impressão, escolha “Salvar como PDF” (ou “Microsoft Print to PDF”)."
-            : "Livro exportado.",
+            : opts.format === "docx"
+              ? "Livro exportado. Ao abrir no Word, aceite atualizar os campos para o sumário mostrar as páginas."
+              : "Livro exportado.",
           "info",
         );
       }
@@ -206,7 +224,10 @@ export function ExportView({ session }: { session: Session }) {
                   ? "Times 12, espaço duplo, margens de 2,5 cm e cabeçalho com sobrenome, título e página: o formato que editoras e agentes pedem."
                   : "Serifa, recuo de parágrafo e cada capítulo começando numa página nova."}
             </p>
-            {opts.format !== "epub" && !manuscript && (
+            {usesDesign && (
+              <p className="hint">O PDF usa o tamanho, a fonte e as margens da aba Diagramação.</p>
+            )}
+            {opts.format !== "epub" && !manuscript && !usesDesign && (
               <label className="inline">
                 Página
                 <select

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useApp, type Session } from "../state/store";
-import { flushAll, serial } from "../state/writes";
+import { flushAll, registerFlush, serial } from "../state/writes";
 import {
   coverSpread,
   DEFAULT_DESIGN,
@@ -84,7 +84,23 @@ export function BookDesignView({ session }: { session: Session }) {
     void serial(() => loadDesign(fs)).then(setDesign);
   }, [fs]);
 
-  // Grava pouco depois de cada mudança.
+  // Gravações pendentes (projeto gráfico e autor). Gravam pouco depois de cada
+  // mudança, ao sair desta tela e antes de exportar ou sincronizar (flushAll).
+  const pending = useRef<{ design?: () => Promise<unknown>; author?: () => Promise<unknown> }>({});
+  useEffect(() => {
+    const holder = pending;
+    const flush = async () => {
+      const { design: d, author: a } = holder.current;
+      holder.current = {};
+      await Promise.all([d?.(), a?.()]);
+    };
+    const unregister = registerFlush(flush);
+    return () => {
+      unregister();
+      void flush();
+    };
+  }, []);
+
   const first = useRef(true);
   useEffect(() => {
     if (!design) return;
@@ -92,16 +108,23 @@ export function BookDesignView({ session }: { session: Session }) {
       first.current = false;
       return;
     }
-    const t = window.setTimeout(() => void serial(() => saveDesign(fs, design)), 500);
+    const save = () => serial(() => saveDesign(fs, design));
+    pending.current.design = save;
+    const t = window.setTimeout(() => {
+      if (pending.current.design === save) pending.current.design = undefined;
+      void save();
+    }, 500);
     return () => window.clearTimeout(t);
   }, [design, fs]);
 
   // O autor fica no projeto (usado também na exportação).
   useEffect(() => {
+    if ((project.author ?? "") === author.trim()) return;
+    const save = () => change((p) => ({ project: { ...p, author: author.trim() }, ops: [] }));
+    pending.current.author = save;
     const t = window.setTimeout(() => {
-      if ((project.author ?? "") !== author.trim()) {
-        void change((p) => ({ project: { ...p, author: author.trim() }, ops: [] }));
-      }
+      if (pending.current.author === save) pending.current.author = undefined;
+      void save();
     }, 600);
     return () => window.clearTimeout(t);
   }, [author, project.author, change]);
@@ -236,6 +259,7 @@ export function BookDesignView({ session }: { session: Session }) {
                 />
               </Field>
               <ImagePicker
+                trim={layout.trim}
                 label="Imagem da capa"
                 value={cover.image}
                 images={imageFiles}
@@ -275,7 +299,7 @@ export function BookDesignView({ session }: { session: Session }) {
                   onChange={(textColor) => setCover({ textColor })}
                 />
                 <Color
-                  label="Destaque"
+                  label="Cor de destaque"
                   value={cover.accent}
                   onChange={(accent) => setCover({ accent })}
                 />
@@ -286,7 +310,7 @@ export function BookDesignView({ session }: { session: Session }) {
                   onChange={(titleFont) => setCover({ titleFont })}
                 />
               </Field>
-              <Field label="Posição do título">
+              <Field label="Posição do título" group>
                 <div className="segmented wide" role="radiogroup">
                   {(
                     [
@@ -321,7 +345,10 @@ export function BookDesignView({ session }: { session: Session }) {
                   onChange={(e) => setCover({ tagline: e.target.value })}
                 />
               </Field>
-              <Field label="Sinopse" hint="Entre 100 e 200 palavras costuma caber bem.">
+              <Field
+                label="Sinopse"
+                hint="Entre 100 e 200 palavras costuma caber bem. Com orelhas, ela vai também na orelha da frente."
+              >
                 <textarea
                   rows={9}
                   value={cover.synopsis}
@@ -339,6 +366,7 @@ export function BookDesignView({ session }: { session: Session }) {
                 />
               </Field>
               <ImagePicker
+                trim={layout.trim}
                 label="Imagem de fundo da quarta capa"
                 value={cover.backImage}
                 images={imageFiles}
@@ -441,7 +469,7 @@ export function BookDesignView({ session }: { session: Session }) {
                   onChange={(size) => setLayout({ size })}
                 />
                 <Num
-                  label="Entrelinha"
+                  label="Entrelinha (× corpo)"
                   value={layout.leading}
                   step={0.05}
                   onChange={(leading) => setLayout({ leading })}
@@ -449,27 +477,27 @@ export function BookDesignView({ session }: { session: Session }) {
               </div>
               <div className="design-row">
                 <Num
-                  label="Margem de cima"
+                  label="Margem superior"
                   value={layout.marginTop}
                   onChange={(marginTop) => setLayout({ marginTop })}
                 />
                 <Num
-                  label="Margem de baixo"
+                  label="Margem inferior"
                   value={layout.marginBottom}
                   onChange={(marginBottom) => setLayout({ marginBottom })}
                 />
                 <Num
-                  label="Medianiz (costura)"
+                  label="Medianiz (margem interna)"
                   value={layout.marginInner}
                   onChange={(marginInner) => setLayout({ marginInner })}
                 />
                 <Num
-                  label="Margem de fora"
+                  label="Margem externa"
                   value={layout.marginOuter}
                   onChange={(marginOuter) => setLayout({ marginOuter })}
                 />
               </div>
-              <Field label="Ornamento entre cenas">
+              <Field label="Ornamento entre cenas" group>
                 <div className="segmented wide ornaments" role="radiogroup">
                   {ORNAMENTS.map((o) => (
                     <button
@@ -485,12 +513,12 @@ export function BookDesignView({ session }: { session: Session }) {
                 </div>
               </Field>
               <Check
-                label="Capitular (primeira letra grande no começo do capítulo)"
+                label="Capitular (primeira letra grande e primeira linha em versalete no começo do capítulo)"
                 checked={layout.dropCap}
                 onChange={(dropCap) => setLayout({ dropCap })}
               />
               <Check
-                label="Cabeçalho: título nas páginas pares, autor nas ímpares"
+                label="Cabeço (título corrente): autor nas páginas pares, título nas ímpares"
                 checked={layout.runningHeads}
                 onChange={(runningHeads) => setLayout({ runningHeads })}
               />
@@ -615,10 +643,34 @@ body { width: ${trim.w}mm; min-height: ${trim.h}mm; box-sizing: border-box; marg
   background: #fff; box-shadow: 0 10px 40px -20px #0006; }
 .title-page, .credits { display: none; }
 .chapter > header { margin-top: 10%; }
+figure img[src=""] { display: none; }
 </style></head><body>${book.chapters.map((c) => chapterHtml(c, opts, () => "")).join("")}</body></html>`;
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+/**
+ * Campo com título. `group`: para grupos de botões, que não podem ficar dentro
+ * de um <label> (clicar no título acionaria o primeiro botão).
+ */
+function Field({
+  label,
+  hint,
+  group,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  group?: boolean;
+  children: ReactNode;
+}) {
+  if (group) {
+    return (
+      <div className="design-field" role="group" aria-label={label}>
+        <span>{label}</span>
+        {children}
+        {hint && <small className="hint">{hint}</small>}
+      </div>
+    );
+  }
   return (
     <label className="design-field">
       <span>{label}</span>
@@ -665,7 +717,7 @@ function Num({
         value={value}
         onChange={(e) => {
           const v = Number(e.target.value);
-          if (v > 0) onChange(v);
+          if (e.target.value !== "" && v >= 0) onChange(v);
         }}
       />
     </label>
@@ -689,7 +741,7 @@ function Color({
       <input type="color" value={value || "#000000"} onChange={(e) => onChange(e.target.value)} />
       {optional && value && (
         <button type="button" className="link-btn" onClick={() => onChange("")}>
-          tirar
+          Remover
         </button>
       )}
     </label>
@@ -712,13 +764,18 @@ function FontSelect({ value, onChange }: { value: FontId; onChange(v: FontId): v
   );
 }
 
+/** Pixels para imprimir uma medida (mm, com a sangria) a 300 dpi. */
+const printPx = (mm: number) => Math.ceil(((mm + 6) / 25.4) * 300);
+
 function ImagePicker({
   label,
   value,
   images,
+  trim,
   onChange,
   onUpload,
 }: {
+  trim: LayoutDesign["trim"];
   label: string;
   value: string;
   images: string[];
@@ -739,7 +796,7 @@ function ImagePicker({
           ))}
         </select>
         <button type="button" className="btn ghost sm" onClick={() => input.current?.click()}>
-          Enviar imagem
+          Escolher imagem…
         </button>
         <input
           ref={input}
@@ -754,7 +811,8 @@ function ImagePicker({
         />
       </div>
       <small className="hint">
-        Use uma imagem grande (pelo menos 1800 × 2700 px) para a impressão sair nítida.
+        Para a impressão sair nítida, use uma imagem de pelo menos {printPx(TRIM[trim].w)} ×{" "}
+        {printPx(TRIM[trim].h)} px.
       </small>
     </div>
   );

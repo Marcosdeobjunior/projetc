@@ -42,7 +42,7 @@ const TABS: { id: SettingsTab; label: string; icon: string; project?: boolean }[
   { id: "geral", label: "Geral", icon: "settings" },
   { id: "sync", label: "Sincronização", icon: "cloud" },
   { id: "diagramacao", label: "Diagramação", icon: "book", project: true },
-  { id: "exportar", label: "Exportar", icon: "export", project: true },
+  { id: "exportar", label: "Exportação", icon: "export", project: true },
 ];
 
 /** Aba aberta por último (volta nela ao reabrir as Configurações). */
@@ -298,8 +298,8 @@ function SyncSection() {
                 label="Sincronizar este projeto"
                 hint={
                   sync.enabled
-                    ? `Pasta no Drive: InkFlow/${session.project.title}`
-                    : "Liga este projeto a uma pasta no seu Google Drive. Em outro computador, use “Baixar do Google Drive” na tela inicial."
+                    ? `Pasta no Drive: dentro de “InkFlow” (com o nome que o projeto tinha quando a sincronização foi ligada).`
+                    : "Liga este projeto a uma pasta no seu Google Drive. Em outro computador, conecte a mesma conta e, na tela inicial, use “Ver projetos no Drive” e depois “Baixar”."
                 }
               >
                 <Switch
@@ -388,8 +388,8 @@ function ClientForm({
         <span className="setting-label">Credenciais do Google</span>
         <span className="hint">
           Para conectar ao Drive, o InkFlow precisa de um “ID do cliente OAuth” do tipo “App para
-          computador”, criado no Google Cloud Console. O passo a passo está no README do projeto, em
-          “Sincronização com o Google Drive”.
+          computador”, criado no Google Cloud Console. O passo a passo está no Guia do usuário
+          (pasta docs do projeto), em “Sincronização com o Google Drive”.
         </span>
       </div>
       <label>

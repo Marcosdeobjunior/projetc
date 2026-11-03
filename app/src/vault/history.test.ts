@@ -67,7 +67,7 @@ describe("histórico de versões", () => {
     expect(trash.map((e) => e.item.kind)).toEqual(["backup"]);
     expect(
       await fs.readText(
-        `${trash.find((e) => e.title.startsWith("manuscrito"))!.path}/${restored.chapters[0]!.dir}/${scene.file}`,
+        `${trash.find((e) => e.title.startsWith("Manuscrito"))!.path}/${restored.chapters[0]!.dir}/${scene.file}`,
       ),
     ).toContain("Texto novo.");
   });

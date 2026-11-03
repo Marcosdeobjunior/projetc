@@ -9,7 +9,14 @@ import { interiorCss } from "../book/interior";
  */
 
 export const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  s
+    // Caracteres de controle (ex.: a quebra de linha que o Word cola) não são válidos em XML.
+    // eslint-disable-next-line no-control-regex -- é justamente o que precisa sair
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 /** Texto dentro de uma string CSS ("..."), sem como fechar a string nem a tag <style>. */
 export const cssString = (s: string) =>
@@ -44,9 +51,12 @@ export function blocksHtml(blocks: PMNode[], image: (src: string) => string): st
       const c = b.content ?? [];
       switch (b.type) {
         case "paragraph": {
-          const cls = first ? ' class="first"' : "";
+          if (!c.length) return "";
+          // Fala começando com travessão ou aspas: sem capitular (a letra grande seria o sinal).
+          const dialogue = /^[—–\-"“«']/.test(c[0]?.text ?? "");
+          const cls = [first && "first", dialogue && "dialogue"].filter(Boolean).join(" ");
           first = false;
-          return c.length ? `<p${cls}>${inline(c)}</p>` : "";
+          return `<p${cls ? ` class="${cls}"` : ""}>${inline(c)}</p>`;
         }
         case "heading": {
           first = true;

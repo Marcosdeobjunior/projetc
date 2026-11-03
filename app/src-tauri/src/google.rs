@@ -36,8 +36,6 @@ pub struct Tokens {
 #[derive(Deserialize)]
 struct TokenError {
     error: String,
-    #[serde(default)]
-    error_description: Option<String>,
 }
 
 fn err(e: impl std::fmt::Display) -> String {
@@ -114,7 +112,7 @@ fn respond(mut stream: &TcpStream, ok: bool) {
         )
     };
     let body = format!(
-        "<!doctype html><meta charset=utf-8><title>InkFlow</title>\
+        "<!doctype html><html lang=pt-BR><meta charset=utf-8><title>InkFlow</title>\
          <body style=\"font-family:system-ui;background:#0b0b0d;color:#ececf0;display:grid;place-items:center;height:100vh;margin:0\">\
          <div style=\"text-align:center\"><h1 style=\"color:#c4b5fd\">{title}</h1><p>{text}</p></div>"
     );
@@ -185,7 +183,10 @@ fn wait_for_code(listener: TcpListener, state: &str) -> CmdResult<String> {
         respond(&stream, false);
         return Err(match query_param(&line, "error").as_deref() {
             Some("access_denied") => "O acesso não foi autorizado.".into(),
-            Some(e) => format!("O Google recusou o login ({e})."),
+            Some("admin_policy_enforced" | "org_internal") => {
+                "A sua conta Google (de empresa ou escola) não permite este app. Use uma conta pessoal.".into()
+            }
+            Some(e) => format!("O Google recusou o login (código {e})."),
             None => "Resposta inesperada do Google.".into(),
         });
     }
@@ -197,7 +198,9 @@ async fn token_request(params: &[(&str, &str)]) -> CmdResult<Tokens> {
         .form(params)
         .send()
         .await
-        .map_err(|e| format!("Sem conexão com o Google: {e}"))?;
+        .map_err(|_| {
+            "Sem conexão com o Google. Verifique a internet e tente de novo.".to_string()
+        })?;
     let status = res.status();
     let text = res.text().await.map_err(err)?;
     if status.is_success() {
@@ -208,12 +211,11 @@ async fn token_request(params: &[(&str, &str)]) -> CmdResult<Tokens> {
         Some(e) if e.error == "invalid_grant" => {
             "A autorização do Google expirou. Conecte a conta de novo.".into()
         }
-        Some(e) => format!(
-            "O Google recusou ({}): {}",
-            e.error,
-            e.error_description.unwrap_or_default()
-        ),
-        None => format!("O Google respondeu {status}."),
+        Some(e) if e.error == "invalid_client" => {
+            "O ID do cliente ou a chave secreta estão errados. Confira em Configurações → Sincronização → Credenciais.".into()
+        }
+        Some(e) => format!("O Google recusou a conexão (código {}).", e.error),
+        None => format!("O Google recusou a conexão (código {}).", status.as_u16()),
     })
 }
 

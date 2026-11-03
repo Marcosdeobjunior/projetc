@@ -393,7 +393,7 @@ export function RowActions(props: {
 
 export function ConfirmRow({
   text,
-  detail = "O texto vai para a lixeira dentro da pasta do projeto.",
+  detail = "Vai para a Lixeira, dentro da pasta do projeto. Dá para restaurar.",
   onYes,
   onNo,
 }: {

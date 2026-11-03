@@ -145,7 +145,15 @@ export const useApp = create<AppState>((set, get) => {
     const project = await loadProject(fs);
     const { words, texts } = await readProjectTexts(fs, project);
     const attachments = await fs.list(ATTACHMENTS_DIR);
-    setAttachmentSource({ fs, open: (path) => void platform.openFile(root, path) });
+    setAttachmentSource({
+      fs,
+      open: (path) =>
+        void platform
+          .openFile(root, path)
+          .catch((err: unknown) =>
+            set({ message: typeof err === "string" ? err : describe(err), messageTone: "error" }),
+          ),
+    });
     await platform.rememberVault({
       root,
       title: project.title,
@@ -420,7 +428,7 @@ export const useApp = create<AppState>((set, get) => {
         get().setDocText(target, toPlainText(parseMarkdown(body)));
         get().openDoc(target);
         set({
-          message: `"${old?.title ?? "Texto"}" voltou a ser como estava em ${versionDate(version)}. Como estava antes ficou guardado no histórico.`,
+          message: `"${old?.title ?? "Texto"}" voltou a ser como estava em ${versionDate(version)}. A versão anterior ficou guardada no histórico.`,
           messageTone: "info",
         });
       }),
@@ -611,7 +619,8 @@ export const useApp = create<AppState>((set, get) => {
       );
       if (!ok) return false;
       set({
-        message: `"${doc.title}" foi alterada fora do InkFlow enquanto estava aberta. Para não perder nada, a versão de fora foi guardada como "${title}".`,
+        message: `O texto “${doc.title}” foi alterado fora do InkFlow enquanto estava aberto. Para não perder nada, a versão de fora foi guardada como “${title}”.`,
+        messageTone: "info",
       });
       return true;
     },

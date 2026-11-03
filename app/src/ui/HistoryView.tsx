@@ -92,6 +92,7 @@ export function HistoryView({ session }: { session: Session }) {
       (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
     );
   }, [version, current, project, selected]);
+  const same = rows?.filter((r) => r.status === "same").length ?? 0;
   const doc = rows?.find((r) => r.id === docId) ?? rows?.find((r) => r.status !== "same") ?? null;
 
   const groups = useMemo(() => {
@@ -131,7 +132,8 @@ export function HistoryView({ session }: { session: Session }) {
             <Icon name="save" size={15} /> Salvar versão agora
           </button>
           <p className="hint">
-            O app também guarda versões sozinho ao abrir o projeto e a cada 10 minutos de trabalho.
+            O app também guarda versões sozinho ao abrir e ao fechar o projeto e a cada 10 minutos,
+            quando algo mudou.
           </p>
         </form>
 
@@ -264,7 +266,7 @@ export function HistoryView({ session }: { session: Session }) {
                     >
                       {showSame
                         ? "Esconder os textos iguais a agora"
-                        : `Mostrar ${rows.filter((r) => r.status === "same").length} textos iguais a agora`}
+                        : `Mostrar ${same} ${same === 1 ? "texto igual" : "textos iguais"} a agora`}
                     </button>
                   </li>
                 )}
@@ -321,7 +323,7 @@ function DocRow({ row, on, onClick }: { row: DocComparison; on: boolean; onClick
         </span>
         <span className={"status-chip " + row.status}>{STATUS_LABEL[row.status]}</span>
         {row.status === "changed" && delta !== 0 && (
-          <span className="history-delta" title="Palavras de lá para cá">
+          <span className="history-delta" title="Diferença de palavras entre esta versão e agora">
             {signed(delta)}
           </span>
         )}

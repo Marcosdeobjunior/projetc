@@ -58,7 +58,7 @@ export function AttachmentsTree({ session }: { session: Session }) {
             confirming === name ? (
               <li key={name}>
                 <ConfirmRow
-                  text={`Mandar "${name}" para a lixeira?`}
+                  text={`Excluir “${name}”?`}
                   detail="Os textos que usam este arquivo vão mostrar que ele sumiu."
                   onYes={() => {
                     setConfirming(null);
@@ -93,8 +93,8 @@ export function AttachmentsTree({ session }: { session: Session }) {
                   <button
                     type="button"
                     className="icon-btn sm danger"
-                    title="Mandar para a lixeira"
-                    aria-label={`Mandar ${name} para a lixeira`}
+                    title="Excluir (vai para a Lixeira)"
+                    aria-label={`Excluir ${name}`}
                     onClick={() => setConfirming(name)}
                   >
                     <Icon name="trash" size={14} />

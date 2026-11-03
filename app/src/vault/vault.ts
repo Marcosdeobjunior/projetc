@@ -39,6 +39,8 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
     "LEIA-ME.md",
     `# ${project.title}\n\nEste é um projeto do InkFlow.\n\n` +
       "- `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.\n" +
+      "- `notas/` guarda os personagens, lugares e ideias.\n" +
+      "- `anexos/` guarda as imagens, vídeos, áudios e outros arquivos usados nos textos.\n" +
       "- `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.\n",
   );
   await saveProject(fs, project);
@@ -74,7 +76,9 @@ const safeName = (n: unknown) =>
  */
 export function validateProject(p: Project): void {
   const bad = (what: string) => {
-    throw new VaultError(`O arquivo .inkflow/project.json tem um problema (${what}).`);
+    throw new VaultError(
+      `Não foi possível abrir o projeto: a lista de capítulos e notas está danificada (${what}). Restaure uma cópia da pasta .inkflow ou fale com o suporte.`,
+    );
   };
   if (!p || typeof p !== "object" || !Array.isArray(p.chapters) || !Array.isArray(p.notes ?? []))
     bad("estrutura");

@@ -92,13 +92,16 @@ export class GoogleDrive implements Drive {
         return this.request(url, init, retry + 1);
       }
     }
-    let message = `O Google Drive respondeu ${res.status}.`;
-    try {
-      const body = (await res.json()) as { error?: { message?: string } };
-      if (body.error?.message) message = `Google Drive: ${body.error.message}`;
-    } catch {
-      // resposta sem JSON
-    }
+    const message =
+      res.status === 401
+        ? "A conexão com o Google expirou. Desconecte e conecte a conta de novo em Configurações → Sincronização."
+        : res.status === 403
+          ? "O Google Drive recusou o acesso (limite de uso ou permissão). Tente de novo mais tarde."
+          : res.status === 404
+            ? "Uma pasta ou arquivo do projeto sumiu do Google Drive. Desligue e ligue a sincronização deste projeto."
+            : res.status === 507 || res.status === 413
+              ? "Não há espaço suficiente no seu Google Drive."
+              : `O Google Drive não respondeu como esperado (código ${res.status}). Tente de novo.`;
     throw new DriveError(message, res.status);
   }
 

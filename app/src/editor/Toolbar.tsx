@@ -46,7 +46,7 @@ export function Toolbar({
   const blocks = [
     {
       id: "bullet",
-      label: "Lista",
+      label: "Lista com marcadores",
       icon: "list",
       on: state.bullet,
       run: () => chain().toggleBulletList().run(),

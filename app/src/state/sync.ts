@@ -160,8 +160,7 @@ export const useSync = create<SyncStore>((set, get) => {
           clientId: client.id,
           clientSecret: client.secret,
         });
-        if (!t.refresh_token)
-          throw "O Google não devolveu a autorização permanente. Tente de novo.";
+        if (!t.refresh_token) throw "O Google não concluiu a autorização. Tente conectar de novo.";
         access = { token: t.access_token, until: Date.now() + t.expires_in * 1000 };
         const account = { email: "", refreshToken: t.refresh_token };
         set({ account });
@@ -252,7 +251,7 @@ export const useSync = create<SyncStore>((set, get) => {
           set({ status: "idle", lastSync: result.state.lastSync });
           if (result.keptBoth > 0) {
             app.showMessage(
-              `${result.keptBoth} ${result.keptBoth === 1 ? "arquivo foi alterado" : "arquivos foram alterados"} aqui e em outro computador. Ficou a versão deste computador; a do Drive está na Lixeira.`,
+              `${result.keptBoth} ${result.keptBoth === 1 ? "texto ou arquivo mudou" : "textos ou arquivos mudaram"} aqui e em outro computador. Nada foi perdido: as cópias estão na Lixeira para você conferir.`,
               "info",
             );
           }

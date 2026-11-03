@@ -16,8 +16,9 @@ export function interiorCss(book: Book, l: LayoutDesign): string {
   const small = `${Math.max(7, l.size - 2.5)}pt ${font}`;
   const heads = l.runningHeads
     ? {
-        left: `@top-center { content: ${q(book.title)}; font: italic ${small}; }`,
-        right: `@top-center { content: ${q(book.author || book.title)}; font: italic ${small}; }`,
+        // Padrão editorial brasileiro: autor na página par (esquerda), título na ímpar (direita).
+        left: `@top-center { content: ${q(book.author || book.title)}; font: italic ${small}; }`,
+        right: `@top-center { content: ${q(book.title)}; font: italic ${small}; }`,
       }
     : { left: "", right: "" };
   return `
@@ -64,8 +65,8 @@ h2, h3, h4, h5 { font-family: ${font}; font-weight: 500; text-align: center; bre
 .ch-label { margin: 0 0 .7em; font-size: .78em; letter-spacing: .25em; text-transform: uppercase; }
 ${
   l.dropCap
-    ? `.chapter > p.first:first-of-type::first-letter { float: left; font-size: ${l.leading * 2.15}em; line-height: .82; padding: .06em .08em 0 0; font-weight: 500; }
-.chapter > p.first:first-of-type::first-line { font-variant: small-caps; letter-spacing: .04em; }`
+    ? `.chapter > p.first:not(.dialogue):first-of-type::first-letter { float: left; font-size: ${l.leading * 2.15}em; line-height: .82; padding: .06em .08em 0 0; font-weight: 500; }
+.chapter > p.first:not(.dialogue):first-of-type::first-line { font-variant: small-caps; letter-spacing: .04em; }`
     : ""
 }
 h3.scene { margin: 1.6em 0 .8em; font-size: 1.05em; }

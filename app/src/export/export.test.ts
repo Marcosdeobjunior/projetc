@@ -122,3 +122,25 @@ describe("exportação", () => {
     expect(html).toContain('<h3 class="scene">Na padaria</h3>');
   });
 });
+
+describe("casos difíceis da exportação", () => {
+  it("imagem dentro de citação e caracteres de controle", async () => {
+    const fs = new KeyValueFs(new MemoryStore(), "v");
+    const p = await createVault(fs, "Livro");
+    const sc = p.chapters[0]!.scenes[0]!;
+    await writeSceneMarkdown(
+      fs,
+      p,
+      sc.id,
+      "> ![foto](anexos/f.png)\n\nLinha\u000Bcolada do Word.\n\n— Fala com travessão.\n",
+    );
+    await fs.writeBytes("anexos/f.png", new Uint8Array([137, 80, 78, 71]));
+    const opts = options({ chapterIds: [p.chapters[0]!.id] });
+    const files = unzipSync(epub(await buildBook(fs, p, opts), opts, p.id));
+    const cap = strFromU8(files["OEBPS/cap1.xhtml"]!);
+    expect(cap).toContain('src="images/img1.png"');
+    expect(files["OEBPS/images/img1.png"]).toBeDefined();
+    expect(cap.includes("\u000B")).toBe(false);
+    expect(cap).toContain('class="dialogue"');
+  });
+});
