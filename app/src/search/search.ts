@@ -18,13 +18,30 @@ export interface Hit {
   to: number;
 }
 
-/** Tira acentos e maiúsculas sem mudar o tamanho do texto (as posições continuam valendo). */
+const MARKS = /\p{M}/gu;
+
+function foldChar(c: string) {
+  const f = c.normalize("NFD").replace(MARKS, "").toLowerCase();
+  return f.length === c.length ? f : c;
+}
+
+/** Textos já convertidos: buscar de novo (ou digitar a busca) não refaz o livro inteiro. */
+const foldCache = new Map<string, string>();
+
+/**
+ * Tira acentos e maiúsculas sem mudar o tamanho do texto (as posições continuam
+ * valendo). Converte o texto todo de uma vez e só trata letra por letra o que não é ASCII.
+ */
 export function fold(text: string): string {
-  let out = "";
-  for (const c of text) {
-    const f = c.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
-    out += f.length === c.length ? f : c;
-  }
+  const cached = foldCache.get(text);
+  if (cached !== undefined) return cached;
+  const lower = text.toLowerCase();
+  const out =
+    lower.length !== text.length
+      ? Array.from(text, foldChar).join("") // raro: maiúscula que vira duas letras (ex.: "İ")
+      : lower.replace(/[\u0080-\uffff]/gu, foldChar);
+  if (foldCache.size > 2000) foldCache.clear();
+  foldCache.set(text, out);
   return out;
 }
 

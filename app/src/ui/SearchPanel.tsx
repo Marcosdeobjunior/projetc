@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { useSearch } from "../state/search";
 import { searchProject, snippet } from "../search/search";
@@ -17,6 +17,12 @@ export function SearchPanel({ session, onOpen }: { session: Session; onOpen: () 
   const { query, exact, wholeWord, focusNonce, set, close, goTo } = useSearch();
   const input = useRef<HTMLInputElement>(null);
   const deferred = useDeferredValue(query);
+  // Os textos mudam a cada tecla no editor: a busca espera uma pausa para refazer.
+  const [texts, setTexts] = useState(session.texts);
+  useEffect(() => {
+    const t = window.setTimeout(() => setTexts(session.texts), 400);
+    return () => window.clearTimeout(t);
+  }, [session.texts]);
 
   useEffect(() => {
     input.current?.focus();
@@ -24,10 +30,11 @@ export function SearchPanel({ session, onOpen }: { session: Session; onOpen: () 
   }, [focusNonce]);
 
   const results = useMemo(
-    () => searchProject(session.project, session.texts, deferred, { exact, wholeWord }),
-    [session.project, session.texts, deferred, exact, wholeWord],
+    () => searchProject(session.project, texts, deferred, { exact, wholeWord }),
+    [session.project, texts, deferred, exact, wholeWord],
   );
-  const total = results.reduce((n, r) => n + r.hits.length, 0);
+  // Um texto que só tem o termo no título também conta como um resultado.
+  const total = results.reduce((n, r) => n + (r.hits.length || (r.inTitle ? 1 : 0)), 0);
   const chapterOf = useMemo(
     () => new Map(session.project.chapters.flatMap((c) => c.scenes.map((s) => [s.id, c.title]))),
     [session.project],
@@ -99,7 +106,7 @@ export function SearchPanel({ session, onOpen }: { session: Session; onOpen: () 
 
       <ol className="search-results">
         {results.map((r) => {
-          const texts = session.texts[r.doc.id] ?? "";
+          const docText = texts[r.doc.id] ?? "";
           const where =
             r.doc.type === "scene" ? chapterOf.get(r.doc.id) : KIND_LABEL[r.doc.type].one;
           return (
@@ -116,7 +123,7 @@ export function SearchPanel({ session, onOpen }: { session: Session; onOpen: () 
               </button>
               <ol className="search-snippets">
                 {r.hits.slice(0, MAX_SNIPPETS).map((h, i) => {
-                  const s = snippet(texts, h);
+                  const s = snippet(docText, h);
                   return (
                     <li key={h.from}>
                       <button type="button" onClick={() => open(r.doc.id, i)}>

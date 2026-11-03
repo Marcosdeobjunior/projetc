@@ -71,7 +71,17 @@ export function manuscriptWords(project: Project, texts: Record<string, string>)
   );
 }
 
-export const bodyWords = (body: string) => countWords(toPlainText(parseMarkdown(body)));
+/** Palavras de um texto em Markdown (guardadas: a comparação de versões pede as mesmas várias vezes). */
+const wordsCache = new Map<string, number>();
+export function bodyWords(body: string): number {
+  let n = wordsCache.get(body);
+  if (n === undefined) {
+    n = countWords(toPlainText(parseMarkdown(body)));
+    if (wordsCache.size > 5000) wordsCache.clear();
+    wordsCache.set(body, n);
+  }
+  return n;
+}
 
 export async function listVersions(fs: VaultFs): Promise<VersionInfo[]> {
   const raw = await fs.readText(INDEX);

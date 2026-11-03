@@ -28,6 +28,8 @@ import { MiniMap } from "../ui/MiniMap";
 import { useSettings } from "../state/settings";
 
 const SAVE_DELAY_MS = 700;
+/** Espera para atualizar contagem de palavras, links e busca enquanto digita. */
+const TEXT_DELAY_MS = 300;
 
 /**
  * Quantos editores estão usando cada documento agora. Em modo de desenvolvimento
@@ -87,6 +89,7 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const dirty = useRef(false);
   /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
   const diskText = useRef(loaded.diskText);
+  const textTimer = useRef<number | undefined>(undefined);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const minimap = useSettings((s) => s.minimap);
@@ -133,7 +136,15 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         },
       },
       // Durante a criação o texto chega como uma atualização; quem cuida dele é o efeito abaixo.
-      onUpdate: ({ editor }) => editor.isInitialized && setDocText(sceneId, editor.getText()),
+      // A contagem de palavras e o texto para links/busca esperam uma pausa na
+      // digitação: atualizar a cada tecla redesenharia o app inteiro.
+      onUpdate: ({ editor }) => {
+        if (!editor.isInitialized) return;
+        window.clearTimeout(textTimer.current);
+        textTimer.current = window.setTimeout(() => {
+          if (!editor.isDestroyed) setDocText(sceneId, editor.getText());
+        }, TEXT_DELAY_MS);
+      },
     },
     [doc],
   );
@@ -147,16 +158,26 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   // O editor é criado durante a renderização: o texto inicial vai para o estado
   // do app depois dela (atualizar o app no meio da renderização gera aviso do React).
   useEffect(() => {
-    if (editor) setDocText(sceneId, editor.getText());
+    if (!editor) return;
+    setDocText(sceneId, editor.getText());
+    // Ao sair do texto, a contagem fica com o que foi digitado por último.
+    const timer = textTimer;
+    return () => {
+      window.clearTimeout(timer.current);
+      if (!editor.isDestroyed) setDocText(sceneId, editor.getText());
+    };
   }, [editor, sceneId, setDocText]);
 
   // Títulos mudaram (nota criada ou renomeada): redesenha os links do texto.
-  const titles = useApp((s) =>
-    s.session
-      ? allDocs(s.session.project)
-          .map((d) => d.title)
-          .join("\n")
-      : "",
+  const project = useApp((s) => s.session?.project);
+  const titles = useMemo(
+    () =>
+      project
+        ? allDocs(project)
+            .map((d) => d.title)
+            .join("\n")
+        : "",
+    [project],
   );
   useEffect(() => {
     if (editor && !editor.isDestroyed)

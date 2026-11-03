@@ -49,8 +49,10 @@ function inline(nodes: PMNode[] = []): string {
     const marks = MARK_ORDER.filter((m) => node.marks?.some((x) => x.type === m));
     const text = node.text;
 
-    // Texto só com espaços não abre nem fecha marcação.
+    // Texto só com espaços fica fora das marcações: fechar antes evita "**A ***B*",
+    // que o app entende mas Obsidian e outros leitores de Markdown não.
     if (!text.trim()) {
+      closeTo(0);
       out += text;
       continue;
     }

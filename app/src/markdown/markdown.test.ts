@@ -134,3 +134,19 @@ describe("toPlainText", () => {
     expect(toPlainText(doc(p(t("um")), p(t("dois"))))).toBe("um\ndois");
   });
 });
+
+describe("Markdown que outros programas entendem", () => {
+  it("fecha a marcação antes do espaço entre palavras formatadas", () => {
+    const p = (...content: PMNode[]): PMNode => ({ type: "paragraph", content });
+    const t = (text: string, ...marks: string[]): PMNode => ({
+      type: "text",
+      text,
+      marks: marks.map((type) => ({ type })),
+    });
+    const md = toMarkdown({
+      type: "doc",
+      content: [p(t("A", "bold"), { type: "text", text: " " }, t("B", "italic"))],
+    });
+    expect(md).toBe("**A** *B*\n");
+  });
+});

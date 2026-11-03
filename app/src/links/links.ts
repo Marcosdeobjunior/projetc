@@ -65,9 +65,15 @@ export interface Mention {
   to: number;
 }
 
+const titlesCache = new WeakMap<Project, Map<string, string>>();
+
 export function findMentions(project: Project, text: string, matcher = mentionMatcher(project)) {
   if (!matcher) return [];
-  const byTitle = new Map(project.notes.map((n) => [n.title.trim(), n.id]));
+  let byTitle = titlesCache.get(project);
+  if (!byTitle) {
+    byTitle = new Map(project.notes.map((n) => [n.title.trim(), n.id]));
+    titlesCache.set(project, byTitle);
+  }
   const out: Mention[] = [];
   for (const m of text.matchAll(matcher)) {
     const noteId = byTitle.get(m[2]!);

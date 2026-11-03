@@ -1,5 +1,5 @@
 import { Extension, type Editor } from "@tiptap/core";
-import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
+import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";
@@ -40,46 +40,82 @@ export const REFRESH_LINKS = "inkflowRefreshLinks";
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 const OPEN_HINT = `${isMac ? "⌘" : "Ctrl"}+clique para abrir`;
 
-function decorate(doc: PMNode, ctx: LinkContext): DecorationSet {
+/** Marcações de links e menções de um parágrafo (ou título) que começa em `pos`. */
+function decorateBlock(node: PMNode, pos: number, ctx: LinkContext): Decoration[] {
+  const decos: Decoration[] = [];
+  // Folhas (quebra de linha) contam como 1 caractere, igual ao tamanho delas no documento.
+  let text = "";
+  node.forEach((child) => {
+    text += child.isText ? child.text! : "\n";
+  });
+  const at = (offset: number) => pos + 1 + offset;
+
+  const linked: [number, number][] = [];
+  for (const l of findWikiLinks(text)) {
+    const id = ctx.resolve(l.target);
+    linked.push([l.from, l.to]);
+    decos.push(
+      Decoration.inline(at(l.from), at(l.to), {
+        class: id ? "wikilink" : "wikilink unresolved",
+        "data-doc": id ?? "",
+        "data-title": l.target,
+        title: id
+          ? OPEN_HINT
+          : `“${l.target}” ainda não existe. ${isMac ? "⌘" : "Ctrl"}+clique para criar como ideia`,
+      }),
+    );
+  }
+  for (const m of ctx.mentions(text)) {
+    if (m.noteId === ctx.currentId) continue;
+    if (linked.some(([a, b]) => m.from < b && m.to > a)) continue;
+    decos.push(
+      Decoration.inline(at(m.from), at(m.to), {
+        class: "mention",
+        "data-doc": m.noteId,
+        title: OPEN_HINT,
+      }),
+    );
+  }
+  return decos;
+}
+
+export function decorate(doc: PMNode, ctx: LinkContext): DecorationSet {
   const decos: Decoration[] = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
-    // Folhas (quebra de linha) contam como 1 caractere, igual ao tamanho delas no documento.
-    let text = "";
-    node.forEach((child) => {
-      text += child.isText ? child.text! : "\n";
-    });
-    const at = (offset: number) => pos + 1 + offset;
-
-    const linked: [number, number][] = [];
-    for (const l of findWikiLinks(text)) {
-      const id = ctx.resolve(l.target);
-      linked.push([l.from, l.to]);
-      decos.push(
-        Decoration.inline(at(l.from), at(l.to), {
-          class: id ? "wikilink" : "wikilink unresolved",
-          "data-doc": id ?? "",
-          "data-title": l.target,
-          title: id
-            ? OPEN_HINT
-            : `“${l.target}” ainda não existe. ${isMac ? "⌘" : "Ctrl"}+clique para criar como ideia`,
-        }),
-      );
-    }
-    for (const m of ctx.mentions(text)) {
-      if (m.noteId === ctx.currentId) continue;
-      if (linked.some(([a, b]) => m.from < b && m.to > a)) continue;
-      decos.push(
-        Decoration.inline(at(m.from), at(m.to), {
-          class: "mention",
-          "data-doc": m.noteId,
-          title: OPEN_HINT,
-        }),
-      );
-    }
+    decos.push(...decorateBlock(node, pos, ctx));
     return false;
   });
   return DecorationSet.create(doc, decos);
+}
+
+/**
+ * Depois de uma edição, refaz só os parágrafos que mudaram (o resto só muda
+ * de posição). Num texto longo, refazer tudo a cada tecla pesava.
+ */
+export function redecorate(tr: Transaction, old: DecorationSet, ctx: LinkContext): DecorationSet {
+  let set = old.map(tr.mapping, tr.doc);
+  const ranges: [number, number][] = [];
+  tr.mapping.maps.forEach((map, i) => {
+    map.forEach((_a, _b, from, to) => {
+      // Leva a faixa até o documento final, passando pelas edições seguintes.
+      const rest = tr.mapping.slice(i + 1);
+      ranges.push([rest.map(from, -1), rest.map(to, 1)]);
+    });
+  });
+  const size = tr.doc.content.size;
+  const done = new Set<number>();
+  for (const [a, b] of ranges) {
+    tr.doc.nodesBetween(Math.max(0, a - 1), Math.min(size, b + 1), (node, pos) => {
+      if (!node.isTextblock) return true;
+      if (done.has(pos)) return false;
+      done.add(pos);
+      set = set.remove(set.find(pos, pos + node.nodeSize));
+      set = set.add(tr.doc, decorateBlock(node, pos, ctx));
+      return false;
+    });
+  }
+  return set;
 }
 
 const linksKey = new PluginKey<DecorationSet>("inkflowLinks");
@@ -90,7 +126,11 @@ function linksPlugin(ctx: LinkContext) {
     state: {
       init: (_, state) => decorate(state.doc, ctx),
       apply: (tr, old, _prev, state: EditorState) =>
-        tr.docChanged || tr.getMeta(REFRESH_LINKS) ? decorate(state.doc, ctx) : old,
+        tr.getMeta(REFRESH_LINKS)
+          ? decorate(state.doc, ctx)
+          : tr.docChanged
+            ? redecorate(tr, old, ctx)
+            : old,
     },
     props: {
       decorations: (state) => linksKey.getState(state),

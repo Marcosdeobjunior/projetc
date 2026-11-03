@@ -43,3 +43,15 @@ describe("busca", () => {
     ]);
   });
 });
+
+describe("busca rápida", () => {
+  it("dá o mesmo resultado de antes e é rápida num livro grande", () => {
+    const sample = "Ação, CORAÇÃO e Ímpeto: «Já é», disse ÉLCIO — 😀 ok. ";
+    expect(fold(sample)).toBe("acao, coracao e impeto: «ja e», disse elcio — 😀 ok. ");
+    expect(fold(sample)).toHaveLength(sample.length);
+    const book = sample.repeat(30_000); // ~1,7 milhão de caracteres
+    const t0 = performance.now();
+    fold(book + "x");
+    expect(performance.now() - t0).toBeLessThan(1500);
+  });
+});

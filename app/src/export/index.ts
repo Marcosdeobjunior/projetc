@@ -2,8 +2,6 @@ import { strToU8 } from "fflate";
 import type { Platform, VaultFs } from "../platform/types";
 import type { Project } from "../manuscript/types";
 import { buildBook, fileName, type ExportFormat, type ExportOptions } from "./book";
-import { docx, prepareImage } from "./docx";
-import { epub } from "./epub";
 import { printPdf } from "./pdf";
 import { textExport } from "./text";
 import { DESIGN_FILE, loadDesign, TRIM } from "../book/design";
@@ -33,7 +31,9 @@ export async function exportBook(
     return true;
   }
   let data: Uint8Array;
+  // Word e EPUB carregam as bibliotecas só na hora de exportar (o app abre mais rápido).
   if (opts.format === "docx") {
+    const { docx, prepareImage } = await import("./docx");
     const images = new Map(
       await Promise.all(
         [...book.images].map(async ([src, img]) => [src, await prepareImage(img)] as const),
@@ -41,6 +41,7 @@ export async function exportBook(
     );
     data = await docx(book, opts, images);
   } else if (opts.format === "epub") {
+    const { epub } = await import("./epub");
     let cover: Uint8Array | undefined;
     if (design) {
       const trim = TRIM[design.layout.trim];
