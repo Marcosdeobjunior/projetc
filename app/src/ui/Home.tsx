@@ -34,6 +34,7 @@ export function Home() {
   const vaults = useApp((s) => s.vaults);
   const busy = useApp((s) => s.busy);
   const openVault = useApp((s) => s.openVault);
+  const createTestBook = useApp((s) => s.createTestBook);
   const openExistingFolder = useApp((s) => s.openExistingFolder);
   const folderToConvert = useApp((s) => s.folderToConvert);
   const createVaultInFolder = useApp((s) => s.createVaultInFolder);
@@ -104,6 +105,17 @@ export function Home() {
           onSelect={setSelected}
           onOpen={(root) => void openVault(root)}
           onCreate={() => setCreating(true)}
+          onCreateTestBook={
+            import.meta.env.DEV
+              ? () =>
+                  void createTestBook().then((r) => {
+                    if (r.ok) {
+                      setQuery("");
+                      setSelected(r.root);
+                    }
+                  })
+              : undefined
+          }
           onOpenFolder={() => void openExistingFolder()}
           onSettings={() => setSettings(true)}
         />

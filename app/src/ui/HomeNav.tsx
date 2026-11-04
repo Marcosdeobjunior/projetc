@@ -148,6 +148,8 @@ export function HomeSidebar(props: {
   onSelect(root: string): void;
   onOpen(root: string): void;
   onCreate(): void;
+  /** Só no modo de desenvolvimento: cria o livro grande de teste. */
+  onCreateTestBook?(): void;
   onOpenFolder(): void;
   onSettings(): void;
 }) {
@@ -180,6 +182,18 @@ export function HomeSidebar(props: {
           <Icon name="plus" size={17} />
           <span className="nav-label">Novo projeto</span>
         </button>
+        {props.onCreateTestBook && (
+          <button
+            type="button"
+            className="nav-item"
+            title={collapsed ? "Livro de teste" : "Cria um livro grande, só para testes"}
+            disabled={props.busy}
+            onClick={after(props.onCreateTestBook)}
+          >
+            <Icon name="bulb" size={17} />
+            <span className="nav-label">Livro de teste</span>
+          </button>
+        )}
         {props.desktop && (
           <button
             type="button"

@@ -26,6 +26,7 @@ import {
   writeSceneMarkdown,
 } from "../vault/vault";
 import { createSampleVault } from "../vault/sample";
+import { TEST_BOOK_TITLE, createTestBook } from "../vault/testBook";
 import { flushAll, serial } from "./writes";
 import { renameLinksInOpenEditors } from "./openEditors";
 
@@ -64,6 +65,8 @@ interface AppState {
    * coloca na lista. Devolve a raiz criada, ou o erro (null = cancelado).
    */
   createVault(title: string, opts?: { open?: boolean }): Promise<CreateResult>;
+  /** Cria o livro grande de teste (só no modo de desenvolvimento), sem abrir. */
+  createTestBook(): Promise<CreateResult>;
   openVault(root: string): Promise<void>;
   openExistingFolder(): Promise<void>;
   createVaultInFolder(folder: ChosenFolder): Promise<void>;
@@ -211,6 +214,42 @@ export const useApp = create<AppState>((set, get) => {
     }
   }
 
+  /** Escolhe a pasta, monta o projeto com `build` e depois abre ou só lista. */
+  async function make(
+    clean: string,
+    build: (fs: VaultFs) => Promise<unknown>,
+    openAfter: boolean,
+    /** Mostra o erro no aviso do topo (a janela de novo projeto mostra o dela). */
+    toast = openAfter,
+  ): Promise<CreateResult> {
+    const { platform } = get();
+    if (!platform) return { ok: false, error: null };
+    set({ busy: true });
+    try {
+      const root = await platform.chooseNewVaultRoot(folderName(clean));
+      if (!root) return { ok: false, error: null };
+      await build(platform.fs(root));
+      if (openAfter) {
+        await open(root);
+      } else {
+        await platform.rememberVault({
+          root,
+          title: clean,
+          location: platform.kind === "desktop" ? root : "Salvo neste navegador",
+          openedAt: Date.now(),
+        });
+        await get().refreshVaults();
+      }
+      return { ok: true, root };
+    } catch (err) {
+      const message = describe(err);
+      if (toast) set({ message });
+      return { ok: false, error: message };
+    } finally {
+      set({ busy: false });
+    }
+  }
+
   return {
     platform: null,
     vaults: [],
@@ -232,35 +271,13 @@ export const useApp = create<AppState>((set, get) => {
       if (platform) set({ vaults: await platform.knownVaults() });
     },
 
-    async createVault(title, opts = {}) {
-      const { platform } = get();
-      if (!platform) return { ok: false, error: null };
-      const openAfter = opts.open !== false;
-      set({ busy: true });
-      try {
-        const clean = title.trim() || "Meu livro";
-        const root = await platform.chooseNewVaultRoot(folderName(clean));
-        if (!root) return { ok: false, error: null };
-        await createVault(platform.fs(root), clean);
-        if (openAfter) {
-          await open(root);
-        } else {
-          await platform.rememberVault({
-            root,
-            title: clean,
-            location: platform.kind === "desktop" ? root : "Salvo neste navegador",
-            openedAt: Date.now(),
-          });
-          await get().refreshVaults();
-        }
-        return { ok: true, root };
-      } catch (err) {
-        const message = describe(err);
-        if (openAfter) set({ message });
-        return { ok: false, error: message };
-      } finally {
-        set({ busy: false });
-      }
+    createVault(title, opts = {}) {
+      const clean = title.trim() || "Meu livro";
+      return make(clean, (fs) => createVault(fs, clean), opts.open !== false);
+    },
+
+    createTestBook() {
+      return make(TEST_BOOK_TITLE, createTestBook, false, true);
     },
 
     openVault: (root) =>
