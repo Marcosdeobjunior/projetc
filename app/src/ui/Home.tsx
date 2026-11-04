@@ -1,10 +1,18 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { useApp } from "../state/store";
 import { formatCount } from "../manuscript/wordCount";
 import type { VaultRef } from "../platform";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
+import { NewProjectDialog } from "./NewProjectDialog";
 import {
   coverHue,
   quoteOfTheDay,
@@ -25,7 +33,6 @@ export function Home() {
   const platform = useApp((s) => s.platform);
   const vaults = useApp((s) => s.vaults);
   const busy = useApp((s) => s.busy);
-  const createVault = useApp((s) => s.createVault);
   const openVault = useApp((s) => s.openVault);
   const openExistingFolder = useApp((s) => s.openExistingFolder);
   const folderToConvert = useApp((s) => s.folderToConvert);
@@ -38,7 +45,6 @@ export function Home() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
   const [quoteOffset, setQuoteOffset] = useState(0);
@@ -125,28 +131,6 @@ export function Home() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </label>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title="Configurações"
-                  aria-label="Configurações"
-                  onClick={() => setSettings(true)}
-                >
-                  <Icon name="settings" />
-                </button>
-                {desktop && (
-                  <button
-                    type="button"
-                    className="pbtn"
-                    disabled={busy}
-                    onClick={() => void openExistingFolder()}
-                  >
-                    <Icon name="folder" size={15} /> Abrir projeto
-                  </button>
-                )}
-                <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
-                  <Icon name="plus" size={15} /> Novo projeto
-                </button>
               </div>
             </header>
 
@@ -156,45 +140,6 @@ export function Home() {
                   ? "Prévia no navegador: este navegador não permite guardar dados, então os projetos somem ao fechar a página."
                   : "Prévia no navegador: os projetos ficam guardados só neste navegador. No app desktop, cada projeto é uma pasta no seu computador."}
               </p>
-            )}
-
-            {creating && (
-              <form
-                className="panel new-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void createVault(title).then(() => {
-                    setTitle("");
-                    setCreating(false);
-                  });
-                }}
-              >
-                <label htmlFor="project-title" className="kicker">
-                  Novo projeto
-                </label>
-                <div className="field-row">
-                  <input
-                    id="project-title"
-                    autoFocus
-                    value={title}
-                    placeholder="Nome do livro. Ex.: A Casa das Marés"
-                    maxLength={120}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Escape" && setCreating(false)}
-                  />
-                  <button type="submit" className="pbtn accent" disabled={busy}>
-                    Criar projeto
-                  </button>
-                  <button type="button" className="pbtn" onClick={() => setCreating(false)}>
-                    Cancelar
-                  </button>
-                </div>
-                {desktop && (
-                  <p className="hint">
-                    Em seguida você escolhe em qual pasta do computador ele será salvo.
-                  </p>
-                )}
-              </form>
             )}
 
             {folderToConvert && (
@@ -245,7 +190,7 @@ export function Home() {
                         void forgetVault(current.root);
                       }}
                     />
-                    <BookPreview vault={current} stats={stats[current.root]} />
+                    <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
                   </div>
                 ) : (
                   <div className="panel empty-library">
@@ -334,6 +279,17 @@ export function Home() {
           </div>
         </main>
       </div>
+      {creating && (
+        <NewProjectDialog
+          desktop={desktop}
+          onClose={() => setCreating(false)}
+          onCreated={(root) => {
+            setCreating(false);
+            setQuery("");
+            setSelected(root);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -459,6 +415,11 @@ function firstSentence(text: string): string {
   return s.length > 90 ? s.slice(0, 90).trimEnd() + "…" : s;
 }
 
+/** Graus de giro por pixel arrastado: 720px de arrasto dão uma volta inteira. */
+const DEG_PER_PX = 0.5;
+/** Ângulo de descanso do livro (o mesmo de antes do giro existir). */
+const REST_Y = -32;
+
 /** O livro em 3D, fechado, como sai da diagramação. */
 function BookPreview({
   vault,
@@ -469,10 +430,55 @@ function BookPreview({
 }) {
   const style = { "--hue": coverHue(vault.title) } as CSSProperties;
   const line = stats?.excerpt ? firstSentence(stats.excerpt) : "";
+  // Giro em torno do eixo vertical, arrastando na horizontal. O livro não sai
+  // do lugar: só o ângulo muda, e ao soltar ele para onde está. O ângulo vai
+  // direto no estilo, sem re-renderizar o React a cada movimento.
+  const body = useRef<HTMLDivElement>(null);
+  const angle = useRef(REST_Y);
+  const drag = useRef<{ id: number; x: number; from: number } | null>(null);
+
+  const apply = (deg: number) => {
+    angle.current = deg;
+    body.current?.style.setProperty("--ry", `${deg}deg`);
+  };
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); // não seleciona texto nem arrasta a imagem
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.currentTarget.classList.add("dragging");
+    drag.current = { id: e.pointerId, x: e.clientX, from: angle.current };
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d?.id !== e.pointerId) return;
+    apply(d.from + (e.clientX - d.x) * DEG_PER_PX);
+  };
+  const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.id !== e.pointerId) return;
+    drag.current = null;
+    e.currentTarget.classList.remove("dragging");
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    apply(angle.current + (e.key === "ArrowRight" ? 15 : -15));
+  };
   return (
     <figure className="book-preview">
-      <div className="book3d" style={style} aria-hidden="true">
-        <div className="book3d-body">
+      <div
+        className="book3d"
+        style={style}
+        role="img"
+        aria-label={`Capa de ${vault.title}. Arraste para os lados ou use as setas para girar o livro.`}
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onLostPointerCapture={onPointerEnd}
+        onKeyDown={onKeyDown}
+      >
+        <div className="book3d-body" ref={body}>
           <div className="book3d-face book3d-back" />
           <div className="book3d-face book3d-pages" />
           <div className="book3d-face book3d-top" />

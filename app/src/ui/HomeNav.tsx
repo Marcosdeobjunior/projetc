@@ -1,6 +1,7 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import type { VaultRef } from "../platform";
 import { useSettings } from "../state/settings";
+import { syncStatus, useSync } from "../state/sync";
 import { Icon, Quill } from "./Icon";
 import { coverHue } from "./library";
 
@@ -56,7 +57,7 @@ export function folderName(v: VaultRef, desktop: boolean): string {
   return parts[parts.length - 1] ?? v.title;
 }
 
-/** Topo do app: [botão da barra] [logo] [nome] | [pasta ativa] [•]. */
+/** Topo do app: [botão da barra] [logo] [nome] | [• sincronização] [pasta ativa]. */
 export function AppBar(props: {
   collapsed: boolean;
   onToggle(): void;
@@ -97,17 +98,42 @@ export function AppBar(props: {
           </button>
         )}
         <span className="appbar-sep" aria-hidden="true" />
+        <SyncIndicator />
         {props.folder ? (
           <span className="appbar-folder" title={props.folderTitle ?? props.folder}>
             <span className="sr-only">Pasta ativa: </span>
             <span className="appbar-folder-name">{props.folder}</span>
-            <span className="pulse" aria-hidden="true" />
           </span>
         ) : (
           <span className="appbar-folder none">Nenhuma pasta ativa</span>
         )}
       </div>
     </header>
+  );
+}
+
+/** Ponto pulsante com o estado da sincronização; a explicação aparece ao passar o mouse. */
+function SyncIndicator() {
+  const enabled = useSync((s) => s.enabled);
+  const online = useSync((s) => s.online);
+  const error = useSync((s) => s.error);
+  const status = syncStatus({ enabled, online, error });
+  const tipId = useId();
+  return (
+    <span
+      className={"sync " + (status.ok ? "ok" : "bad")}
+      data-sync={status.kind}
+      tabIndex={0}
+      role="status"
+      aria-label={status.label}
+      aria-describedby={tipId}
+    >
+      <span className="pulse" aria-hidden="true" />
+      <span id={tipId} role="tooltip" className="sync-tip">
+        <b>{status.label}</b>
+        {status.detail}
+      </span>
+    </span>
   );
 }
 
@@ -210,17 +236,6 @@ export function HomeSidebar(props: {
         >
           <Icon name="settings" size={17} />
           <span className="nav-label">Configurações</span>
-        </button>
-        <button
-          type="button"
-          className="nav-item nav-collapse"
-          title={tip("Expandir barra")}
-          aria-expanded={!collapsed}
-          aria-controls="home-nav"
-          onClick={props.onToggle}
-        >
-          <Icon name="chevron" size={17} />
-          <span className="nav-label">Recolher</span>
         </button>
       </div>
     </nav>

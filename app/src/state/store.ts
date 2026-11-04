@@ -43,6 +43,8 @@ export interface Session {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+export type CreateResult = { ok: true; root: string } | { ok: false; error: string | null };
+
 interface AppState {
   platform: (Platform & { persistent?: boolean }) | null;
   vaults: VaultRef[];
@@ -57,7 +59,11 @@ interface AppState {
 
   init(): Promise<void>;
   refreshVaults(): Promise<void>;
-  createVault(title: string): Promise<void>;
+  /**
+   * Cria um projeto. Por padrão já abre o projeto; com `open: false` só o
+   * coloca na lista. Devolve a raiz criada, ou o erro (null = cancelado).
+   */
+  createVault(title: string, opts?: { open?: boolean }): Promise<CreateResult>;
   openVault(root: string): Promise<void>;
   openExistingFolder(): Promise<void>;
   createVaultInFolder(folder: ChosenFolder): Promise<void>;
@@ -226,16 +232,36 @@ export const useApp = create<AppState>((set, get) => {
       if (platform) set({ vaults: await platform.knownVaults() });
     },
 
-    createVault: (title) =>
-      guarded(async () => {
-        const { platform } = get();
-        if (!platform) return;
+    async createVault(title, opts = {}) {
+      const { platform } = get();
+      if (!platform) return { ok: false, error: null };
+      const openAfter = opts.open !== false;
+      set({ busy: true });
+      try {
         const clean = title.trim() || "Meu livro";
         const root = await platform.chooseNewVaultRoot(folderName(clean));
-        if (!root) return;
+        if (!root) return { ok: false, error: null };
         await createVault(platform.fs(root), clean);
-        await open(root);
-      }),
+        if (openAfter) {
+          await open(root);
+        } else {
+          await platform.rememberVault({
+            root,
+            title: clean,
+            location: platform.kind === "desktop" ? root : "Salvo neste navegador",
+            openedAt: Date.now(),
+          });
+          await get().refreshVaults();
+        }
+        return { ok: true, root };
+      } catch (err) {
+        const message = describe(err);
+        if (openAfter) set({ message });
+        return { ok: false, error: message };
+      } finally {
+        set({ busy: false });
+      }
+    },
 
     openVault: (root) =>
       guarded(async () => {
