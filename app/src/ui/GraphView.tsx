@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { buildGraph, type NodeType } from "../links/links";
 import { KIND_LABEL } from "../links/context";
-import { COLOR_VAR, mountGraph, type View } from "./graphCanvas";
+import { mountGraph, type View } from "./graphCanvas";
 import { Icon } from "./Icon";
 
 const TYPES: { type: NodeType; label: string }[] = [
@@ -61,7 +61,7 @@ export function GraphView({ session }: { session: Session }) {
             aria-pressed={!hidden.has(t.type)}
             onClick={() => toggle(t.type)}
           >
-            <i style={{ background: `var(${COLOR_VAR[t.type]})` }} />
+            <i />
             {t.label}
           </button>
         ))}

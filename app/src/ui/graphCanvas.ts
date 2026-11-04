@@ -10,23 +10,18 @@ import {
   type SimulationLinkDatum,
   type SimulationNodeDatum,
 } from "d3-force";
-import type { Graph, GraphEdge, GraphNode, NodeType } from "../links/links";
+import type { Graph, GraphEdge, GraphNode } from "../links/links";
+import { clockFor, cycleAt, drawStar, isLightTheme, type StarClock } from "./starGlyph";
 
 /*
  * Desenho interativo do grafo num <canvas>, usado pelo grafo completo e pelo
  * minimapa: arrastar pontos, mover a visão, zoom com a roda, destacar os
- * vizinhos ao passar o mouse e clicar para abrir.
+ * vizinhos ao passar o mouse e clicar para abrir. Cada texto é uma estrela
+ * (veja starGlyph.ts) cujo brilho muda de cor no próprio ritmo.
  */
 
 type SimNode = GraphNode & SimulationNodeDatum;
 type SimLink = SimulationLinkDatum<SimNode> & { kind: GraphEdge["kind"] };
-
-export const COLOR_VAR: Record<NodeType, string> = {
-  scene: "--node-scene",
-  personagens: "--node-person",
-  lugares: "--node-place",
-  ideias: "--node-idea",
-};
 
 export interface View {
   x: number;
@@ -108,6 +103,8 @@ export function mountGraph(
   };
 
   const fresh = nodes.some((n) => n.x === undefined);
+  const clocks = new Map<string, StarClock>(nodes.map((n) => [n.id, clockFor(n.id)]));
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)");
   const css = (name: string) => getComputedStyle(box).getPropertyValue(name).trim();
 
   const draw = () => {
@@ -141,33 +138,32 @@ export function mountGraph(
 
     const fg = css("--fg");
     const muted = css("--muted");
+    const light = isLightTheme();
+    const now = performance.now();
+    // A sombra borrada pesa; em grafos grandes o halo sozinho já dá o brilho.
+    const blur = nodes.length <= 80;
     const size = compact ? 11 : 12;
     ctx.font = `500 ${size / Math.max(0.75, k)}px ${css("--font-ui")}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     for (const n of nodes) {
       const r = radius(n);
+      const R = r * 2.3;
       ctx.globalAlpha = lit(n.id) ? 1 : 0.18;
-      ctx.fillStyle = css(COLOR_VAR[n.type]);
       const lead = n.id === activeId || n === hover;
-      // Brilho em volta da estrela: mais forte na estrela em foco.
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.shadowBlur = (lead ? 16 : 8) * Math.min(1, k);
-      starPath(ctx, n.x!, n.y!, r * 1.45);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      if (lead) {
-        ctx.strokeStyle = fg;
-        ctx.lineWidth = 1.4 / k;
-        ctx.stroke();
-      }
+      // O texto aberto e a estrela sob o mouse brilham mais.
+      drawStar(ctx, n.x!, n.y!, R, cycleAt(clocks.get(n.id)!, now, still.matches), {
+        light,
+        boost: lead ? 1.5 : 1,
+        blur,
+      });
       // Rótulos aparecem com zoom, ou no ponto destacado e nos vizinhos.
       const showLabel =
         compact || k > 0.9 || (focus && lit(n.id)) || n.degree >= 4 || n.id === activeId;
       if (showLabel) {
         ctx.globalAlpha = lit(n.id) ? 0.95 : 0.15;
         ctx.fillStyle = compact && n.id !== activeId && n !== hover ? muted : fg;
-        ctx.fillText(n.title, n.x!, n.y! + r * 1.3 + 4 / k);
+        ctx.fillText(n.title, n.x!, n.y! + R * 0.95 + 2 / k);
       }
     }
     ctx.globalAlpha = 1;
@@ -175,6 +171,18 @@ export function mountGraph(
   const schedule = () => {
     if (!frame) frame = requestAnimationFrame(draw);
   };
+
+  // O brilho das estrelas é animado: redesenha ~30 vezes por segundo enquanto
+  // a página está visível, a menos que o sistema peça menos movimento.
+  let twinkle = 0;
+  let last = 0;
+  const animate = (t: number) => {
+    twinkle = requestAnimationFrame(animate);
+    if (still.matches || document.hidden || t - last < 33) return;
+    last = t;
+    schedule();
+  };
+  twinkle = requestAnimationFrame(animate);
   sim.on("tick", () => {
     for (const n of nodes) positions.set(n.id, { x: n.x!, y: n.y! });
     schedule();
@@ -374,6 +382,7 @@ export function mountGraph(
       mo.disconnect();
       mq.removeEventListener("change", schedule);
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(twinkle);
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);
@@ -382,19 +391,4 @@ export function mountGraph(
       canvas.removeEventListener("wheel", wheel);
     },
   };
-}
-
-/** Estrela de 5 pontas centrada em (x, y), com a ponta para cima. */
-function starPath(ctx: CanvasRenderingContext2D, x: number, y: number, outer: number) {
-  const inner = outer * 0.45;
-  ctx.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const r = i % 2 ? inner : outer;
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    const px = x + Math.cos(a) * r;
-    const py = y + Math.sin(a) * r;
-    if (i) ctx.lineTo(px, py);
-    else ctx.moveTo(px, py);
-  }
-  ctx.closePath();
 }
