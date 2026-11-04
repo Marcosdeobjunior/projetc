@@ -4,6 +4,7 @@ import { formatCount } from "../manuscript/wordCount";
 import type { VaultRef } from "../platform";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
+import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import {
   coverHue,
   quoteOfTheDay,
@@ -42,6 +43,7 @@ export function Home() {
   const [settings, setSettings] = useState(false);
   const [quoteOffset, setQuoteOffset] = useState(0);
   const desktop = platform?.kind === "desktop";
+  const nav = useHomeNav();
 
   const recent = useMemo(
     () => [...vaults].sort((a, b) => (b.openedAt ?? 0) - (a.openedAt ?? 0)),
@@ -77,233 +79,260 @@ export function Home() {
   }
 
   return (
-    <div className="projects">
-      <div className="projects-inner">
-        <header className="projects-head">
-          <div className="projects-brand">
-            <Emblem />
-            <div>
-              <h1>Projetos</h1>
-              <p>Seus mundos. Suas histórias. Seu legado.</p>
-            </div>
-          </div>
-          <div className="projects-actions">
-            <label className="search">
-              <Icon name="search" size={15} />
-              <span className="sr-only">Buscar projeto</span>
-              <input
-                type="search"
-                value={query}
-                placeholder="Buscar por título…"
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              className="icon-btn"
-              title="Configurações"
-              aria-label="Configurações"
-              onClick={() => setSettings(true)}
-            >
-              <Icon name="settings" />
-            </button>
-            {desktop && (
-              <button
-                type="button"
-                className="pbtn"
-                disabled={busy}
-                onClick={() => void openExistingFolder()}
-              >
-                <Icon name="folder" size={15} /> Abrir projeto
-              </button>
-            )}
-            <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
-              <Icon name="plus" size={15} /> Novo projeto
-            </button>
-          </div>
-        </header>
-
-        {!desktop && (
-          <p className="notice">
-            {platform?.persistent === false
-              ? "Prévia no navegador: este navegador não permite guardar dados, então os projetos somem ao fechar a página."
-              : "Prévia no navegador: os projetos ficam guardados só neste navegador. No app desktop, cada projeto é uma pasta no seu computador."}
-          </p>
+    <div className={"projects" + (nav.collapsed ? " nav-collapsed" : "")}>
+      <AppBar
+        collapsed={nav.collapsed}
+        onToggle={nav.toggle}
+        folder={current ? folderName(current, desktop) : null}
+        folderTitle={current?.location}
+        onEditName={() => setSettings(true)}
+      />
+      <div className="projects-body">
+        <HomeSidebar
+          collapsed={nav.collapsed}
+          onToggle={nav.toggle}
+          desktop={desktop}
+          busy={busy}
+          vaults={recent}
+          activeRoot={current?.root ?? null}
+          onSelect={setSelected}
+          onOpen={(root) => void openVault(root)}
+          onCreate={() => setCreating(true)}
+          onOpenFolder={() => void openExistingFolder()}
+          onSettings={() => setSettings(true)}
+        />
+        {!nav.collapsed && (
+          <div className="home-nav-scrim" aria-hidden="true" onClick={nav.toggle} />
         )}
-
-        {creating && (
-          <form
-            className="panel new-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void createVault(title).then(() => {
-                setTitle("");
-                setCreating(false);
-              });
-            }}
-          >
-            <label htmlFor="project-title" className="kicker">
-              Novo projeto
-            </label>
-            <div className="field-row">
-              <input
-                id="project-title"
-                autoFocus
-                value={title}
-                placeholder="Nome do livro. Ex.: A Casa das Marés"
-                maxLength={120}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Escape" && setCreating(false)}
-              />
-              <button type="submit" className="pbtn accent" disabled={busy}>
-                Criar projeto
-              </button>
-              <button type="button" className="pbtn" onClick={() => setCreating(false)}>
-                Cancelar
-              </button>
-            </div>
-            {desktop && (
-              <p className="hint">
-                Em seguida você escolhe em qual pasta do computador ele será salvo.
-              </p>
-            )}
-          </form>
-        )}
-
-        {folderToConvert && (
-          <div className="panel convert" role="alertdialog" aria-labelledby="convert-title">
-            <p id="convert-title">
-              A pasta <b>{folderToConvert.name}</b> ainda não é um projeto do InkFlow.
-            </p>
-            <p className="muted">
-              Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
-              <code>manuscrito</code> e <code>.inkflow</code>. Os arquivos que já estão lá não são
-              alterados.
-            </p>
-            <div className="convert-actions">
-              <button
-                type="button"
-                className="pbtn accent"
-                disabled={busy}
-                onClick={() => void createVaultInFolder(folderToConvert)}
-              >
-                Criar projeto nesta pasta
-              </button>
-              <button type="button" className="pbtn" onClick={() => void openExistingFolder()}>
-                Escolher outra pasta
-              </button>
-              <button type="button" className="pbtn" onClick={cancelFolderToConvert}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="projects-grid">
-          <div className="projects-main">
-            {current ? (
-              <div className="featured">
-                <SelectedCard
-                  vault={current}
-                  stats={stats[current.root]}
-                  busy={busy}
-                  desktop={desktop}
-                  confirming={confirming === current.root}
-                  onOpen={() => void openVault(current.root)}
-                  onAskRemove={() => setConfirming(current.root)}
-                  onCancelRemove={() => setConfirming(null)}
-                  onRemove={() => {
-                    setConfirming(null);
-                    setSelected(null);
-                    void forgetVault(current.root);
-                  }}
-                />
-                <BookPreview vault={current} stats={stats[current.root]} />
+        <main className="projects-content">
+          <div className="projects-inner">
+            <header className="projects-head">
+              <div className="projects-brand">
+                <Emblem />
+                <div>
+                  <h1>Projetos</h1>
+                  <p>Seus mundos. Suas histórias. Seu legado.</p>
+                </div>
               </div>
-            ) : (
-              <div className="panel empty-library">
-                <h2>Sua biblioteca está vazia</h2>
-                <p className="muted">Crie o primeiro livro para começar.</p>
+              <div className="projects-actions">
+                <label className="search">
+                  <Icon name="search" size={15} />
+                  <span className="sr-only">Buscar projeto</span>
+                  <input
+                    type="search"
+                    value={query}
+                    placeholder="Buscar por título…"
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Configurações"
+                  aria-label="Configurações"
+                  onClick={() => setSettings(true)}
+                >
+                  <Icon name="settings" />
+                </button>
+                {desktop && (
+                  <button
+                    type="button"
+                    className="pbtn"
+                    disabled={busy}
+                    onClick={() => void openExistingFolder()}
+                  >
+                    <Icon name="folder" size={15} /> Abrir projeto
+                  </button>
+                )}
                 <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
                   <Icon name="plus" size={15} /> Novo projeto
                 </button>
               </div>
+            </header>
+
+            {!desktop && (
+              <p className="notice">
+                {platform?.persistent === false
+                  ? "Prévia no navegador: este navegador não permite guardar dados, então os projetos somem ao fechar a página."
+                  : "Prévia no navegador: os projetos ficam guardados só neste navegador. No app desktop, cada projeto é uma pasta no seu computador."}
+              </p>
             )}
 
-            {recent.length > 0 && (
-              <section aria-labelledby="recent-title">
-                <div className="row-title">
-                  <h2 id="recent-title" className="kicker">
-                    {query ? "Resultados" : "Projetos recentes"}
-                  </h2>
-                  <span className="count-pill">{filtered.length}</span>
+            {creating && (
+              <form
+                className="panel new-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void createVault(title).then(() => {
+                    setTitle("");
+                    setCreating(false);
+                  });
+                }}
+              >
+                <label htmlFor="project-title" className="kicker">
+                  Novo projeto
+                </label>
+                <div className="field-row">
+                  <input
+                    id="project-title"
+                    autoFocus
+                    value={title}
+                    placeholder="Nome do livro. Ex.: A Casa das Marés"
+                    maxLength={120}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === "Escape" && setCreating(false)}
+                  />
+                  <button type="submit" className="pbtn accent" disabled={busy}>
+                    Criar projeto
+                  </button>
+                  <button type="button" className="pbtn" onClick={() => setCreating(false)}>
+                    Cancelar
+                  </button>
                 </div>
-                {filtered.length === 0 ? (
-                  <p className="muted">Nenhum projeto com “{query}”.</p>
-                ) : (
-                  <ul className="shelf">
-                    {filtered.map((v) => (
-                      <ShelfBook
-                        key={v.root}
-                        vault={v}
-                        stats={stats[v.root]}
-                        goal={goals[v.root]}
-                        active={v.root === current?.root}
-                        onSelect={() => setSelected(v.root)}
-                        onOpen={() => void openVault(v.root)}
-                      />
-                    ))}
-                  </ul>
+                {desktop && (
+                  <p className="hint">
+                    Em seguida você escolhe em qual pasta do computador ele será salvo.
+                  </p>
                 )}
-              </section>
+              </form>
             )}
-          </div>
 
-          <aside className="projects-side">
-            <section className="panel" aria-labelledby="summary-title">
-              <h2 id="summary-title" className="kicker">
-                Resumo da biblioteca
-              </h2>
-              <div className="tiles">
-                <Tile n={vaults.length} label="Projetos" />
-                <Tile n={total((s) => s.chapters)} label="Capítulos" />
-                <Tile n={total((s) => s.words)} label="Palavras" />
-                <Tile n={total((s) => s.scenes)} label="Cenas" />
-                <Tile n={total((s) => s.characters)} label="Personagens" />
-                <Tile n={total((s) => s.places)} label="Lugares" />
+            {folderToConvert && (
+              <div className="panel convert" role="alertdialog" aria-labelledby="convert-title">
+                <p id="convert-title">
+                  A pasta <b>{folderToConvert.name}</b> ainda não é um projeto do InkFlow.
+                </p>
+                <p className="muted">
+                  Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
+                  <code>manuscrito</code> e <code>.inkflow</code>. Os arquivos que já estão lá não
+                  são alterados.
+                </p>
+                <div className="convert-actions">
+                  <button
+                    type="button"
+                    className="pbtn accent"
+                    disabled={busy}
+                    onClick={() => void createVaultInFolder(folderToConvert)}
+                  >
+                    Criar projeto nesta pasta
+                  </button>
+                  <button type="button" className="pbtn" onClick={() => void openExistingFolder()}>
+                    Escolher outra pasta
+                  </button>
+                  <button type="button" className="pbtn" onClick={cancelFolderToConvert}>
+                    Cancelar
+                  </button>
+                </div>
               </div>
-            </section>
+            )}
 
-            <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+            <div className="projects-grid">
+              <div className="projects-main">
+                {current ? (
+                  <div className="featured">
+                    <SelectedCard
+                      vault={current}
+                      stats={stats[current.root]}
+                      busy={busy}
+                      desktop={desktop}
+                      confirming={confirming === current.root}
+                      onOpen={() => void openVault(current.root)}
+                      onAskRemove={() => setConfirming(current.root)}
+                      onCancelRemove={() => setConfirming(null)}
+                      onRemove={() => {
+                        setConfirming(null);
+                        setSelected(null);
+                        void forgetVault(current.root);
+                      }}
+                    />
+                    <BookPreview vault={current} stats={stats[current.root]} />
+                  </div>
+                ) : (
+                  <div className="panel empty-library">
+                    <h2>Sua biblioteca está vazia</h2>
+                    <p className="muted">Crie o primeiro livro para começar.</p>
+                    <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
+                      <Icon name="plus" size={15} /> Novo projeto
+                    </button>
+                  </div>
+                )}
 
-            <Progress vaults={recent} stats={stats} goals={goals} />
+                {recent.length > 0 && (
+                  <section aria-labelledby="recent-title">
+                    <div className="row-title">
+                      <h2 id="recent-title" className="kicker">
+                        {query ? "Resultados" : "Projetos recentes"}
+                      </h2>
+                      <span className="count-pill">{filtered.length}</span>
+                    </div>
+                    {filtered.length === 0 ? (
+                      <p className="muted">Nenhum projeto com “{query}”.</p>
+                    ) : (
+                      <ul className="shelf">
+                        {filtered.map((v) => (
+                          <ShelfBook
+                            key={v.root}
+                            vault={v}
+                            stats={stats[v.root]}
+                            goal={goals[v.root]}
+                            active={v.root === current?.root}
+                            onSelect={() => setSelected(v.root)}
+                            onOpen={() => void openVault(v.root)}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )}
+              </div>
 
-            <section className="panel" aria-labelledby="activity-title">
-              <h2 id="activity-title" className="kicker">
-                Atividade recente
-              </h2>
-              {recent.length === 0 ? (
-                <p className="muted small">Nada por aqui ainda.</p>
-              ) : (
-                <ul className="activity">
-                  {activity(recent, stats).map((a) => (
-                    <li key={a.root + a.kind}>
-                      <span className="activity-dot">
-                        <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
-                      </span>
-                      <span>
-                        <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
-                        <small>
-                          {timeAgo(a.at)} · {a.title}
-                        </small>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </aside>
-        </div>
+              <aside className="projects-side">
+                <section className="panel" aria-labelledby="summary-title">
+                  <h2 id="summary-title" className="kicker">
+                    Resumo da biblioteca
+                  </h2>
+                  <div className="tiles">
+                    <Tile n={vaults.length} label="Projetos" />
+                    <Tile n={total((s) => s.chapters)} label="Capítulos" />
+                    <Tile n={total((s) => s.words)} label="Palavras" />
+                    <Tile n={total((s) => s.scenes)} label="Cenas" />
+                    <Tile n={total((s) => s.characters)} label="Personagens" />
+                    <Tile n={total((s) => s.places)} label="Lugares" />
+                  </div>
+                </section>
+
+                <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+
+                <Progress vaults={recent} stats={stats} goals={goals} />
+
+                <section className="panel" aria-labelledby="activity-title">
+                  <h2 id="activity-title" className="kicker">
+                    Atividade recente
+                  </h2>
+                  {recent.length === 0 ? (
+                    <p className="muted small">Nada por aqui ainda.</p>
+                  ) : (
+                    <ul className="activity">
+                      {activity(recent, stats).map((a) => (
+                        <li key={a.root + a.kind}>
+                          <span className="activity-dot">
+                            <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
+                          </span>
+                          <span>
+                            <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
+                            <small>
+                              {timeAgo(a.at)} · {a.title}
+                            </small>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </aside>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

@@ -1249,6 +1249,17 @@ p {
 .setting-label {
   font-weight: 600;
 }
+.text-input {
+  width: min(260px, 100%);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--page);
+}
+.text-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
 .switch {
   position: relative;
   width: 42px;
@@ -1724,10 +1735,14 @@ p {
   --p-fg: #eef3f8;
   --p-muted: #9fb0c3;
   --p-faint: #6b7a8e;
+  --appbar-h: 56px;
+  --nav-w: 232px;
+  --nav-rail: 60px;
+  --nav-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   color: var(--p-fg);
-  padding: 32px max(16px, env(safe-area-inset-right, 0px)) 48px
-    max(16px, env(safe-area-inset-left, 0px));
   background:
     radial-gradient(1px 1px at 12% 18%, #fff8 50%, transparent 51%),
     radial-gradient(1px 1px at 72% 9%, #fff6 50%, transparent 51%),
@@ -1768,7 +1783,8 @@ p {
   --p-faint: #8b879c;
 }
 .projects-inner {
-  max-width: 1280px;
+  /* Ocupa ~95% da área ao lado da barra lateral. */
+  width: 95%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -1799,6 +1815,302 @@ p {
 }
 .projects .warn {
   color: var(--danger);
+}
+
+/* Topo do app: logo, nome do escritor e pasta ativa */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--appbar-h);
+  padding: 0 max(14px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--p-line);
+  background: color-mix(in srgb, var(--p-bg) 80%, transparent);
+  backdrop-filter: blur(10px);
+}
+.appbar-id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.appbar-logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.appbar-user {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(28ch, 40vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 15px/1.2 var(--font-brand);
+  letter-spacing: 0.02em;
+  color: var(--p-fg);
+}
+.appbar-user.empty {
+  padding: 4px 10px;
+  border: 1px dashed var(--p-line-hi);
+  border-radius: 999px;
+  background: none;
+  color: var(--p-muted);
+  font: 500 12px/1.2 var(--font-ui);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.appbar-user.empty:hover {
+  color: var(--p-teal);
+}
+.appbar-sep {
+  width: 1px;
+  height: 18px;
+  flex: none;
+  background: var(--p-line-hi);
+}
+.appbar-folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  font: 600 13px/1.2 var(--font-ui);
+  color: var(--p-teal);
+}
+.appbar-folder-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appbar-folder.none {
+  color: var(--p-faint);
+  font-weight: 500;
+}
+/* Ponto que "respira" ao lado da pasta ativa. */
+.pulse {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 60%, transparent);
+}
+.pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ok);
+  animation: pulse 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Barra lateral */
+.projects-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr);
+  transition: grid-template-columns 0.24s var(--nav-ease);
+}
+.nav-collapsed .projects-body {
+  grid-template-columns: var(--nav-rail) minmax(0, 1fr);
+}
+.home-nav {
+  position: sticky;
+  top: var(--appbar-h);
+  height: calc(100vh - var(--appbar-h));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 10px 12px max(10px, env(safe-area-inset-left, 0px));
+  overflow: hidden auto;
+  border-right: 1px solid var(--p-line);
+  background: color-mix(in srgb, var(--p-panel) 60%, transparent);
+}
+.home-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.home-nav-folders ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.home-nav-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--p-line);
+}
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--p-muted);
+  font: 600 13px/1 var(--font-ui);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.nav-item svg {
+  flex: none;
+}
+.nav-item:hover:not(:disabled) {
+  color: var(--p-fg);
+  background: var(--p-panel-2);
+}
+.nav-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.nav-item.current,
+.nav-item.active {
+  color: var(--p-teal);
+  background: color-mix(in srgb, var(--p-teal) 11%, transparent);
+  box-shadow: inset 2px 0 0 var(--p-teal);
+}
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.18s ease;
+}
+.nav-heading {
+  height: 26px;
+  padding: 8px 11px 0;
+  font: 700 10px/1.2 var(--font-ui);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.nav-dot {
+  --hue: 200;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  border-radius: 5px;
+  background:
+    radial-gradient(90% 70% at 50% 110%, hsl(var(--hue) 70% 55% / 0.9), transparent 70%),
+    hsl(var(--hue) 35% 22%);
+  box-shadow: inset 0 0 0 1px hsl(var(--hue) 50% 70% / 0.35);
+}
+.nav-collapse svg {
+  transform: rotate(180deg);
+  transition: transform 0.24s var(--nav-ease);
+}
+.nav-collapsed .nav-collapse svg {
+  transform: none;
+}
+.nav-collapsed .nav-label {
+  opacity: 0;
+}
+.nav-collapsed .nav-heading {
+  height: 9px;
+  padding: 0;
+  margin: 0 8px;
+  border-top: 1px solid var(--p-line);
+  color: transparent;
+}
+.home-nav-scrim {
+  display: none;
+}
+.projects-content {
+  min-width: 0;
+  padding: 24px 0 48px;
+}
+
+/* Em telas estreitas a barra vira gaveta, por cima do conteúdo. */
+@media (max-width: 760px) {
+  .projects-body,
+  .nav-collapsed .projects-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-nav {
+    position: fixed;
+    z-index: 25;
+    top: var(--appbar-h);
+    left: 0;
+    bottom: 0;
+    width: var(--nav-w);
+    height: auto;
+    background: var(--p-bg);
+    box-shadow: var(--shadow);
+    transition:
+      transform 0.24s var(--nav-ease),
+      visibility 0s;
+  }
+  .nav-collapsed .home-nav {
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.24s var(--nav-ease),
+      visibility 0s 0.24s;
+  }
+  .nav-collapsed .nav-label {
+    opacity: 1;
+  }
+  .nav-collapse {
+    display: none;
+  }
+  .home-nav-scrim {
+    display: block;
+    position: fixed;
+    z-index: 24;
+    inset: var(--appbar-h) 0 0;
+    background: rgba(0, 0, 0, 0.35);
+  }
+  .projects-inner {
+    width: calc(100% - 32px);
+  }
+  .projects-content {
+    padding-top: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse::after {
+    animation: none;
+  }
+  .projects-body,
+  .home-nav,
+  .nav-collapse svg,
+  .nav-label {
+    transition: none;
+  }
 }
 
 /* Cabeçalho */
@@ -2453,7 +2765,24 @@ p {
   color: var(--p-faint);
 }
 
-@media (max-width: 1080px) {
+/* A coluna lateral desce para baixo quando sobra pouco espaço; com a barra
+   aberta isso acontece antes, porque ela come parte da largura. */
+@media (max-width: 1320px) {
+  .projects:not(.nav-collapsed) .projects-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .projects:not(.nav-collapsed) .projects-side {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 960px) {
+  .projects:not(.nav-collapsed) .featured {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1160px) {
   .projects-grid {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -51,6 +51,21 @@ export function Settings() {
   return (
     <div className="settings">
       <div className="settings-inner">
+        <Section title="Perfil">
+          <Field label="Seu nome" hint="Aparece no topo da tela de projetos.">
+            <input
+              className="text-input"
+              type="text"
+              value={s.userName}
+              maxLength={60}
+              placeholder="Como você assina"
+              aria-label="Seu nome"
+              autoComplete="name"
+              onChange={(e) => s.set({ userName: e.target.value })}
+            />
+          </Field>
+        </Section>
+
         <Section title="Aparência">
           <Field label="Tema" hint="“Sistema” segue o modo claro ou escuro do computador.">
             <div className="segmented wide" role="radiogroup" aria-label="Tema">

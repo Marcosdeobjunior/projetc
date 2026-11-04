@@ -34,6 +34,8 @@ interface Prefs {
   collapsed: SectionId[];
   /** Cor de destaque escolhida (#rrggbb), ou null para a cor padrão. */
   accent: string | null;
+  /** Nome do escritor, mostrado no topo da tela de projetos. */
+  userName: string;
 }
 
 interface SettingsState extends Prefs {
@@ -51,6 +53,7 @@ const DEFAULTS: Prefs = {
   minimapMentions: true,
   collapsed: [],
   accent: null,
+  userName: "",
 };
 
 function load(): Prefs {
@@ -133,6 +136,7 @@ useSettings.subscribe((s, prev) => {
     minimapMentions: s.minimapMentions,
     collapsed: s.collapsed,
     accent: s.accent,
+    userName: s.userName,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));
