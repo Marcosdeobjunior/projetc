@@ -99,6 +99,6 @@ Regras:
   listas, citações e o separador de cena `* * *` ficam em Markdown comum.
 - **Links:** `[[Nome]]` (ou `[[Nome|texto]]`) liga a uma cena ou nota pelo título, como no
   Obsidian. Além disso, o nome de uma nota aparecendo no texto conta como menção. Os dois
-  aparecem no grafo; os links ficam no `.md` como texto comum.
+  aparecem no Elo (o mapa de conexões, em que cada texto é uma estrela); os links ficam no `.md` como texto comum.
 - **Gravação segura:** no desktop cada arquivo é gravado num temporário e depois renomeado,
   para nunca ficar pela metade se o app fechar no meio.

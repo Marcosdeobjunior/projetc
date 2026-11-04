@@ -149,12 +149,16 @@ export function mountGraph(
       const r = radius(n);
       ctx.globalAlpha = lit(n.id) ? 1 : 0.18;
       ctx.fillStyle = css(COLOR_VAR[n.type]);
-      ctx.beginPath();
-      ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
+      const lead = n.id === activeId || n === hover;
+      // Brilho em volta da estrela: mais forte na estrela em foco.
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = (lead ? 16 : 8) * Math.min(1, k);
+      starPath(ctx, n.x!, n.y!, r * 1.45);
       ctx.fill();
-      if (n.id === activeId || n === hover) {
+      ctx.shadowBlur = 0;
+      if (lead) {
         ctx.strokeStyle = fg;
-        ctx.lineWidth = 2 / k;
+        ctx.lineWidth = 1.4 / k;
         ctx.stroke();
       }
       // Rótulos aparecem com zoom, ou no ponto destacado e nos vizinhos.
@@ -163,7 +167,7 @@ export function mountGraph(
       if (showLabel) {
         ctx.globalAlpha = lit(n.id) ? 0.95 : 0.15;
         ctx.fillStyle = compact && n.id !== activeId && n !== hover ? muted : fg;
-        ctx.fillText(n.title, n.x!, n.y! + r + 4 / k);
+        ctx.fillText(n.title, n.x!, n.y! + r * 1.3 + 4 / k);
       }
     }
     ctx.globalAlpha = 1;
@@ -378,4 +382,19 @@ export function mountGraph(
       canvas.removeEventListener("wheel", wheel);
     },
   };
+}
+
+/** Estrela de 5 pontas centrada em (x, y), com a ponta para cima. */
+function starPath(ctx: CanvasRenderingContext2D, x: number, y: number, outer: number) {
+  const inner = outer * 0.45;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? inner : outer;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const px = x + Math.cos(a) * r;
+    const py = y + Math.sin(a) * r;
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
 }

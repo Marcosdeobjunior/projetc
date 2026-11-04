@@ -12,7 +12,7 @@ const TYPES: { type: NodeType; label: string }[] = [
   { type: "ideias", label: KIND_LABEL.ideias.many },
 ];
 
-/** Grafo de conexões entre cenas e notas, no estilo do Obsidian. */
+/** Elo: constelação de conexões entre cenas e notas, cada texto é uma estrela. */
 export function GraphView({ session }: { session: Session }) {
   const openDoc = useApp((s) => s.openDoc);
   const [mentions, setMentions] = useState(true);
@@ -52,7 +52,7 @@ export function GraphView({ session }: { session: Session }) {
 
   return (
     <div className="graph">
-      <div className="graph-tools" role="toolbar" aria-label="Filtros do grafo">
+      <div className="graph-tools" role="toolbar" aria-label="Filtros do Elo">
         {TYPES.map((t) => (
           <button
             key={t.type}
@@ -82,7 +82,7 @@ export function GraphView({ session }: { session: Session }) {
         <canvas
           ref={canvasRef}
           role="img"
-          aria-label={`Grafo com ${graph.nodes.length} textos e ${graph.edges.length} conexões`}
+          aria-label={`Elo com ${graph.nodes.length} textos e ${graph.edges.length} conexões`}
         />
         {graph.edges.length === 0 && (
           <div className="graph-empty">
@@ -96,8 +96,8 @@ export function GraphView({ session }: { session: Session }) {
       </div>
 
       <p className="graph-hint">
-        Clique em um ponto para abrir · arraste para mover · role para dar zoom · linhas tracejadas
-        são menções automáticas
+        Clique em uma estrela para abrir · arraste para mover · role para dar zoom · linhas
+        tracejadas são menções automáticas
       </p>
 
       {/* Alternativa em texto para leitores de tela. */}
