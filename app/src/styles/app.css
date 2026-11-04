@@ -1638,9 +1638,28 @@ p {
   cursor: pointer;
 }
 .chip i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+  width: 13px;
+  height: 13px;
+  background: radial-gradient(circle, #cfe0ff 0 10%, #4f8dff 30%, #9b7bff 70%);
+  /* Mesma silhueta da estrela do Elo, em 8 raios. */
+  clip-path: polygon(
+    50% 0%,
+    55% 40%,
+    80% 20%,
+    60% 45%,
+    100% 50%,
+    60% 55%,
+    80% 80%,
+    55% 60%,
+    50% 100%,
+    45% 60%,
+    20% 80%,
+    40% 55%,
+    0% 50%,
+    40% 45%,
+    20% 20%,
+    45% 40%
+  );
 }
 .chip[aria-pressed="false"] {
   opacity: 0.45;

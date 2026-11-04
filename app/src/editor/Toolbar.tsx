@@ -108,7 +108,7 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
       <span className="toolbar-spacer" />
       <ToolButton
         label={minimap ? "Esconder minimapa" : "Mostrar minimapa"}
-        icon="graph"
+        icon="star"
         on={minimap}
         run={() => setSettings({ minimap: !minimap })}
       />

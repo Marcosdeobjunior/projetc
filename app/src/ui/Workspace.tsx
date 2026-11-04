@@ -114,7 +114,7 @@ export function Workspace({ session }: { session: Session }) {
               closeNav();
             }}
           >
-            <Icon name="graph" size={16} /> Grafo
+            <Icon name="star" size={16} /> Elo
           </button>
         </div>
 
@@ -153,9 +153,7 @@ export function Workspace({ session }: { session: Session }) {
           </button>
           {view !== "editor" ? (
             <div className="crumbs">
-              <span className="crumb-title">
-                {view === "graph" ? "Grafo de conexões" : "Configurações"}
-              </span>
+              <span className="crumb-title">{view === "graph" ? "Elo" : "Configurações"}</span>
             </div>
           ) : active ? (
             <div className="crumbs">

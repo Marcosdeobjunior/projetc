@@ -103,7 +103,7 @@ export function Settings() {
         <Section title="Minimapa">
           <Field
             label="Mostrar minimapa nos textos"
-            hint="Um grafo pequeno com o texto aberto e tudo o que se liga a ele."
+            hint="Um Elo pequeno com o texto aberto e tudo o que se liga a ele."
           >
             <Switch
               label="Mostrar minimapa nos textos"

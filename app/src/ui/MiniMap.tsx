@@ -169,8 +169,8 @@ export function MiniMap({ session, docId }: { session: Session; docId: string })
           <button
             type="button"
             className="icon-btn sm"
-            title="Abrir o grafo completo"
-            aria-label="Abrir o grafo completo"
+            title="Abrir o Elo completo"
+            aria-label="Abrir o Elo completo"
             onClick={() => setView("graph")}
           >
             <Icon name="expand" size={14} />
