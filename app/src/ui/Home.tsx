@@ -423,6 +423,14 @@ function SelectedCard(props: {
   );
 }
 
+/** Primeira frase do texto, usada como epígrafe embaixo do livro. */
+function firstSentence(text: string): string {
+  const m = /^[\s\S]*?[.!?…](?=\s|$)/.exec(text);
+  const s = (m ? m[0] : text).replace(/\s+/g, " ").trim();
+  return s.length > 90 ? s.slice(0, 90).trimEnd() + "…" : s;
+}
+
+/** O livro em 3D, fechado, como sai da diagramação. */
 function BookPreview({
   vault,
   stats,
@@ -430,19 +438,25 @@ function BookPreview({
   vault: VaultRef;
   stats: ProjectStats | null | undefined;
 }) {
+  const style = { "--hue": coverHue(vault.title) } as CSSProperties;
+  const line = stats?.excerpt ? firstSentence(stats.excerpt) : "";
   return (
     <figure className="book-preview">
-      <div className="book">
-        <div className="book-back">
-          <span className="book-label">Sinopse</span>
-          <p>
-            {stats?.excerpt ||
-              "Este livro ainda não tem texto. Abra o projeto e comece a primeira cena."}
-          </p>
+      <div className="book3d" style={style} aria-hidden="true">
+        <div className="book3d-body">
+          <div className="book3d-face book3d-back" />
+          <div className="book3d-face book3d-pages" />
+          <div className="book3d-face book3d-top" />
+          <div className="book3d-face book3d-spine">
+            <span>{vault.title}</span>
+          </div>
+          <div className="book3d-face book3d-front">
+            <Cover title={vault.title} size="lg" />
+          </div>
         </div>
-        <Cover title={vault.title} size="lg" />
+        <div className="book3d-shadow" />
       </div>
-      <figcaption>Primeiras linhas do manuscrito</figcaption>
+      <figcaption>{line ? `“${line}”` : "Este livro ainda não tem texto."}</figcaption>
     </figure>
   );
 }
