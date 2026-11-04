@@ -32,6 +32,8 @@ interface Prefs {
   /** Conta as menções automáticas (nomes no texto) no minimapa. */
   minimapMentions: boolean;
   collapsed: SectionId[];
+  /** Cor de destaque escolhida (#rrggbb), ou null para a cor padrão. */
+  accent: string | null;
 }
 
 interface SettingsState extends Prefs {
@@ -48,6 +50,7 @@ const DEFAULTS: Prefs = {
   minimapPos: "bottom-right",
   minimapMentions: true,
   collapsed: [],
+  accent: null,
 };
 
 function load(): Prefs {
@@ -68,6 +71,45 @@ function applyTheme(theme: Theme) {
   else root.dataset.theme = theme;
 }
 
+/** Matiz e saturação de uma cor #rrggbb. */
+export function hexToHueSat(hex: string): { h: number; s: number } | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1]!, 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255) as [
+    number,
+    number,
+    number,
+  ];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  const l = (max + min) / 2;
+  if (d === 0) return { h: 0, s: 0 };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = Math.round(h * 60);
+  return { h: h < 0 ? h + 360 : h, s: Math.round(s * 100) };
+}
+
+/**
+ * Aplica a cor de destaque em todo o app. A claridade de cada tom vem do CSS,
+ * para a cor ficar legível tanto no tema claro quanto no escuro.
+ */
+function applyAccent(accent: string | null) {
+  const root = document.documentElement;
+  const hs = accent ? hexToHueSat(accent) : null;
+  if (!hs) {
+    delete root.dataset.accent;
+    root.style.removeProperty("--ac-h");
+    root.style.removeProperty("--ac-s");
+    return;
+  }
+  root.dataset.accent = "custom";
+  root.style.setProperty("--ac-h", String(hs.h));
+  root.style.setProperty("--ac-s", `${hs.s}%`);
+}
+
 export const useSettings = create<SettingsState>((set, get) => ({
   ...load(),
   set(patch) {
@@ -80,14 +122,17 @@ export const useSettings = create<SettingsState>((set, get) => ({
 }));
 
 applyTheme(useSettings.getState().theme);
+applyAccent(useSettings.getState().accent);
 useSettings.subscribe((s, prev) => {
   if (s.theme !== prev.theme) applyTheme(s.theme);
+  if (s.accent !== prev.accent) applyAccent(s.accent);
   const prefs: Prefs = {
     theme: s.theme,
     minimap: s.minimap,
     minimapPos: s.minimapPos,
     minimapMentions: s.minimapMentions,
     collapsed: s.collapsed,
+    accent: s.accent,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));

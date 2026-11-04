@@ -8,6 +8,18 @@ const THEMES: { id: Theme; label: string; icon: string }[] = [
   { id: "dark", label: "Escuro", icon: "moon" },
 ];
 
+/** Cores prontas; null é a cor padrão do app. */
+const ACCENTS: { hex: string | null; label: string; swatch: string }[] = [
+  { hex: null, label: "Padrão", swatch: "#a78bfa" },
+  { hex: "#2bb5c4", label: "Azul-petróleo", swatch: "#2bb5c4" },
+  { hex: "#4f8cff", label: "Azul", swatch: "#4f8cff" },
+  { hex: "#2fbf86", label: "Esmeralda", swatch: "#2fbf86" },
+  { hex: "#d9a441", label: "Dourado", swatch: "#d9a441" },
+  { hex: "#f2715a", label: "Coral", swatch: "#f2715a" },
+  { hex: "#e45aa5", label: "Rosa", swatch: "#e45aa5" },
+  { hex: "#e0475b", label: "Vermelho", swatch: "#e0475b" },
+];
+
 export const POS_LABEL: Record<MinimapPos, string> = {
   "top-left": "Canto superior esquerdo",
   top: "Faixa no topo",
@@ -53,6 +65,37 @@ export function Settings() {
                   <Icon name={t.icon} size={15} /> {t.label}
                 </button>
               ))}
+            </div>
+          </Field>
+          <Field
+            label="Cor de destaque"
+            hint="Usada em botões, seleções, links e na tela de projetos. O tom se ajusta ao tema claro ou escuro."
+          >
+            <div className="accent-picker" role="radiogroup" aria-label="Cor de destaque">
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={s.accent === a.hex}
+                  aria-label={a.label}
+                  title={a.label}
+                  style={{ background: a.swatch }}
+                  onClick={() => s.set({ accent: a.hex })}
+                />
+              ))}
+              <label
+                className="accent-custom"
+                title="Escolher outra cor"
+                data-checked={!!s.accent && !ACCENTS.some((a) => a.hex === s.accent)}
+              >
+                <input
+                  type="color"
+                  value={s.accent ?? "#8b6dff"}
+                  aria-label="Escolher outra cor"
+                  onChange={(e) => s.set({ accent: e.target.value })}
+                />
+              </label>
             </div>
           </Field>
         </Section>
