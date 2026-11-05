@@ -3420,6 +3420,14 @@ p {
 .nav-collapsed .nav-label {
   opacity: 0;
 }
+.nav-empty {
+  padding: 4px 11px;
+  font-size: 12px;
+  color: var(--p-faint);
+}
+.nav-collapsed .nav-empty {
+  display: none;
+}
 .nav-collapsed .nav-heading {
   height: 9px;
   padding: 0;
@@ -3663,12 +3671,19 @@ p {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
 }
 .featured {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 28px;
   align-items: start;
+}
+.featured-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
 .empty-library {
   align-items: flex-start;
@@ -3730,20 +3745,6 @@ p {
 }
 
 /* Projeto selecionado */
-.selected-banner {
-  height: 120px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.selected-banner .cover {
-  aspect-ratio: auto;
-  height: 100%;
-  align-items: center;
-}
-.selected-banner .cover-title {
-  padding: 0 16px;
-  font-size: 20px;
-}
 .selected-title {
   font: 600 20px/1.2 var(--font-brand);
   letter-spacing: 0.04em;
@@ -3762,8 +3763,7 @@ p {
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
-.stat,
-.tile {
+.stat {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3774,13 +3774,11 @@ p {
   background: var(--p-panel-2);
   min-width: 0;
 }
-.stat b,
-.tile b {
+.stat b {
   font: 600 15px/1 var(--font-text);
   font-variant-numeric: tabular-nums;
 }
-.stat span,
-.tile span {
+.stat span {
   font-size: 8.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -3809,14 +3807,16 @@ p {
   margin: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* Livro alinhado à esquerda; a legenda fica centrada embaixo dele. */
+  align-items: flex-start;
   gap: 18px;
-  padding-top: 12px;
-}
-.book3d {
+  /* Espaço para a lombada e a sombra, que saem da caixa ao girar. */
+  padding: 12px 24px 0 28px;
   --w: 220px;
   --h: 330px;
   --t: 38px;
+}
+.book3d {
   position: relative;
   width: var(--w);
   height: var(--h);
@@ -3940,74 +3940,13 @@ p {
   pointer-events: none;
 }
 .book-preview figcaption {
-  max-width: 320px;
+  width: calc(var(--w) + 40px);
+  margin-left: -20px;
   text-align: center;
   font: italic 13px/1.4 var(--font-text);
   color: var(--p-gold);
 }
 
-/* Estante de projetos recentes */
-.shelf {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
-}
-.shelf-book button {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 10px;
-  border: 1px solid var(--p-line);
-  background: var(--p-panel);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.15s,
-    transform 0.15s;
-}
-.shelf-book button:hover {
-  border-color: var(--p-line-hi);
-  transform: translateY(-2px);
-}
-.shelf-book.active button {
-  border-color: var(--p-teal);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--p-teal) 25%, transparent);
-}
-.shelf-book .cover-title {
-  font-size: 12px;
-}
-.shelf-title {
-  margin-top: 4px;
-  font: 600 12px/1.2 var(--font-brand);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.shelf-book.active .shelf-title {
-  color: var(--p-teal);
-}
-.shelf-meta {
-  font-size: 10px;
-  color: var(--p-faint);
-}
-.shelf-progress {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.shelf-progress small {
-  font-size: 9px;
-  color: var(--p-faint);
-  white-space: nowrap;
-}
 .bar {
   display: block;
   flex: 1;
@@ -4023,11 +3962,6 @@ p {
 }
 
 /* Coluna lateral */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
 .inspiration {
   background:
     radial-gradient(
@@ -4161,24 +4095,93 @@ p {
   color: var(--p-faint);
 }
 
-/* A coluna lateral desce para baixo quando sobra pouco espaço; com a barra
-   aberta isso acontece antes, porque ela come parte da largura. */
-@media (max-width: 1320px) {
-  .projects:not(.nav-collapsed) .projects-grid {
-    grid-template-columns: minmax(0, 1fr);
+/* A tela cabe na altura da janela: o conteúdo ocupa o espaço entre o topo e
+   o pé, e só as listas que crescem com o número de livros (metas e atividade)
+   rolam dentro do próprio painel. Em telas baixas ou estreitas a página volta
+   a rolar normalmente, para nada ficar espremido. */
+@media (min-width: 1100px) and (min-height: 620px) {
+  .projects {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
-  .projects:not(.nav-collapsed) .projects-side {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    align-items: start;
+  .projects-body {
+    min-height: 0;
+  }
+  .projects-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 18px 0 20px;
+    /* Rede de segurança: se algo ainda passar, rola só esta área. */
+    overflow-y: auto;
+  }
+  .projects-inner {
+    flex: 1;
+    min-height: 0;
+    gap: 16px;
+  }
+  .projects-head {
+    padding-bottom: 12px;
+  }
+  .projects-grid {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .projects-main,
+  .projects-side,
+  .featured,
+  .featured-panels {
+    min-height: 0;
+  }
+  .featured {
+    height: 100%;
+  }
+  .featured-panels {
+    height: 100%;
+  }
+  .featured-panels > .panel {
+    min-height: 0;
+    flex: 0 1 auto;
+  }
+  .goals,
+  .activity {
+    min-height: 0;
+    overflow-y: auto;
+    /* Folga para a barra de rolagem não cobrir o texto. */
+    padding-right: 4px;
   }
 }
-@media (max-width: 960px) {
-  .projects:not(.nav-collapsed) .featured {
-    grid-template-columns: minmax(0, 1fr);
+/* Telas um pouco mais baixas: livro e cabeçalho menores. */
+@media (min-width: 1100px) and (min-height: 620px) and (max-height: 820px) {
+  .book-preview {
+    --w: 190px;
+    --h: 285px;
+    --t: 32px;
+  }
+  .cover.lg .cover-title {
+    font-size: 19px;
+  }
+  .emblem {
+    width: 52px;
+    height: 52px;
+  }
+  .projects-brand h1 {
+    font-size: 34px;
+  }
+  .projects-brand p {
+    margin-top: 4px;
+  }
+  .projects .notice {
+    padding-block: 8px;
   }
 }
-@media (max-width: 1160px) {
+
+/* A coluna lateral desce quando sobra pouco espaço; com a barra aberta isso
+   acontece antes, porque ela come parte da largura. */
+@media (max-width: 1099px) {
   .projects-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4192,10 +4195,14 @@ p {
   .featured {
     grid-template-columns: minmax(0, 1fr);
   }
-  .book3d {
+  .book-preview {
     --w: 180px;
     --h: 270px;
     --t: 30px;
+    align-items: center;
+  }
+  .book-preview figcaption {
+    margin-left: 0;
   }
   .projects-brand h1 {
     font-size: 30px;

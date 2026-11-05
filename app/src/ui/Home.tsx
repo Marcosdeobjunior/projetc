@@ -68,8 +68,6 @@ export function Home() {
   const current = recent.find((v) => v.root === selected) ?? recent[0] ?? null;
   const background = useHomeBackground();
   const sync = useFolderSyncStatus(platform, current?.root ?? null);
-  const known = Object.values(stats).filter((s): s is ProjectStats => !!s);
-  const total = (f: (s: ProjectStats) => number) => known.reduce((n, s) => n + f(s), 0);
 
   if (settings) {
     return (
@@ -111,7 +109,8 @@ export function Home() {
           onToggle={nav.toggle}
           desktop={desktop}
           busy={busy}
-          vaults={recent}
+          vaults={filtered}
+          emptyText={query && filtered.length === 0 ? `Nenhum projeto com “${query}”.` : undefined}
           activeRoot={current?.root ?? null}
           onSelect={setSelected}
           onOpen={(root) => void openVault(root)}
@@ -198,22 +197,30 @@ export function Home() {
               <div className="projects-main">
                 {current ? (
                   <div className="featured">
-                    <SelectedCard
-                      vault={current}
-                      stats={stats[current.root]}
-                      busy={busy}
-                      desktop={desktop}
-                      confirming={confirming === current.root}
-                      onOpen={() => void openVault(current.root)}
-                      onAskRemove={() => setConfirming(current.root)}
-                      onCancelRemove={() => setConfirming(null)}
-                      onRemove={() => {
-                        setConfirming(null);
-                        setSelected(null);
-                        void forgetVault(current.root);
-                      }}
-                    />
                     <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
+                    <div className="featured-panels">
+                      <Progress vaults={recent} stats={stats} goals={goals} />
+                      <section className="panel" aria-labelledby="activity-title">
+                        <h2 id="activity-title" className="kicker">
+                          Atividade recente
+                        </h2>
+                        <ul className="activity">
+                          {activity(recent, stats).map((a) => (
+                            <li key={a.root + a.kind}>
+                              <span className="activity-dot">
+                                <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
+                              </span>
+                              <span>
+                                <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
+                                <small>
+                                  {timeAgo(a.at)} · {a.title}
+                                </small>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    </div>
                   </div>
                 ) : (
                   <div className="panel empty-library">
@@ -224,81 +231,30 @@ export function Home() {
                     </button>
                   </div>
                 )}
-
-                {recent.length > 0 && (
-                  <section aria-labelledby="recent-title">
-                    <div className="row-title">
-                      <h2 id="recent-title" className="kicker">
-                        {query ? "Resultados" : "Projetos recentes"}
-                      </h2>
-                      <span className="count-pill">{filtered.length}</span>
-                    </div>
-                    {filtered.length === 0 ? (
-                      <p className="muted">Nenhum projeto com “{query}”.</p>
-                    ) : (
-                      <ul className="shelf">
-                        {filtered.map((v) => (
-                          <ShelfBook
-                            key={v.root}
-                            vault={v}
-                            stats={stats[v.root]}
-                            goal={goals[v.root]}
-                            active={v.root === current?.root}
-                            onSelect={() => setSelected(v.root)}
-                            onOpen={() => void openVault(v.root)}
-                          />
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                )}
               </div>
 
               <aside className="projects-side">
                 <DriveProjects />
 
-                <section className="panel" aria-labelledby="summary-title">
-                  <h2 id="summary-title" className="kicker">
-                    Resumo da biblioteca
-                  </h2>
-                  <div className="tiles">
-                    <Tile n={vaults.length} label="Projetos" />
-                    <Tile n={total((s) => s.chapters)} label="Capítulos" />
-                    <Tile n={total((s) => s.words)} label="Palavras" />
-                    <Tile n={total((s) => s.scenes)} label="Cenas" />
-                    <Tile n={total((s) => s.characters)} label="Personagens" />
-                    <Tile n={total((s) => s.places)} label="Lugares" />
-                  </div>
-                </section>
+                {current && (
+                  <SelectedCard
+                    vault={current}
+                    stats={stats[current.root]}
+                    busy={busy}
+                    desktop={desktop}
+                    confirming={confirming === current.root}
+                    onOpen={() => void openVault(current.root)}
+                    onAskRemove={() => setConfirming(current.root)}
+                    onCancelRemove={() => setConfirming(null)}
+                    onRemove={() => {
+                      setConfirming(null);
+                      setSelected(null);
+                      void forgetVault(current.root);
+                    }}
+                  />
+                )}
 
                 <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
-
-                <Progress vaults={recent} stats={stats} goals={goals} />
-
-                <section className="panel" aria-labelledby="activity-title">
-                  <h2 id="activity-title" className="kicker">
-                    Atividade recente
-                  </h2>
-                  {recent.length === 0 ? (
-                    <p className="muted small">Nada por aqui ainda.</p>
-                  ) : (
-                    <ul className="activity">
-                      {activity(recent, stats).map((a) => (
-                        <li key={a.root + a.kind}>
-                          <span className="activity-dot">
-                            <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
-                          </span>
-                          <span>
-                            <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
-                            <small>
-                              {timeAgo(a.at)} · {a.title}
-                            </small>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
               </aside>
             </div>
           </div>
@@ -377,10 +333,7 @@ function SelectedCard(props: {
   const { vault, stats, desktop } = props;
   return (
     <section className="panel selected" aria-labelledby="selected-title">
-      <div className="selected-banner">
-        <Cover title={vault.title} size="sm" />
-      </div>
-      <p className="kicker faint">Projeto selecionado</p>
+      <p className="kicker">Projeto selecionado</p>
       <h2 id="selected-title" className="selected-title">
         {vault.title}
       </h2>
@@ -518,53 +471,6 @@ function BookPreview({
       </div>
       <figcaption>{line ? `“${line}”` : "Este livro ainda não tem texto."}</figcaption>
     </figure>
-  );
-}
-
-function ShelfBook(props: {
-  vault: VaultRef;
-  stats: ProjectStats | null | undefined;
-  goal: number | undefined;
-  active: boolean;
-  onSelect(): void;
-  onOpen(): void;
-}) {
-  const { vault, stats, goal } = props;
-  const pct = goal && stats ? Math.min(100, Math.round((stats.words / goal) * 100)) : null;
-  return (
-    <li className={"shelf-book" + (props.active ? " active" : "")}>
-      <button
-        type="button"
-        onClick={props.onSelect}
-        onDoubleClick={props.onOpen}
-        title="Clique para ver os detalhes, duplo clique para abrir"
-      >
-        <Cover title={vault.title} size="sm" />
-        <span className="shelf-title">{vault.title}</span>
-        <span className="shelf-meta">
-          {stats
-            ? `${stats.chapters} cap. · ${formatCount(stats.words)} palavras`
-            : stats === null
-              ? "Indisponível"
-              : "…"}
-        </span>
-        <span className="shelf-progress">
-          <span className="bar">
-            <span style={{ width: `${pct ?? 0}%` }} />
-          </span>
-          <small>{pct === null ? "sem meta" : `${pct}%`}</small>
-        </span>
-      </button>
-    </li>
-  );
-}
-
-function Tile({ n, label }: { n: number; label: string }) {
-  return (
-    <div className="tile">
-      <b>{formatCount(n)}</b>
-      <span>{label}</span>
-    </div>
   );
 }
 
