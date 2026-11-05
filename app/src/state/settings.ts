@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { migrateHomeBg, type HomeBg } from "./backgrounds";
 
 /*
  * Preferências do app (valem para todos os projetos), guardadas no
@@ -66,8 +67,8 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
   "bottom-right",
 ];
 
-/** Fundo da tela de projetos: o da paleta ou uma imagem do usuário. */
-export type HomeBg = "paleta" | "imagem";
+export type { HomeBg } from "./backgrounds";
+export { THEME_BACKGROUNDS, migrateHomeBg, themeBackgroundUrl } from "./backgrounds";
 
 /** Seções da barra lateral que podem ser recolhidas. */
 export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
@@ -110,7 +111,7 @@ const DEFAULTS: Prefs = {
   collapsed: [],
   userName: "",
   syncEvery: 5,
-  homeBg: "paleta",
+  homeBg: "tema",
   homeBgDim: 45,
 };
 
@@ -138,8 +139,7 @@ function load(): Prefs {
       ...DEFAULTS,
       ...pick(saved ?? {}),
       palette,
-      // Os fundos prontos e o de uma cor saíram: fica o da paleta.
-      homeBg: saved?.homeBg === "imagem" ? "imagem" : "paleta",
+      homeBg: migrateHomeBg(saved?.homeBg),
     };
   } catch {
     return DEFAULTS;

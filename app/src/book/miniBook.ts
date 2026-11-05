@@ -17,6 +17,13 @@ export interface MiniBook {
   layout: LayoutDesign;
   /** HTML do miolo (folha de rosto, sumário e capítulos). */
   html: string;
+  /**
+   * O mesmo miolo em partes: o pré-texto (folha de rosto, créditos, sumário)
+   * e depois um capítulo por parte. Cada capítulo começa numa página nova, então
+   * cada página pode ser desenhada só com a parte em que cai, e não com o livro
+   * inteiro (bem mais leve em livros grandes).
+   */
+  parts: string[];
   /** CSS do miolo, restrito a `.mb-flow`. */
   css: string;
 }
@@ -39,12 +46,39 @@ export async function loadMiniBook(fs: VaultFs): Promise<MiniBook> {
     images: false,
   };
   const book = await buildBook(fs, project, opts);
-  const html = [
-    titlePageHtml(book, true),
-    opts.toc ? tocHtml(book, opts, () => "#") : "",
+  const parts = [
+    titlePageHtml(book, true) + (opts.toc ? tocHtml(book, opts, () => "#") : ""),
     ...book.chapters.map((c) => chapterHtml(c, opts, () => "")),
-  ].join("\n");
-  return { title: book.title, author: book.author, layout, html, css: miniCss(layout) };
+  ];
+  return {
+    title: book.title,
+    author: book.author,
+    layout,
+    html: parts.join("\n"),
+    parts,
+    css: miniCss(layout),
+  };
+}
+
+/**
+ * Carrega o miolo e espera a fonte da diagramação chegar, para a paginação
+ * ser medida uma vez só (sem refazer quando a fonte troca).
+ */
+export async function prepareMiniBook(fs: VaultFs): Promise<MiniBook> {
+  const book = await loadMiniBook(fs);
+  const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+  if (fonts) {
+    const family = FONTS[book.layout.font].css;
+    const size = `${book.layout.size}pt`;
+    const wait = Promise.all([
+      fonts.load(`${size} ${family}`),
+      fonts.load(`italic ${size} ${family}`),
+      fonts.load(`500 ${size} ${family}`),
+    ]).catch(() => undefined);
+    // Sem esperar para sempre: se a fonte demorar, mede com a que houver.
+    await Promise.race([wait, new Promise((r) => setTimeout(r, 1500))]);
+  }
+  return book;
 }
 
 /** Tamanho da página e da mancha (área do texto), em mm. */
@@ -94,4 +128,38 @@ ${s} h3, ${s} h4, ${s} h5 { font-size: 1em; margin: 1.2em 0 .6em; }
 ${s} blockquote { margin: .8em 1.6em; font-style: italic; }
 ${s} ul, ${s} ol { margin: .6em 0 .6em 1.5em; padding: 0; }
 `;
+}
+
+/*
+ * Cache dos miolos já carregados, por projeto e versão (data da última
+ * mudança). Abrir o mesmo livro de novo, ou depois do pré-carregamento, não lê
+ * nem diagrama nada outra vez.
+ */
+const CACHE_MAX = 6;
+const cache = new Map<string, { promise: Promise<MiniBook>; value?: MiniBook }>();
+
+/** O miolo já pronto para esta chave, se houver. */
+export function peekMiniBook(key: string): MiniBook | null {
+  return cache.get(key)?.value ?? null;
+}
+
+/** Carrega (uma vez só por chave) e guarda no cache. Falhas não ficam guardadas. */
+export function getMiniBook(key: string, load: () => Promise<MiniBook>): Promise<MiniBook> {
+  const hit = cache.get(key);
+  if (hit) return hit.promise;
+  const entry: { promise: Promise<MiniBook>; value?: MiniBook } = {
+    promise: load().then(
+      (b) => {
+        entry.value = b;
+        return b;
+      },
+      (err: unknown) => {
+        cache.delete(key);
+        throw err;
+      },
+    ),
+  };
+  cache.set(key, entry);
+  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
+  return entry.promise;
 }

@@ -173,7 +173,7 @@ export function Workspace({ session }: { session: Session }) {
               closeNav();
             }}
           >
-            <Icon name="star" size={16} /> Elo
+            <Icon name="planet" size={16} /> Elo
           </button>
         </div>
 

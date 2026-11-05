@@ -75,6 +75,16 @@ const PATHS: Record<string, string> = {
   save: "M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6",
   target: "M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
   expand: "M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7",
+  /* Planeta com anel: o anel passa na frente do planeta embaixo e some atrás dele em cima. */
+  planet:
+    "M17.5 12a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0zM2.94 16.23A10 3.6 -25 0 0 21.06 7.77M21.06 7.77A10 3.6 -25 0 0 14.68 7.2M6.6 10.96A10 3.6 -25 0 0 2.94 16.23",
+  piano: "M3 5h18v14H3zM3 13h18M8 13v6M13 13v6M18 13v6M6.5 5v8M11 5v8M15.5 5v8",
+  headphones:
+    "M4 15v-3a8 8 0 0 1 16 0v3M4 15a2 2 0 0 1 2-2h1v7H6a2 2 0 0 1-2-2zM20 15a2 2 0 0 0-2-2h-1v7h1a2 2 0 0 0 2-2z",
+  film: "M4 4h16v16H4zM8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4",
+  sparkle:
+    "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z",
+  home: "M4 10.5 12 4l8 6.5V20h-5.5v-5.5h-5V20H4z",
   star: "M12 2v20M2 12h20M6.5 6.5l11 11M17.5 6.5l-11 11",
   refresh: "M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4",
   clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",

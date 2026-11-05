@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { PLAYLISTS, findPlaylist, type Playlist } from "../music/library";
 import {
   SERVICE_LABEL,
@@ -155,8 +155,8 @@ function Library() {
   const s = useMusic();
   const track = current(s);
   const list = currentPlaylist(s);
-  const [view, setView] = useState<string | null>(null);
-  const shown = findPlaylist(view);
+  const shown = findPlaylist(s.browsing);
+  const setView = s.setBrowsing;
   const isLoop = !!track?.loop && s.prefs.ambientLoop;
   const live = s.active === "library";
 
@@ -239,16 +239,22 @@ function Library() {
 
       {shown ? (
         <div className="mplayer-tracks">
+          {/* Voltar só muda a lista mostrada: a música continua de onde está. */}
+          <button
+            type="button"
+            className="mplayer-back"
+            title="Voltar às playlists (a música continua)"
+            onClick={() => setView(null)}
+          >
+            <Icon name="back" size={15} />
+            <span>Playlists</span>
+          </button>
           <div className="mplayer-tracks-head">
-            <button
-              type="button"
-              className="mbtn sm"
-              aria-label="Voltar às playlists"
-              onClick={() => setView(null)}
-            >
-              <Icon name="chevron-left" size={14} />
-            </button>
-            <b>{shown.name}</b>
+            <Cover list={shown} size={34} />
+            <span className="mplayer-tracks-title">
+              <b>{shown.name}</b>
+              <small>{shown.description}</small>
+            </span>
             <button
               type="button"
               className="link-btn"

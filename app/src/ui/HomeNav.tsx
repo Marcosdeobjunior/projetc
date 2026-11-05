@@ -190,16 +190,16 @@ export function HomeSidebar(props: {
           <Icon name={collapsed ? "chevron" : "chevron-left"} size={15} />
         </button>
       </div>
-      <div className="home-nav-scroll" data-music-clip>
+      <div className="home-nav-scroll">
         <div className="home-nav-group">
           <button
             type="button"
             className="nav-item current"
             aria-current="page"
-            title={tip("Projetos")}
+            title={tip("Início")}
           >
-            <Icon name="list" size={17} />
-            <span className="nav-label">Projetos</span>
+            <Icon name="home" size={17} />
+            <span className="nav-label">Início</span>
           </button>
           <button
             type="button"
@@ -269,9 +269,12 @@ export function HomeSidebar(props: {
             </ul>
           </div>
         )}
+      </div>
 
+      {/* Música e Configurações ficam no pé da barra, separadas da navegação. */}
+      <div className="home-nav-group home-nav-foot">
         {showMusic && (
-          <div className="home-nav-group home-nav-music">
+          <div className="home-nav-music">
             {collapsed ? (
               <button
                 type="button"
@@ -282,12 +285,18 @@ export function HomeSidebar(props: {
                   props.onToggle();
                 }}
               >
-                <Icon name="music" size={17} />
+                <Icon name="turntable" size={18} />
                 {playing && <span className="music-live" aria-hidden="true" />}
                 <span className="nav-label">Música</span>
               </button>
             ) : (
               <>
+                {/* O player abre para cima: o botão fica no lugar, logo acima de Configurações. */}
+                <div id="home-music" className={"music-drawer" + (panelOpen ? " open" : "")}>
+                  <div className="music-drawer-inner" inert={!panelOpen} data-music-clip>
+                    <MusicPlayer onSettings={props.onMusicSettings ?? props.onSettings} />
+                  </div>
+                </div>
                 <button
                   type="button"
                   className={"nav-item music-toggle" + (panelOpen ? " open" : "")}
@@ -299,21 +308,13 @@ export function HomeSidebar(props: {
                   <span className="nav-label">Música</span>
                   {playing && <span className="music-live" aria-hidden="true" />}
                   <span className="music-caret" aria-hidden="true">
-                    <Icon name="down" size={14} />
+                    <Icon name="up" size={14} />
                   </span>
                 </button>
-                <div id="home-music" className={"music-drawer" + (panelOpen ? " open" : "")}>
-                  <div className="music-drawer-inner" inert={!panelOpen}>
-                    <MusicPlayer onSettings={props.onMusicSettings ?? props.onSettings} />
-                  </div>
-                </div>
               </>
             )}
           </div>
         )}
-      </div>
-
-      <div className="home-nav-group home-nav-foot">
         <button
           type="button"
           className="nav-item"

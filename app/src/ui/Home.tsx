@@ -1,11 +1,4 @@
-import {
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type PointerEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useApp } from "../state/store";
 import { formatCount } from "../manuscript/wordCount";
 import type { VaultRef } from "../platform";
@@ -13,12 +6,12 @@ import { Icon } from "./Icon";
 import { Settings, type SettingsTab } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
-import { MiniBookSpread } from "./MiniBook";
+import { BookScene, paginate } from "./BookScene";
 import { EloGlobe } from "./EloGlobe";
-import { loadMiniBook, type MiniBook } from "../book/miniBook";
+import { getMiniBook, peekMiniBook, prepareMiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
-import { useSettings } from "../state/settings";
+import { THEME_BACKGROUNDS, themeBackgroundUrl, useSettings } from "../state/settings";
 import { useFolderSyncStatus } from "../state/syncStatus";
 import type { RemoteProject } from "../sync/drive";
 import {
@@ -52,7 +45,9 @@ export function Home() {
   const stats = useLibraryStats(platform, vaults);
 
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  // A pasta ativa fica no estado do app (e guardada): o app volta para ela ao abrir.
+  const selected = useApp((s) => s.activeFolder);
+  const setSelected = useApp((s) => s.setActiveFolder);
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [settings, setSettings] = useState<SettingsTab | null>(null);
@@ -453,17 +448,11 @@ function firstSentence(text: string): string {
   return s.length > 90 ? s.slice(0, 90).trimEnd() + "…" : s;
 }
 
-/** Graus de giro por pixel arrastado: 720px de arrasto dão uma volta inteira. */
-const DEG_PER_PX = 0.5;
-/** Ângulo de descanso do livro (o mesmo de antes do giro existir). */
-const REST_Y = -32;
-
-/** Arrasto menor que isso (px) conta como clique, e o clique abre o livro. */
-const CLICK_PX = 4;
-
 /**
- * O livro em 3D, fechado, como sai da diagramação. Arrastar gira; clicar
- * abre a miniatura com o miolo diagramado, para folhear.
+ * O livro em 3D, fechado, como sai da diagramação. Arrastar gira; clicar abre
+ * a capa e mostra o miolo diagramado, para folhear. O miolo é pré-carregado
+ * quando a tela fica ociosa (ou quando o mouse chega no livro), então o clique
+ * costuma abrir na hora.
  */
 function BookPreview({
   vault,
@@ -474,110 +463,46 @@ function BookPreview({
 }) {
   const platform = useApp((s) => s.platform);
   const hue = coverHue(vault.title);
-  const style = { "--hue": hue } as CSSProperties;
   const line = stats?.excerpt ? firstSentence(stats.excerpt) : "";
-  const [open, setOpen] = useState(false);
-  const [mini, setMini] = useState<MiniBook | "loading" | "error" | null>(null);
-  const openBook = () => {
-    setOpen(true);
-    if (mini && mini !== "error") return;
-    if (!platform) return;
-    setMini("loading");
-    loadMiniBook(platform.fs(vault.root)).then(setMini, () => setMini("error"));
-  };
-  // Giro em torno do eixo vertical, arrastando na horizontal. O livro não sai
-  // do lugar: só o ângulo muda, e ao soltar ele para onde está. O ângulo vai
-  // direto no estilo, sem re-renderizar o React a cada movimento.
-  const body = useRef<HTMLDivElement>(null);
-  const angle = useRef(REST_Y);
-  const drag = useRef<{ id: number; x: number; from: number; moved: boolean } | null>(null);
-
-  const apply = (deg: number) => {
-    angle.current = deg;
-    body.current?.style.setProperty("--ry", `${deg}deg`);
-  };
-  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    e.preventDefault(); // não seleciona texto nem arrasta a imagem
-    e.currentTarget.setPointerCapture(e.pointerId);
-    e.currentTarget.classList.add("dragging");
-    drag.current = { id: e.pointerId, x: e.clientX, from: angle.current, moved: false };
-  };
-  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
-    if (d?.id !== e.pointerId) return;
-    if (Math.abs(e.clientX - d.x) > CLICK_PX) d.moved = true;
-    if (d.moved) apply(d.from + (e.clientX - d.x) * DEG_PER_PX);
-  };
-  const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
-    if (d?.id !== e.pointerId) return;
-    drag.current = null;
-    e.currentTarget.classList.remove("dragging");
-    if (e.type === "pointerup" && !d.moved) openBook();
-  };
-  // O livro fechado volta no ângulo de descanso (o giro fica no estilo da peça).
-  const closeBook = () => {
-    angle.current = REST_Y;
-    setOpen(false);
-  };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      return openBook();
-    }
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    e.preventDefault();
-    apply(angle.current + (e.key === "ArrowRight" ? 15 : -15));
-  };
-  if (open)
-    return (
-      <figure className="book-preview open">
-        {mini && typeof mini === "object" ? (
-          <MiniBookSpread book={mini} height={330} hue={hue} onClose={closeBook} />
-        ) : (
-          <div className="minibook-status" role="status">
-            {mini === "error" ? "Não foi possível abrir o livro." : "Abrindo o livro…"}
-          </div>
-        )}
-        <figcaption>
-          <span>Clique na página da esquerda para voltar e na da direita para avançar.</span>
-          <button type="button" className="pbtn" onClick={closeBook}>
-            Fechar livro
-          </button>
-        </figcaption>
-      </figure>
+  // A versão entra na chave: depois de editar o projeto, o miolo é refeito.
+  const key = `${vault.root}:${stats?.updatedAt ?? 0}`;
+  const [ready, setReady] = useState(() => peekMiniBook(key));
+  const load = useCallback(() => {
+    if (!platform) return Promise.reject(new Error("sem plataforma"));
+    const p = getMiniBook(key, () =>
+      prepareMiniBook(platform.fs(vault.root)).then((b) => {
+        paginate(b);
+        return b;
+      }),
     );
+    p.then(setReady, () => undefined);
+    return p;
+  }, [platform, key, vault.root]);
+  const prefetch = useCallback(() => void load().catch(() => undefined), [load]);
+
+  // Pré-carrega quando o navegador estiver ocioso, depois que os números do
+  // projeto chegaram (eles dão a versão).
+  useEffect(() => {
+    if (stats === undefined || peekMiniBook(key)) return;
+    // O WebKit do macOS ainda não tem requestIdleCallback.
+    if (!("requestIdleCallback" in window)) {
+      const id = setTimeout(prefetch, 800);
+      return () => clearTimeout(id);
+    }
+    const id = window.requestIdleCallback(prefetch, { timeout: 2500 });
+    return () => window.cancelIdleCallback(id);
+  }, [stats, key, prefetch]);
+
   return (
-    <figure className="book-preview">
-      <div
-        className="book3d"
-        style={style}
-        role="button"
-        aria-label={`Capa de ${vault.title}. Clique ou Enter para abrir e folhear; arraste para os lados ou use as setas para girar.`}
-        tabIndex={0}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-        onLostPointerCapture={onPointerEnd}
-        onKeyDown={onKeyDown}
-      >
-        <div className="book3d-body" ref={body}>
-          <div className="book3d-face book3d-back" />
-          <div className="book3d-face book3d-pages" />
-          <div className="book3d-face book3d-top" />
-          <div className="book3d-face book3d-spine">
-            <span>{vault.title}</span>
-          </div>
-          <div className="book3d-face book3d-front">
-            <Cover title={vault.title} size="lg" />
-          </div>
-        </div>
-        <div className="book3d-shadow" />
-      </div>
-      <figcaption>{line ? `“${line}”` : "Este livro ainda não tem texto."}</figcaption>
-    </figure>
+    <BookScene
+      title={vault.title}
+      hue={hue}
+      cover={<Cover title={vault.title} size="lg" />}
+      caption={line ? `“${line}”` : "Este livro ainda não tem texto."}
+      ready={ready}
+      load={load}
+      prefetch={prefetch}
+    />
   );
 }
 
@@ -775,15 +700,28 @@ function DriveProjects() {
   );
 }
 
-/** Fundo escolhido nas Configurações; sem imagem guardada, volta ao da paleta. */
-function useHomeBackground() {
+/**
+ * Fundo da tela inicial. Por padrão é o da paleta (cada paleta tem o seu e ele
+ * troca junto); a imagem do usuário ou o fundo liso, quando escolhidos, valem
+ * em qualquer paleta.
+ */
+function useHomeBackground(): { kind: string; style: CSSProperties | undefined } {
   const kind = useSettings((s) => s.homeBg);
   const dim = useSettings((s) => s.homeBgDim);
   const image = useSettings((s) => s.homeBgImage);
-  if (kind !== "imagem" || !image) return { kind: "paleta", style: undefined };
-  const style = {
-    "--home-bg-dim": `${dim}%`,
-    "--home-bg-image": cssUrl(image),
-  } as CSSProperties;
-  return { kind, style };
+  const palette = useSettings((s) => s.palette);
+  if (kind === "imagem" && image)
+    return {
+      kind,
+      style: { "--home-bg-dim": `${dim}%`, "--home-bg-image": cssUrl(image) } as CSSProperties,
+    };
+  if (kind === "liso") return { kind: "paleta", style: undefined };
+  // "tema" (ou "imagem" sem imagem guardada): o fundo padrão da paleta.
+  return {
+    kind: "tema",
+    style: {
+      "--home-bg-dim": `${THEME_BACKGROUNDS[palette].dim}%`,
+      "--home-bg-image": cssUrl(themeBackgroundUrl(palette)),
+    } as CSSProperties,
+  };
 }
