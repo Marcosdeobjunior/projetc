@@ -142,6 +142,8 @@ export function HomeSidebar(props: {
   desktop: boolean;
   busy: boolean;
   vaults: VaultRef[];
+  /** Mostrado no lugar da lista quando a busca não encontra nada. */
+  emptyText?: string;
   activeRoot: string | null;
   onSelect(root: string): void;
   onOpen(root: string): void;
@@ -206,11 +208,12 @@ export function HomeSidebar(props: {
         )}
       </div>
 
-      {props.vaults.length > 0 && (
+      {(props.vaults.length > 0 || props.emptyText) && (
         <div className="home-nav-group home-nav-folders">
           <p className="nav-heading">
             <span className="nav-label">Pastas</span>
           </p>
+          {props.emptyText && <p className="nav-empty nav-label">{props.emptyText}</p>}
           <ul>
             {props.vaults.map((v) => {
               const active = v.root === props.activeRoot;
