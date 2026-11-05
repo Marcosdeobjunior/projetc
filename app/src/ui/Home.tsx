@@ -193,71 +193,110 @@ export function Home() {
               </div>
             )}
 
-            <div className="projects-grid">
-              <div className="projects-main">
-                {current ? (
-                  <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
-                ) : (
-                  <div className="panel empty-library">
-                    <h2>Sua biblioteca está vazia</h2>
-                    <p className="muted">Crie o primeiro livro para começar.</p>
-                    <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
-                      <Icon name="plus" size={15} /> Novo projeto
-                    </button>
-                  </div>
-                )}
+            {current ? (
+              <section className="panel home-hero" aria-label="Continuar escrevendo">
+                <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
+                <SelectedCard
+                  vault={current}
+                  stats={stats[current.root]}
+                  goal={goals[current.root]}
+                  busy={busy}
+                  desktop={desktop}
+                  confirming={confirming === current.root}
+                  onOpen={() => void openVault(current.root)}
+                  onAskRemove={() => setConfirming(current.root)}
+                  onCancelRemove={() => setConfirming(null)}
+                  onRemove={() => {
+                    setConfirming(null);
+                    setSelected(null);
+                    void forgetVault(current.root);
+                  }}
+                />
+              </section>
+            ) : (
+              <div className="panel empty-library">
+                <h2>Sua biblioteca está vazia</h2>
+                <p className="muted">Crie o primeiro livro para começar.</p>
+                <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
+                  <Icon name="plus" size={15} /> Novo projeto
+                </button>
               </div>
+            )}
 
-              <aside className="projects-side">
-                <DriveProjects />
+            <div className="home-row">
+              <Progress vaults={recent} stats={stats} goals={goals} />
 
-                {current && (
-                  <SelectedCard
-                    vault={current}
-                    stats={stats[current.root]}
-                    busy={busy}
-                    desktop={desktop}
-                    confirming={confirming === current.root}
-                    onOpen={() => void openVault(current.root)}
-                    onAskRemove={() => setConfirming(current.root)}
-                    onCancelRemove={() => setConfirming(null)}
-                    onRemove={() => {
-                      setConfirming(null);
-                      setSelected(null);
-                      void forgetVault(current.root);
-                    }}
-                  />
+              <section className="panel" aria-labelledby="activity-title">
+                <h2 id="activity-title" className="kicker">
+                  Atividade recente
+                </h2>
+                {recent.length === 0 ? (
+                  <p className="muted small">Nada por aqui ainda.</p>
+                ) : (
+                  <ul className="activity">
+                    {activity(recent, stats).map((a) => (
+                      <li key={a.root + a.kind}>
+                        <span className="activity-dot">
+                          <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
+                        </span>
+                        <span>
+                          <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
+                          <small>
+                            {timeAgo(a.at)} · {a.title}
+                          </small>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
+              </section>
+            </div>
 
-                <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+            <section className="home-recent" aria-labelledby="recent-title">
+              <h2 id="recent-title" className="kicker">
+                Projetos recentes
+              </h2>
+              <ul className="recent-grid">
+                {filtered
+                  .filter((v) => v.root !== current?.root)
+                  .slice(0, 3)
+                  .map((v) => (
+                    <li key={v.root}>
+                      <button
+                        type="button"
+                        className="panel recent-card"
+                        title="Selecionar (duplo clique abre)"
+                        onClick={() => setSelected(v.root)}
+                        onDoubleClick={() => void openVault(v.root)}
+                      >
+                        <Cover title={v.title} size="sm" />
+                        <span>
+                          <b>{v.title}</b>
+                          <small>
+                            {stats[v.root]?.words === undefined
+                              ? "–"
+                              : formatCount(stats[v.root]!.words)}{" "}
+                            palavras
+                          </small>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                <li>
+                  <button
+                    type="button"
+                    className="panel recent-card recent-new"
+                    onClick={() => setCreating(true)}
+                  >
+                    <Icon name="plus" size={15} /> Começar algo novo
+                  </button>
+                </li>
+              </ul>
+            </section>
 
-                <Progress vaults={recent} stats={stats} goals={goals} />
-
-                <section className="panel" aria-labelledby="activity-title">
-                  <h2 id="activity-title" className="kicker">
-                    Atividade recente
-                  </h2>
-                  {recent.length === 0 ? (
-                    <p className="muted small">Nada por aqui ainda.</p>
-                  ) : (
-                    <ul className="activity">
-                      {activity(recent, stats).map((a) => (
-                        <li key={a.root + a.kind}>
-                          <span className="activity-dot">
-                            <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
-                          </span>
-                          <span>
-                            <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
-                            <small>
-                              {timeAgo(a.at)} · {a.title}
-                            </small>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              </aside>
+            <div className="home-row">
+              <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+              <DriveProjects />
             </div>
           </div>
         </main>
@@ -324,6 +363,7 @@ function Stat({ n, label }: { n: number | undefined; label: string }) {
 function SelectedCard(props: {
   vault: VaultRef;
   stats: ProjectStats | null | undefined;
+  goal: number | undefined;
   busy: boolean;
   desktop: boolean;
   confirming: boolean;
@@ -332,10 +372,12 @@ function SelectedCard(props: {
   onCancelRemove(): void;
   onRemove(): void;
 }) {
-  const { vault, stats, desktop } = props;
+  const { vault, stats, desktop, goal } = props;
+  const words = stats?.words ?? 0;
+  const pct = goal ? Math.min(100, Math.round((words / goal) * 100)) : 0;
   return (
-    <section className="panel selected" aria-labelledby="selected-title">
-      <p className="kicker">Projeto selecionado</p>
+    <div className="selected" aria-labelledby="selected-title">
+      <p className="kicker">Continuar escrevendo</p>
       <h2 id="selected-title" className="selected-title">
         {vault.title}
       </h2>
@@ -351,6 +393,17 @@ function SelectedCard(props: {
         <Stat n={stats?.scenes} label="Cenas" />
         <Stat n={stats ? stats.characters + stats.places + stats.ideas : undefined} label="Notas" />
       </div>
+      {goal ? (
+        <div className="hero-goal">
+          <div className="goal-row">
+            <span>{formatCount(words)} palavras</span>
+            <span className="faint">meta {formatCount(goal)}</span>
+          </div>
+          <span className="bar">
+            <span style={{ width: `${pct}%` }} />
+          </span>
+        </div>
+      ) : null}
       <p className="dates">
         {vault.openedAt ? `Aberto ${dateFmt.format(vault.openedAt)}` : ""}
         {stats?.updatedAt ? `   Modificado ${dateFmt.format(stats.updatedAt)}` : ""}
@@ -384,7 +437,7 @@ function SelectedCard(props: {
           </button>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
