@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSettings, type HomeBg, type MinimapPos, type Theme } from "../state/settings";
 import { useSync } from "../state/sync";
 import { useApp } from "../state/store";
 import { Icon } from "./Icon";
 import { BookDesignView } from "./BookDesignView";
 import { ExportView } from "./ExportView";
+import { BgImageError, cssUrl, imageFromUrl, imageSource, shrinkImage } from "./bgImage";
 
 const THEMES: { id: Theme; label: string; icon: string }[] = [
   { id: "system", label: "Sistema", icon: "monitor" },
@@ -31,27 +32,6 @@ const BACKGROUNDS: { id: HomeBg; label: string }[] = [
   { id: "crepusculo", label: "Crepúsculo" },
   { id: "liso", label: "Liso" },
 ];
-
-/** Lado maior da imagem de fundo guardada: nítida em telas grandes, leve no armazenamento. */
-const BG_MAX_SIDE = 2400;
-
-/** Lê a imagem escolhida e reduz para um JPEG leve. */
-async function shrinkImage(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const k = Math.min(1, BG_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.naturalWidth * k);
-    canvas.height = Math.round(img.naturalHeight * k);
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.82);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 export const POS_LABEL: Record<MinimapPos, string> = {
   "top-left": "Canto superior esquerdo",
@@ -271,22 +251,46 @@ function General() {
 function HomeBackground() {
   const s = useSettings();
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [address, setAddress] = useState("");
+  const [over, setOver] = useState(false);
   const image = s.homeBg === "imagem" && s.homeBgImage;
 
-  const pickImage = async (file: File | undefined) => {
-    if (!file) return;
+  /** Guarda a imagem (já reduzida) e passa a usá-la. */
+  const apply = async (load: () => Promise<string>) => {
     setError(null);
+    setLoading(true);
     try {
-      const data = await shrinkImage(file);
-      if (!s.setHomeBgImage(data)) {
+      const data = await load();
+      if (!useSettings.getState().setHomeBgImage(data)) {
         setError("A imagem é grande demais para guardar. Tente uma menor.");
-        return;
+        return false;
       }
-      s.set({ homeBg: "imagem" });
-    } catch {
-      setError("Não foi possível abrir essa imagem. Use um arquivo JPG, PNG ou WebP.");
+      useSettings.getState().set({ homeBg: "imagem" });
+      return true;
+    } catch (err) {
+      setError(err instanceof BgImageError ? err.message : "Não foi possível usar essa imagem.");
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
+  const applySource = (src: ReturnType<typeof imageSource>) => {
+    if (!src) return false;
+    void apply(() => ("file" in src ? shrinkImage(src.file) : imageFromUrl(src.url)));
+    return true;
+  };
+
+  // Ctrl+V com uma imagem (ou um endereço) copiada, fora dos campos de texto.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, [contenteditable='true']")) return;
+      if (applySource(imageSource(e.clipboardData))) e.preventDefault();
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  });
 
   return (
     <Section title="Tela de projetos">
@@ -294,7 +298,22 @@ function HomeBackground() {
         label="Fundo"
         hint="Um fundo pronto, uma cor ou uma imagem sua. A barra lateral e o topo são transparentes e mostram o fundo."
       >
-        <div className="bg-picker" role="radiogroup" aria-label="Fundo da tela de projetos">
+        <div
+          className={"bg-picker" + (over ? " over" : "")}
+          role="radiogroup"
+          aria-label="Fundo da tela de projetos"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setOver(true);
+          }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOver(false);
+            if (!applySource(imageSource(e.dataTransfer)))
+              setError("Solte um arquivo de imagem ou o endereço de uma imagem.");
+          }}
+        >
           {BACKGROUNDS.map((b) => (
             <button
               key={b.id}
@@ -322,12 +341,14 @@ function HomeBackground() {
             />
           </label>
           <label
-            className="bg-swatch bg-imagem"
+            className={"bg-swatch bg-imagem" + (loading ? " loading" : "")}
             title={
-              s.homeBgImage ? "Usar a imagem (clique de novo para trocar)" : "Escolher uma imagem"
+              s.homeBgImage
+                ? "Usar a imagem (clique de novo para escolher outro arquivo)"
+                : "Escolher uma imagem do computador"
             }
             data-checked={s.homeBg === "imagem"}
-            style={s.homeBgImage ? { backgroundImage: `url("${s.homeBgImage}")` } : undefined}
+            style={s.homeBgImage ? { backgroundImage: cssUrl(s.homeBgImage) } : undefined}
             onClick={(e) => {
               // Já existe imagem e ela não está em uso: o primeiro clique só volta a usá-la.
               if (s.homeBgImage && s.homeBg !== "imagem") {
@@ -339,17 +360,54 @@ function HomeBackground() {
             {!s.homeBgImage && <Icon name="plus" size={16} />}
             <input
               type="file"
-              accept="image/png,image/jpeg,image/webp"
-              aria-label="Escolher imagem de fundo"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              aria-label="Escolher imagem do computador"
               onChange={(e) => {
-                void pickImage(e.target.files?.[0]);
+                const file = e.target.files?.[0];
+                if (file) void apply(() => shrinkImage(file));
                 e.target.value = "";
               }}
             />
           </label>
         </div>
       </Field>
-      {error && <p className="setting-error bg-error">{error}</p>}
+      <form
+        className="setting bg-url"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void apply(() => imageFromUrl(address)).then((done) => done && setAddress(""));
+        }}
+      >
+        <div className="setting-text">
+          <span className="setting-label">Imagem da internet</span>
+          <span className="hint">
+            Cole o endereço de uma imagem. Também dá para copiar uma imagem e apertar Ctrl+V aqui,
+            ou arrastar um arquivo até as amostras acima.
+          </span>
+        </div>
+        <div className="bg-url-row">
+          <input
+            className="text-input"
+            type="url"
+            inputMode="url"
+            value={address}
+            placeholder="https://…/imagem.jpg"
+            aria-label="Endereço da imagem"
+            onChange={(e) => {
+              setAddress(e.target.value);
+              setError(null);
+            }}
+          />
+          <button type="submit" className="btn ghost sm" disabled={loading || !address.trim()}>
+            {loading ? "Baixando…" : "Usar"}
+          </button>
+        </div>
+      </form>
+      {error && (
+        <p className="setting-error bg-error" role="alert">
+          {error}
+        </p>
+      )}
       {image && (
         <Field
           label="Suavizar a imagem"

@@ -13,6 +13,7 @@ import { Icon } from "./Icon";
 import { Settings } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
 import { useFolderSyncStatus } from "../state/syncStatus";
@@ -771,7 +772,7 @@ function useHomeBackground() {
   const style = {
     "--home-bg-color": color,
     "--home-bg-dim": `${dim}%`,
-    ...(image && kind === "imagem" ? { "--home-bg-image": `url("${image}")` } : {}),
+    ...(image && kind === "imagem" ? { "--home-bg-image": cssUrl(image) } : {}),
   } as CSSProperties;
   return { kind, style };
 }

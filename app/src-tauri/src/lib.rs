@@ -1,4 +1,5 @@
 mod google;
+mod image;
 mod vault;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,6 +20,7 @@ pub fn run() {
             google::google_sign_in,
             google::google_refresh,
             google::google_revoke,
+            image::fetch_image,
             vault::vault_rename,
             vault::vault_remove,
         ])
