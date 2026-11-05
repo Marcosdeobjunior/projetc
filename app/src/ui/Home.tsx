@@ -10,7 +10,7 @@ import { useApp } from "../state/store";
 import { formatCount } from "../manuscript/wordCount";
 import type { VaultRef } from "../platform";
 import { Icon } from "./Icon";
-import { Settings } from "./Settings";
+import { Settings, type SettingsTab } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
 import { MiniBookSpread } from "./MiniBook";
@@ -55,7 +55,7 @@ export function Home() {
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [settings, setSettings] = useState(false);
+  const [settings, setSettings] = useState<SettingsTab | null>(null);
   const [quoteOffset, setQuoteOffset] = useState(0);
   const desktop = platform?.kind === "desktop";
   const nav = useHomeNav();
@@ -81,13 +81,13 @@ export function Home() {
               type="button"
               className="icon-btn"
               aria-label="Voltar"
-              onClick={() => setSettings(false)}
+              onClick={() => setSettings(null)}
             >
               <Icon name="back" />
             </button>
             <h1 className="brand-text">Configurações</h1>
           </header>
-          <Settings />
+          <Settings initialTab={settings} />
         </div>
       </div>
     );
@@ -103,7 +103,7 @@ export function Home() {
         onToggle={nav.toggle}
         folder={current ? folderName(current, desktop) : null}
         folderTitle={current?.location}
-        onEditName={() => setSettings(true)}
+        onEditName={() => setSettings("geral")}
         sync={sync}
       />
       <div className="projects-body">
@@ -130,7 +130,8 @@ export function Home() {
               : undefined
           }
           onOpenFolder={() => void openExistingFolder()}
-          onSettings={() => setSettings(true)}
+          onSettings={() => setSettings("geral")}
+          onMusicSettings={() => setSettings("musica")}
         />
         {!nav.collapsed && (
           <div className="home-nav-scrim" aria-hidden="true" onClick={nav.toggle} />

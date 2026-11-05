@@ -9,7 +9,7 @@ import { NotesTree } from "./NotesTree";
 import { GraphView } from "./GraphView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
-import { Settings } from "./Settings";
+import { Settings, type SettingsTab } from "./Settings";
 import { SearchPanel } from "./SearchPanel";
 import { AttachmentsTree } from "./AttachmentsTree";
 import { HistoryView } from "./HistoryView";
@@ -37,6 +37,8 @@ export function Workspace({ session }: { session: Session }) {
   const change = useApp((s) => s.change);
   const saveState = useApp((s) => s.saveState);
   const setView = useApp((s) => s.setView);
+  /** Aba pedida ao abrir as Configurações por um atalho (o player abre em Música). */
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const searching = useSearch((s) => s.open);
   /** Barra lateral recolhida no computador (no celular ela é uma gaveta). */
@@ -193,6 +195,7 @@ export function Workspace({ session }: { session: Session }) {
               className={"foot-btn" + (view === v ? " on" : "")}
               aria-pressed={view === v}
               onClick={() => {
+                setSettingsTab(null);
                 setView(view === v ? "editor" : v);
                 closeNav();
               }}
@@ -201,7 +204,13 @@ export function Workspace({ session }: { session: Session }) {
               {v === "settings" ? "Configurações" : "Lixeira"}
             </button>
           ))}
-          <MusicFloating />
+          <MusicFloating
+            onSettings={() => {
+              setSettingsTab("musica");
+              setView("settings");
+              closeNav();
+            }}
+          />
         </div>
       </aside>
 
@@ -278,7 +287,7 @@ export function Workspace({ session }: { session: Session }) {
           {view === "graph" ? (
             <GraphView session={session} />
           ) : view === "settings" ? (
-            <Settings />
+            <Settings key={settingsTab ?? ""} initialTab={settingsTab ?? undefined} />
           ) : view === "history" ? (
             <HistoryView session={session} />
           ) : view === "trash" ? (
