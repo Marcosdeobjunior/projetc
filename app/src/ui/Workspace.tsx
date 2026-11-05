@@ -18,6 +18,7 @@ import { useSearch } from "../state/search";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
 import { Icon } from "./Icon";
+import { MusicFloating } from "./Music";
 import { shortcut } from "../editor/formatting";
 
 const COLLAPSED_KEY = "inkflow.sidebarCollapsed";
@@ -200,6 +201,7 @@ export function Workspace({ session }: { session: Session }) {
               {v === "settings" ? "Configurações" : "Lixeira"}
             </button>
           ))}
+          <MusicFloating />
         </div>
       </aside>
 

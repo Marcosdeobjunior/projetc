@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp, type Session } from "../state/store";
+import type { Project } from "../manuscript/types";
 import { buildGraph, type NodeType } from "../links/links";
 import { KIND_LABEL } from "../links/context";
 import { mountGraph, type View } from "./graphCanvas";
@@ -15,6 +16,28 @@ const TYPES: { type: NodeType; label: string }[] = [
 /** Elo: constelação de conexões entre cenas e notas, cada texto é uma estrela. */
 export function GraphView({ session }: { session: Session }) {
   const openDoc = useApp((s) => s.openDoc);
+  return (
+    <Elo
+      project={session.project}
+      texts={session.texts}
+      activeId={session.activeDocId}
+      onOpen={openDoc}
+    />
+  );
+}
+
+/** O Elo de um projeto qualquer (também usado fora do espaço de trabalho). */
+export function Elo({
+  project,
+  texts,
+  activeId,
+  onOpen: openDoc,
+}: {
+  project: Project;
+  texts: Record<string, string>;
+  activeId: string | null;
+  onOpen(id: string): void;
+}) {
   const [mentions, setMentions] = useState(true);
   const [hidden, setHidden] = useState<Set<NodeType>>(new Set());
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -25,22 +48,22 @@ export function GraphView({ session }: { session: Session }) {
   const recenter = useRef<() => void>(() => undefined);
 
   const graph = useMemo(() => {
-    const g = buildGraph(session.project, session.texts, { mentions });
+    const g = buildGraph(project, texts, { mentions });
     const nodes = g.nodes.filter((n) => !hidden.has(n.type));
     const ids = new Set(nodes.map((n) => n.id));
     return { nodes, edges: g.edges.filter((e) => ids.has(e.source) && ids.has(e.target)) };
-  }, [session.project, session.texts, mentions, hidden]);
+  }, [project, texts, mentions, hidden]);
 
   useEffect(() => {
     const g = mountGraph(canvasRef.current!, boxRef.current!, graph, {
-      activeId: session.activeDocId,
+      activeId,
       onOpen: openDoc,
       positions: positions.current,
       view: view.current,
     });
     recenter.current = g.recenter;
     return g.destroy;
-  }, [graph, openDoc, session.activeDocId]);
+  }, [graph, openDoc, activeId]);
 
   const toggle = (t: NodeType) =>
     setHidden((s) => {
