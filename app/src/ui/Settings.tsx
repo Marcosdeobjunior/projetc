@@ -1,37 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useSettings, type HomeBg, type MinimapPos, type Theme } from "../state/settings";
+import { PALETTES, useSettings, type MinimapPos } from "../state/settings";
 import { useSync } from "../state/sync";
 import { useApp } from "../state/store";
 import { Icon } from "./Icon";
 import { BookDesignView } from "./BookDesignView";
 import { ExportView } from "./ExportView";
 import { BgImageError, cssUrl, imageFromUrl, imageSource, shrinkImage } from "./bgImage";
-
-const THEMES: { id: Theme; label: string; icon: string }[] = [
-  { id: "system", label: "Sistema", icon: "monitor" },
-  { id: "light", label: "Claro", icon: "sun" },
-  { id: "dark", label: "Escuro", icon: "moon" },
-];
-
-/** Cores prontas; null é a cor padrão do app. */
-const ACCENTS: { hex: string | null; label: string; swatch: string }[] = [
-  { hex: null, label: "Padrão", swatch: "#a78bfa" },
-  { hex: "#2bb5c4", label: "Azul-petróleo", swatch: "#2bb5c4" },
-  { hex: "#4f8cff", label: "Azul", swatch: "#4f8cff" },
-  { hex: "#2fbf86", label: "Esmeralda", swatch: "#2fbf86" },
-  { hex: "#d9a441", label: "Dourado", swatch: "#d9a441" },
-  { hex: "#f2715a", label: "Coral", swatch: "#f2715a" },
-  { hex: "#e45aa5", label: "Rosa", swatch: "#e45aa5" },
-  { hex: "#e0475b", label: "Vermelho", swatch: "#e0475b" },
-];
-
-/** Fundos prontos da tela de projetos. */
-const BACKGROUNDS: { id: HomeBg; label: string }[] = [
-  { id: "ceu", label: "Céu noturno" },
-  { id: "aurora", label: "Aurora" },
-  { id: "crepusculo", label: "Crepúsculo" },
-  { id: "liso", label: "Liso" },
-];
 
 export const POS_LABEL: Record<MinimapPos, string> = {
   "top-left": "Canto superior esquerdo",
@@ -143,50 +117,33 @@ function General() {
       </Section>
 
       <Section title="Aparência">
-        <Field label="Tema" hint="“Sistema” segue o modo claro ou escuro do computador.">
-          <div className="segmented wide" role="radiogroup" aria-label="Tema">
-            {THEMES.map((t) => (
+        <Field
+          label="Paleta"
+          hint="Define as cores do app inteiro: editor, barra lateral e tela de projetos."
+        >
+          <div className="palette-picker" role="radiogroup" aria-label="Paleta">
+            {PALETTES.map((p) => (
               <button
-                key={t.id}
+                key={p.id}
                 type="button"
                 role="radio"
-                aria-checked={s.theme === t.id}
-                onClick={() => s.set({ theme: t.id })}
+                aria-checked={s.palette === p.id}
+                className="palette-option"
+                onClick={() => s.set({ palette: p.id })}
               >
-                <Icon name={t.icon} size={15} /> {t.label}
+                <span className="palette-swatch" aria-hidden="true">
+                  {p.swatch.map((c, i) => (
+                    <i key={i} style={{ background: c }} />
+                  ))}
+                </span>
+                <span className="palette-text">
+                  <b>{p.label}</b>
+                  <small>
+                    {p.hint} · {p.theme === "dark" ? "escura" : "clara"}
+                  </small>
+                </span>
               </button>
             ))}
-          </div>
-        </Field>
-        <Field
-          label="Cor de destaque"
-          hint="Usada em botões, seleções, links e na tela de projetos. O tom se ajusta ao tema claro ou escuro."
-        >
-          <div className="accent-picker" role="radiogroup" aria-label="Cor de destaque">
-            {ACCENTS.map((a) => (
-              <button
-                key={a.label}
-                type="button"
-                role="radio"
-                aria-checked={s.accent === a.hex}
-                aria-label={a.label}
-                title={a.label}
-                style={{ background: a.swatch }}
-                onClick={() => s.set({ accent: a.hex })}
-              />
-            ))}
-            <label
-              className="accent-custom"
-              title="Escolher outra cor"
-              data-checked={!!s.accent && !ACCENTS.some((a) => a.hex === s.accent)}
-            >
-              <input
-                type="color"
-                value={s.accent ?? "#8b6dff"}
-                aria-label="Escolher outra cor"
-                onChange={(e) => s.set({ accent: e.target.value })}
-              />
-            </label>
           </div>
         </Field>
       </Section>
@@ -296,7 +253,7 @@ function HomeBackground() {
     <Section title="Tela de projetos">
       <Field
         label="Fundo"
-        hint="Um fundo pronto, uma cor ou uma imagem sua. A barra lateral e o topo são transparentes e mostram o fundo."
+        hint="O fundo da paleta ou uma imagem sua. A barra lateral e o topo são transparentes e mostram o fundo."
       >
         <div
           className={"bg-picker" + (over ? " over" : "")}
@@ -314,32 +271,15 @@ function HomeBackground() {
               setError("Solte um arquivo de imagem ou o endereço de uma imagem.");
           }}
         >
-          {BACKGROUNDS.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              role="radio"
-              className={"bg-swatch bg-" + b.id}
-              aria-checked={s.homeBg === b.id}
-              aria-label={b.label}
-              title={b.label}
-              onClick={() => s.set({ homeBg: b.id })}
-            />
-          ))}
-          <label
-            className="bg-swatch bg-cor"
-            title="Uma cor"
-            data-checked={s.homeBg === "cor"}
-            style={{ background: s.homeBgColor }}
-          >
-            <input
-              type="color"
-              value={s.homeBgColor}
-              aria-label="Fundo de uma cor"
-              onClick={() => s.set({ homeBg: "cor" })}
-              onChange={(e) => s.set({ homeBg: "cor", homeBgColor: e.target.value })}
-            />
-          </label>
+          <button
+            type="button"
+            role="radio"
+            className="bg-swatch bg-paleta"
+            aria-checked={s.homeBg === "paleta"}
+            aria-label="Fundo da paleta"
+            title="Fundo da paleta"
+            onClick={() => s.set({ homeBg: "paleta" })}
+          />
           <label
             className={"bg-swatch bg-imagem" + (loading ? " loading" : "")}
             title={
@@ -429,7 +369,7 @@ function HomeBackground() {
               className="link-btn"
               onClick={() => {
                 s.setHomeBgImage(null);
-                s.set({ homeBg: "ceu" });
+                s.set({ homeBg: "paleta" });
               }}
             >
               Remover imagem
