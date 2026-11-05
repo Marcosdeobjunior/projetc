@@ -3,10 +3,14 @@ const META_DIR = ".inkflow";
 export const PROJECT_FILE = `${META_DIR}/project.json`;
 /** Estado Yjs de cada cena (usado para mesclar edições no sync). */
 const YDOC_DIR = `${META_DIR}/ydoc`;
+/** Versões guardadas do projeto (histórico). */
+export const HISTORY_DIR = `${META_DIR}/versoes`;
 /** Cenas e capítulos excluídos vão para cá em vez de sumir. */
 export const TRASH_DIR = `${META_DIR}/lixeira`;
 /** Textos legíveis do livro. */
 export const MANUSCRIPT_DIR = "manuscrito";
+/** Imagens, vídeos, áudios e outros arquivos usados nos textos. */
+export const ATTACHMENTS_DIR = "anexos";
 /** Personagens, lugares e ideias. */
 export const NOTES_DIR = "notas";
 
@@ -22,6 +26,8 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)
     .replace(/-+$/g, "");
+  // Nomes reservados no Windows (con, aux, nul...) não podem ser arquivo nem pasta.
+  if (/^(con|prn|aux|nul|com\d|lpt\d)$/.test(s)) return `${s}-1`;
   return s || "sem-titulo";
 }
 

@@ -1,9 +1,23 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { useApp } from "../state/store";
 import { formatCount } from "../manuscript/wordCount";
 import type { VaultRef } from "../platform";
 import { Icon } from "./Icon";
 import { Settings } from "./Settings";
+import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
+import { NewProjectDialog } from "./NewProjectDialog";
+import { cssUrl } from "./bgImage";
+import { useSync } from "../state/sync";
+import { useSettings } from "../state/settings";
+import { useFolderSyncStatus } from "../state/syncStatus";
+import type { RemoteProject } from "../sync/drive";
 import {
   coverHue,
   quoteOfTheDay,
@@ -24,8 +38,8 @@ export function Home() {
   const platform = useApp((s) => s.platform);
   const vaults = useApp((s) => s.vaults);
   const busy = useApp((s) => s.busy);
-  const createVault = useApp((s) => s.createVault);
   const openVault = useApp((s) => s.openVault);
+  const createTestBook = useApp((s) => s.createTestBook);
   const openExistingFolder = useApp((s) => s.openExistingFolder);
   const folderToConvert = useApp((s) => s.folderToConvert);
   const createVaultInFolder = useApp((s) => s.createVaultInFolder);
@@ -37,11 +51,11 @@ export function Home() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
   const [quoteOffset, setQuoteOffset] = useState(0);
   const desktop = platform?.kind === "desktop";
+  const nav = useHomeNav();
 
   const recent = useMemo(
     () => [...vaults].sort((a, b) => (b.openedAt ?? 0) - (a.openedAt ?? 0)),
@@ -52,6 +66,8 @@ export function Home() {
     return q ? recent.filter((v) => v.title.toLocaleLowerCase("pt-BR").includes(q)) : recent;
   }, [recent, query]);
   const current = recent.find((v) => v.root === selected) ?? recent[0] ?? null;
+  const background = useHomeBackground();
+  const sync = useFolderSyncStatus(platform, current?.root ?? null);
   const known = Object.values(stats).filter((s): s is ProjectStats => !!s);
   const total = (f: (s: ProjectStats) => number) => known.reduce((n, s) => n + f(s), 0);
 
@@ -77,234 +93,228 @@ export function Home() {
   }
 
   return (
-    <div className="projects">
-      <div className="projects-inner">
-        <header className="projects-head">
-          <div className="projects-brand">
-            <Emblem />
-            <div>
-              <h1>Projetos</h1>
-              <p>Seus mundos. Suas histórias. Seu legado.</p>
-            </div>
-          </div>
-          <div className="projects-actions">
-            <label className="search">
-              <Icon name="search" size={15} />
-              <span className="sr-only">Buscar projeto</span>
-              <input
-                type="search"
-                value={query}
-                placeholder="Buscar por título…"
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              className="icon-btn"
-              title="Configurações"
-              aria-label="Configurações"
-              onClick={() => setSettings(true)}
-            >
-              <Icon name="settings" />
-            </button>
-            {desktop && (
-              <button
-                type="button"
-                className="pbtn"
-                disabled={busy}
-                onClick={() => void openExistingFolder()}
-              >
-                <Icon name="folder" size={15} /> Abrir projeto
-              </button>
-            )}
-            <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
-              <Icon name="plus" size={15} /> Novo projeto
-            </button>
-          </div>
-        </header>
-
-        {!desktop && (
-          <p className="notice">
-            {platform?.persistent === false
-              ? "Prévia no navegador: este navegador não permite guardar dados, então os projetos somem ao fechar a página."
-              : "Prévia no navegador: os projetos ficam guardados só neste navegador. No app desktop, cada projeto é uma pasta no seu computador."}
-          </p>
+    <div
+      className={"projects bg-" + background.kind + (nav.collapsed ? " nav-collapsed" : "")}
+      style={background.style}
+    >
+      <AppBar
+        collapsed={nav.collapsed}
+        onToggle={nav.toggle}
+        folder={current ? folderName(current, desktop) : null}
+        folderTitle={current?.location}
+        onEditName={() => setSettings(true)}
+        sync={sync}
+      />
+      <div className="projects-body">
+        <HomeSidebar
+          collapsed={nav.collapsed}
+          onToggle={nav.toggle}
+          desktop={desktop}
+          busy={busy}
+          vaults={recent}
+          activeRoot={current?.root ?? null}
+          onSelect={setSelected}
+          onOpen={(root) => void openVault(root)}
+          onCreate={() => setCreating(true)}
+          onCreateTestBook={
+            import.meta.env.DEV
+              ? () =>
+                  void createTestBook().then((r) => {
+                    if (r.ok) {
+                      setQuery("");
+                      setSelected(r.root);
+                    }
+                  })
+              : undefined
+          }
+          onOpenFolder={() => void openExistingFolder()}
+          onSettings={() => setSettings(true)}
+        />
+        {!nav.collapsed && (
+          <div className="home-nav-scrim" aria-hidden="true" onClick={nav.toggle} />
         )}
+        <main className="projects-content">
+          <div className="projects-inner">
+            <header className="projects-head">
+              <div className="projects-brand">
+                <Emblem />
+                <div>
+                  <h1>Projetos</h1>
+                  <p>Seus mundos. Suas histórias. Seu legado.</p>
+                </div>
+              </div>
+              <div className="projects-actions">
+                <label className="projects-search">
+                  <Icon name="search" size={15} />
+                  <span className="sr-only">Buscar projeto</span>
+                  <input
+                    type="search"
+                    value={query}
+                    placeholder="Buscar por título…"
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+              </div>
+            </header>
 
-        {creating && (
-          <form
-            className="panel new-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void createVault(title).then(() => {
-                setTitle("");
-                setCreating(false);
-              });
-            }}
-          >
-            <label htmlFor="project-title" className="kicker">
-              Novo projeto
-            </label>
-            <div className="field-row">
-              <input
-                id="project-title"
-                autoFocus
-                value={title}
-                placeholder="Nome do livro. Ex.: A Casa das Marés"
-                maxLength={120}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Escape" && setCreating(false)}
-              />
-              <button type="submit" className="pbtn accent" disabled={busy}>
-                Criar projeto
-              </button>
-              <button type="button" className="pbtn" onClick={() => setCreating(false)}>
-                Cancelar
-              </button>
-            </div>
-            {desktop && (
-              <p className="hint">
-                Em seguida você escolhe em qual pasta do computador ele será salvo.
+            {!desktop && (
+              <p className="notice">
+                {platform?.persistent === false
+                  ? "Prévia no navegador: este navegador não permite guardar dados, então os projetos somem ao fechar a página."
+                  : "Prévia no navegador: os projetos ficam guardados só neste navegador. No app desktop, cada projeto é uma pasta no seu computador."}
               </p>
             )}
-          </form>
-        )}
 
-        {folderToConvert && (
-          <div className="panel convert" role="alertdialog" aria-labelledby="convert-title">
-            <p id="convert-title">
-              A pasta <b>{folderToConvert.name}</b> ainda não é um projeto do InkFlow.
-            </p>
-            <p className="muted">
-              Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
-              <code>manuscrito</code> e <code>.inkflow</code>. Os arquivos que já estão lá não são
-              alterados.
-            </p>
-            <div className="convert-actions">
-              <button
-                type="button"
-                className="pbtn accent"
-                disabled={busy}
-                onClick={() => void createVaultInFolder(folderToConvert)}
-              >
-                Criar projeto nesta pasta
-              </button>
-              <button type="button" className="pbtn" onClick={() => void openExistingFolder()}>
-                Escolher outra pasta
-              </button>
-              <button type="button" className="pbtn" onClick={cancelFolderToConvert}>
-                Cancelar
-              </button>
+            {folderToConvert && (
+              <div className="panel convert" role="alertdialog" aria-labelledby="convert-title">
+                <p id="convert-title">
+                  A pasta <b>{folderToConvert.name}</b> ainda não é um projeto do InkFlow.
+                </p>
+                <p className="muted">
+                  Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
+                  <code>manuscrito</code> e <code>.inkflow</code> e o arquivo{" "}
+                  <code>LEIA-ME.md</code>. Os arquivos que já estão lá não são alterados.
+                </p>
+                <div className="convert-actions">
+                  <button
+                    type="button"
+                    className="pbtn accent"
+                    disabled={busy}
+                    onClick={() => void createVaultInFolder(folderToConvert)}
+                  >
+                    Criar projeto nesta pasta
+                  </button>
+                  <button type="button" className="pbtn" onClick={() => void openExistingFolder()}>
+                    Escolher outra pasta
+                  </button>
+                  <button type="button" className="pbtn" onClick={cancelFolderToConvert}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="projects-grid">
+              <div className="projects-main">
+                {current ? (
+                  <div className="featured">
+                    <SelectedCard
+                      vault={current}
+                      stats={stats[current.root]}
+                      busy={busy}
+                      desktop={desktop}
+                      confirming={confirming === current.root}
+                      onOpen={() => void openVault(current.root)}
+                      onAskRemove={() => setConfirming(current.root)}
+                      onCancelRemove={() => setConfirming(null)}
+                      onRemove={() => {
+                        setConfirming(null);
+                        setSelected(null);
+                        void forgetVault(current.root);
+                      }}
+                    />
+                    <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
+                  </div>
+                ) : (
+                  <div className="panel empty-library">
+                    <h2>Sua biblioteca está vazia</h2>
+                    <p className="muted">Crie o primeiro livro para começar.</p>
+                    <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
+                      <Icon name="plus" size={15} /> Novo projeto
+                    </button>
+                  </div>
+                )}
+
+                {recent.length > 0 && (
+                  <section aria-labelledby="recent-title">
+                    <div className="row-title">
+                      <h2 id="recent-title" className="kicker">
+                        {query ? "Resultados" : "Projetos recentes"}
+                      </h2>
+                      <span className="count-pill">{filtered.length}</span>
+                    </div>
+                    {filtered.length === 0 ? (
+                      <p className="muted">Nenhum projeto com “{query}”.</p>
+                    ) : (
+                      <ul className="shelf">
+                        {filtered.map((v) => (
+                          <ShelfBook
+                            key={v.root}
+                            vault={v}
+                            stats={stats[v.root]}
+                            goal={goals[v.root]}
+                            active={v.root === current?.root}
+                            onSelect={() => setSelected(v.root)}
+                            onOpen={() => void openVault(v.root)}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )}
+              </div>
+
+              <aside className="projects-side">
+                <DriveProjects />
+
+                <section className="panel" aria-labelledby="summary-title">
+                  <h2 id="summary-title" className="kicker">
+                    Resumo da biblioteca
+                  </h2>
+                  <div className="tiles">
+                    <Tile n={vaults.length} label="Projetos" />
+                    <Tile n={total((s) => s.chapters)} label="Capítulos" />
+                    <Tile n={total((s) => s.words)} label="Palavras" />
+                    <Tile n={total((s) => s.scenes)} label="Cenas" />
+                    <Tile n={total((s) => s.characters)} label="Personagens" />
+                    <Tile n={total((s) => s.places)} label="Lugares" />
+                  </div>
+                </section>
+
+                <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+
+                <Progress vaults={recent} stats={stats} goals={goals} />
+
+                <section className="panel" aria-labelledby="activity-title">
+                  <h2 id="activity-title" className="kicker">
+                    Atividade recente
+                  </h2>
+                  {recent.length === 0 ? (
+                    <p className="muted small">Nada por aqui ainda.</p>
+                  ) : (
+                    <ul className="activity">
+                      {activity(recent, stats).map((a) => (
+                        <li key={a.root + a.kind}>
+                          <span className="activity-dot">
+                            <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
+                          </span>
+                          <span>
+                            <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
+                            <small>
+                              {timeAgo(a.at)} · {a.title}
+                            </small>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </aside>
             </div>
           </div>
-        )}
-
-        <div className="projects-grid">
-          <div className="projects-main">
-            {current ? (
-              <div className="featured">
-                <SelectedCard
-                  vault={current}
-                  stats={stats[current.root]}
-                  busy={busy}
-                  desktop={desktop}
-                  confirming={confirming === current.root}
-                  onOpen={() => void openVault(current.root)}
-                  onAskRemove={() => setConfirming(current.root)}
-                  onCancelRemove={() => setConfirming(null)}
-                  onRemove={() => {
-                    setConfirming(null);
-                    setSelected(null);
-                    void forgetVault(current.root);
-                  }}
-                />
-                <BookPreview vault={current} stats={stats[current.root]} />
-              </div>
-            ) : (
-              <div className="panel empty-library">
-                <h2>Sua biblioteca está vazia</h2>
-                <p className="muted">Crie o primeiro livro para começar.</p>
-                <button type="button" className="pbtn accent" onClick={() => setCreating(true)}>
-                  <Icon name="plus" size={15} /> Novo projeto
-                </button>
-              </div>
-            )}
-
-            {recent.length > 0 && (
-              <section aria-labelledby="recent-title">
-                <div className="row-title">
-                  <h2 id="recent-title" className="kicker">
-                    {query ? "Resultados" : "Projetos recentes"}
-                  </h2>
-                  <span className="count-pill">{filtered.length}</span>
-                </div>
-                {filtered.length === 0 ? (
-                  <p className="muted">Nenhum projeto com “{query}”.</p>
-                ) : (
-                  <ul className="shelf">
-                    {filtered.map((v) => (
-                      <ShelfBook
-                        key={v.root}
-                        vault={v}
-                        stats={stats[v.root]}
-                        goal={goals[v.root]}
-                        active={v.root === current?.root}
-                        onSelect={() => setSelected(v.root)}
-                        onOpen={() => void openVault(v.root)}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
-          </div>
-
-          <aside className="projects-side">
-            <section className="panel" aria-labelledby="summary-title">
-              <h2 id="summary-title" className="kicker">
-                Resumo da biblioteca
-              </h2>
-              <div className="tiles">
-                <Tile n={vaults.length} label="Projetos" />
-                <Tile n={total((s) => s.chapters)} label="Capítulos" />
-                <Tile n={total((s) => s.words)} label="Palavras" />
-                <Tile n={total((s) => s.scenes)} label="Cenas" />
-                <Tile n={total((s) => s.characters)} label="Personagens" />
-                <Tile n={total((s) => s.places)} label="Lugares" />
-              </div>
-            </section>
-
-            <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
-
-            <Progress vaults={recent} stats={stats} goals={goals} />
-
-            <section className="panel" aria-labelledby="activity-title">
-              <h2 id="activity-title" className="kicker">
-                Atividade recente
-              </h2>
-              {recent.length === 0 ? (
-                <p className="muted small">Nada por aqui ainda.</p>
-              ) : (
-                <ul className="activity">
-                  {activity(recent, stats).map((a) => (
-                    <li key={a.root + a.kind}>
-                      <span className="activity-dot">
-                        <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
-                      </span>
-                      <span>
-                        <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
-                        <small>
-                          {timeAgo(a.at)} · {a.title}
-                        </small>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </aside>
-        </div>
+        </main>
       </div>
+      {creating && (
+        <NewProjectDialog
+          desktop={desktop}
+          onClose={() => setCreating(false)}
+          onCreated={(root) => {
+            setCreating(false);
+            setQuery("");
+            setSelected(root);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -430,6 +440,11 @@ function firstSentence(text: string): string {
   return s.length > 90 ? s.slice(0, 90).trimEnd() + "…" : s;
 }
 
+/** Graus de giro por pixel arrastado: 720px de arrasto dão uma volta inteira. */
+const DEG_PER_PX = 0.5;
+/** Ângulo de descanso do livro (o mesmo de antes do giro existir). */
+const REST_Y = -32;
+
 /** O livro em 3D, fechado, como sai da diagramação. */
 function BookPreview({
   vault,
@@ -440,10 +455,55 @@ function BookPreview({
 }) {
   const style = { "--hue": coverHue(vault.title) } as CSSProperties;
   const line = stats?.excerpt ? firstSentence(stats.excerpt) : "";
+  // Giro em torno do eixo vertical, arrastando na horizontal. O livro não sai
+  // do lugar: só o ângulo muda, e ao soltar ele para onde está. O ângulo vai
+  // direto no estilo, sem re-renderizar o React a cada movimento.
+  const body = useRef<HTMLDivElement>(null);
+  const angle = useRef(REST_Y);
+  const drag = useRef<{ id: number; x: number; from: number } | null>(null);
+
+  const apply = (deg: number) => {
+    angle.current = deg;
+    body.current?.style.setProperty("--ry", `${deg}deg`);
+  };
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); // não seleciona texto nem arrasta a imagem
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.currentTarget.classList.add("dragging");
+    drag.current = { id: e.pointerId, x: e.clientX, from: angle.current };
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (d?.id !== e.pointerId) return;
+    apply(d.from + (e.clientX - d.x) * DEG_PER_PX);
+  };
+  const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.id !== e.pointerId) return;
+    drag.current = null;
+    e.currentTarget.classList.remove("dragging");
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    apply(angle.current + (e.key === "ArrowRight" ? 15 : -15));
+  };
   return (
     <figure className="book-preview">
-      <div className="book3d" style={style} aria-hidden="true">
-        <div className="book3d-body">
+      <div
+        className="book3d"
+        style={style}
+        role="img"
+        aria-label={`Capa de ${vault.title}. Arraste para os lados ou use as setas para girar o livro.`}
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onLostPointerCapture={onPointerEnd}
+        onKeyDown={onKeyDown}
+      >
+        <div className="book3d-body" ref={body}>
           <div className="book3d-face book3d-back" />
           <div className="book3d-face book3d-pages" />
           <div className="book3d-face book3d-top" />
@@ -636,4 +696,83 @@ function Progress({
       </ul>
     </section>
   );
+}
+
+/** Projetos que estão no Google Drive, para baixar neste computador. */
+function DriveProjects() {
+  const available = useSync((s) => s.available);
+  const account = useSync((s) => s.account);
+  const busy = useSync((s) => s.busy);
+  const error = useSync((s) => s.error);
+  const listRemote = useSync((s) => s.listRemote);
+  const download = useSync((s) => s.download);
+  const vaults = useApp((s) => s.vaults);
+  const [list, setList] = useState<RemoteProject[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (!available || !account) return null;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setList(await listRemote());
+    } catch {
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="panel" aria-labelledby="drive-title">
+      <h2 id="drive-title" className="kicker">
+        No Google Drive
+      </h2>
+      {list === null ? (
+        <button type="button" className="pbtn" disabled={loading} onClick={() => void load()}>
+          <Icon name="cloud" size={15} /> {loading ? "Procurando…" : "Ver projetos no Drive"}
+        </button>
+      ) : list.length === 0 ? (
+        <p className="muted small">Nenhum projeto sincronizado no Drive desta conta ainda.</p>
+      ) : (
+        <ul className="drive-list">
+          {list.map((r) => (
+            <li key={r.folderId}>
+              <span>
+                <b>{r.title}</b>
+                <small>
+                  {vaults.some((v) => v.title === r.title)
+                    ? "Já existe um projeto com esse nome aqui"
+                    : "Ainda não está neste computador"}
+                </small>
+              </span>
+              <button
+                type="button"
+                className="pbtn"
+                disabled={busy}
+                onClick={() => void download(r)}
+              >
+                Baixar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="small warn">{error}</p>}
+    </section>
+  );
+}
+
+/** Fundo escolhido nas Configurações; sem imagem guardada, volta ao céu noturno. */
+function useHomeBackground() {
+  const kind = useSettings((s) => s.homeBg);
+  const color = useSettings((s) => s.homeBgColor);
+  const dim = useSettings((s) => s.homeBgDim);
+  const image = useSettings((s) => s.homeBgImage);
+  if (kind === "imagem" && !image) return { kind: "ceu", style: undefined };
+  const style = {
+    "--home-bg-color": color,
+    "--home-bg-dim": `${dim}%`,
+    ...(image && kind === "imagem" ? { "--home-bg-image": cssUrl(image) } : {}),
+  } as CSSProperties;
+  return { kind, style };
 }

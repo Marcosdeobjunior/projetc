@@ -1,3 +1,5 @@
+import type { Editor } from "@tiptap/core";
+
 /*
  * Editores abertos. Quando um título muda, os links dentro do texto aberto
  * são trocados pelo próprio editor (como uma edição normal); os textos
@@ -19,3 +21,12 @@ export function renameLinksInOpenEditors(oldTitle: string, newTitle: string) {
   for (const rename of editors.values()) count += rename(oldTitle, newTitle);
   return { ids: new Set(editors.keys()), count };
 }
+
+/* O editor do texto aberto, para a barra lateral inserir anexos nele. */
+let active: Editor | null = null;
+
+export function setActiveEditor(editor: Editor | null) {
+  active = editor;
+}
+
+export const activeEditor = () => (active && !active.isDestroyed ? active : null);

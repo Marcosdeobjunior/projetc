@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { basename, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import type { Platform, VaultFs, VaultRef } from "./types";
 import { PlatformError } from "./types";
 import { PROJECT_FILE } from "../vault/paths";
@@ -56,6 +56,16 @@ class TauriFs implements VaultFs {
     return invoke<boolean>("vault_exists", { root: this.root, path });
   }
 
+  walk() {
+    return invoke<{ path: string; size: number; mtime: number }[]>("vault_walk", {
+      root: this.root,
+    });
+  }
+
+  list(dir: string) {
+    return invoke<string[]>("vault_list", { root: this.root, path: dir });
+  }
+
   rename(from: string, to: string) {
     return invoke<void>("vault_rename", { root: this.root, from, to });
   }
@@ -108,6 +118,19 @@ export function createDesktopPlatform(): Platform {
 
     fs(root: string) {
       return new TauriFs(root);
+    },
+
+    async saveFile(name, data, filter) {
+      const path = await save({ defaultPath: name, filters: [filter], title: "Exportar" });
+      if (!path) return false;
+      await invoke<void>("export_write", data, {
+        headers: { "x-path": encodeURIComponent(path) },
+      });
+      return true;
+    },
+
+    openFile(root: string, path: string) {
+      return invoke<void>("vault_open", { root, path });
     },
 
     onClose(beforeClose) {

@@ -16,7 +16,7 @@ export const MARKS: { id: MarkId; label: string; icon: string; keys: string }[] 
   { id: "bold", label: "Negrito", icon: "bold", keys: shortcut("Mod+B") },
   { id: "italic", label: "Itálico", icon: "italic", keys: shortcut("Mod+I") },
   { id: "strike", label: "Tachado", icon: "strike", keys: shortcut("Mod+Shift+S") },
-  { id: "highlight", label: "Destacar", icon: "highlight", keys: shortcut("Mod+Shift+H") },
+  { id: "highlight", label: "Marca-texto", icon: "highlight", keys: shortcut("Mod+Shift+H") },
 ];
 
 export function toggleMark(editor: Editor, id: MarkId) {
@@ -30,7 +30,7 @@ export function toggleMark(editor: Editor, id: MarkId) {
 export type BlockStyle = "paragraph" | "1" | "2" | "3";
 
 export const BLOCK_STYLES: { id: BlockStyle; label: string }[] = [
-  { id: "paragraph", label: "Texto" },
+  { id: "paragraph", label: "Parágrafo" },
   { id: "1", label: "Título 1" },
   { id: "2", label: "Título 2" },
   { id: "3", label: "Título 3" },

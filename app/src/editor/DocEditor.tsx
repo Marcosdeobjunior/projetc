@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
 import { textExtensions, YDOC_FIELD } from "./extensions";
@@ -14,17 +14,29 @@ import {
 import { parseMarkdown } from "../markdown/parse";
 import { useApp, type Session } from "../state/store";
 import { registerFlush, serial } from "../state/writes";
-import { registerOpenEditor } from "../state/openEditors";
+import { registerOpenEditor, setActiveEditor } from "../state/openEditors";
+import { insertAttachments } from "./attachments";
 import { linkEdits } from "../links/links";
 import { allDocs, findDoc } from "../manuscript/tree";
 import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
 import { ContextMenu } from "./ContextMenu";
+import { REFRESH_SEARCH, SearchHighlight, searchHits } from "./searchHighlight";
+import { useSearch } from "../state/search";
 import { MiniMap } from "../ui/MiniMap";
 import { useSettings } from "../state/settings";
 
 const SAVE_DELAY_MS = 700;
+/** Espera para atualizar contagem de palavras, links e busca enquanto digita. */
+const TEXT_DELAY_MS = 300;
+
+/**
+ * Quantos editores estão usando cada documento agora. Em modo de desenvolvimento
+ * o React desmonta e monta de novo na hora; o documento só é liberado quando
+ * ninguém mais usa (destruir antes faria o texto parar de ser salvo).
+ */
+const liveDocs = new WeakMap<object, number>();
 
 interface Props {
   session: Session;
@@ -77,9 +89,17 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const dirty = useRef(false);
   /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
   const diskText = useRef(loaded.diskText);
+  const textTimer = useRef<number | undefined>(undefined);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const minimap = useSettings((s) => s.minimap);
+  const editorRef = useRef<Editor | null>(null);
+  /** Copia os arquivos para anexos/ e insere no texto (na posição, se dada). */
+  const attach = async (files: File[], at?: number) => {
+    const added = await useApp.getState().addAttachments(files);
+    const ed = editorRef.current;
+    if (ed && !ed.isDestroyed && added.length) insertAttachments(ed, added, at);
+  };
   const minimapPos = useSettings((s) => s.minimapPos);
 
   const editor = useEditor(
@@ -89,8 +109,25 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         Collaboration.configure({ document: doc, field: YDOC_FIELD }),
         Placeholder.configure({ placeholder: "Comece a escrever…" }),
         createLinksExtension(linkContext),
+        SearchHighlight,
       ],
       editorProps: {
+        // Arquivos soltos ou colados no texto viram anexos.
+        handleDrop: (view, event, _slice, moved) => {
+          const files = [...(event.dataTransfer?.files ?? [])];
+          if (moved || files.length === 0) return false;
+          event.preventDefault();
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+          void attach(files, at);
+          return true;
+        },
+        handlePaste: (_view, event) => {
+          const files = [...(event.clipboardData?.files ?? [])];
+          if (files.length === 0) return false;
+          event.preventDefault();
+          void attach(files);
+          return true;
+        },
         attributes: {
           class: "prose",
           "aria-label": "Texto",
@@ -99,32 +136,82 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         },
       },
       // Durante a criação o texto chega como uma atualização; quem cuida dele é o efeito abaixo.
-      onUpdate: ({ editor }) => editor.isInitialized && setDocText(sceneId, editor.getText()),
+      // A contagem de palavras e o texto para links/busca esperam uma pausa na
+      // digitação: atualizar a cada tecla redesenharia o app inteiro.
+      onUpdate: ({ editor }) => {
+        if (!editor.isInitialized) return;
+        window.clearTimeout(textTimer.current);
+        textTimer.current = window.setTimeout(() => {
+          if (!editor.isDestroyed) setDocText(sceneId, editor.getText());
+        }, TEXT_DELAY_MS);
+      },
     },
     [doc],
   );
 
+  useEffect(() => {
+    editorRef.current = editor;
+    setActiveEditor(editor);
+    return () => setActiveEditor(null);
+  }, [editor]);
+
   // O editor é criado durante a renderização: o texto inicial vai para o estado
   // do app depois dela (atualizar o app no meio da renderização gera aviso do React).
   useEffect(() => {
-    if (editor) setDocText(sceneId, editor.getText());
+    if (!editor) return;
+    setDocText(sceneId, editor.getText());
+    // Ao sair do texto, a contagem fica com o que foi digitado por último.
+    const timer = textTimer;
+    return () => {
+      window.clearTimeout(timer.current);
+      if (!editor.isDestroyed) setDocText(sceneId, editor.getText());
+    };
   }, [editor, sceneId, setDocText]);
 
   // Títulos mudaram (nota criada ou renomeada): redesenha os links do texto.
-  const titles = useApp((s) =>
-    s.session
-      ? allDocs(s.session.project)
-          .map((d) => d.title)
-          .join("\n")
-      : "",
+  const project = useApp((s) => s.session?.project);
+  const titles = useMemo(
+    () =>
+      project
+        ? allDocs(project)
+            .map((d) => d.title)
+            .join("\n")
+        : "",
+    [project],
   );
   useEffect(() => {
     if (editor && !editor.isDestroyed)
       editor.view.dispatch(editor.state.tr.setMeta(REFRESH_LINKS, true));
   }, [editor, titles]);
 
+  // Busca: redesenha os destaques e, ao clicar num resultado, seleciona a ocorrência.
   useEffect(() => {
     if (!editor) return;
+    const sync = (s = useSearch.getState()) => {
+      if (editor.isDestroyed) return;
+      editor.view.dispatch(editor.state.tr.setMeta(REFRESH_SEARCH, true));
+      if (s.target?.docId !== sceneId) return;
+      const hits = searchHits(editor.state.doc);
+      const hit = hits[s.target.index] ?? hits[0];
+      useSearch.getState().clearTarget();
+      if (hit) editor.chain().focus().setTextSelection(hit).scrollIntoView().run();
+    };
+    sync();
+    return useSearch.subscribe((s, prev) => {
+      if (
+        s.open !== prev.open ||
+        s.query !== prev.query ||
+        s.exact !== prev.exact ||
+        s.wholeWord !== prev.wholeWord ||
+        (s.target && s.target !== prev.target)
+      )
+        sync(s);
+    });
+  }, [editor, sceneId]);
+
+  useEffect(() => {
+    if (!editor) return;
+    liveDocs.set(doc, (liveDocs.get(doc) ?? 0) + 1);
 
     /** Grava agora o que estiver pendente. Rejeita se a gravação falhar. */
     const save = async (retry = true): Promise<void> => {
@@ -147,9 +234,11 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         if (err instanceof ExternalChangeError && retry) {
           // Os dois lados mudaram: guarda a versão de fora como outra cena e
           // depois grava a versão do editor no arquivo original.
-          await useApp.getState().keepExternalCopy(sceneId, err.diskText);
-          diskText.current = err.diskText;
-          return save(false);
+          // Só grava por cima depois que a versão de fora foi guardada.
+          if (await useApp.getState().keepExternalCopy(sceneId, err.diskText)) {
+            diskText.current = err.diskText;
+            return save(false);
+          }
         }
         console.error(err);
         setSaveState("error");
@@ -215,13 +304,16 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("beforeunload", saveQuietly);
       saveQuietly();
-      void serial(async () => doc.destroy());
+      liveDocs.set(doc, liveDocs.get(doc)! - 1);
+      void serial(async () => {
+        if (liveDocs.get(doc) === 0) doc.destroy();
+      });
     };
   }, [editor, doc, loaded, session.fs, sceneId, setSaveState]);
 
   return (
     <>
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} onAttach={(files) => void attach(files)} />
       <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
         <div
           className="page"

@@ -28,3 +28,19 @@ export async function flushAll(): Promise<boolean> {
   await serial(async () => undefined);
   return results.every((r) => r.status === "fulfilled");
 }
+
+/*
+ * Tarefas para antes de fechar o projeto ou o app (ex.: sincronizar com o
+ * Drive). Cada uma tem um limite de tempo, para o app nunca ficar preso.
+ */
+const closers = new Set<() => Promise<void>>();
+
+export function registerBeforeClose(task: () => Promise<void>): () => void {
+  closers.add(task);
+  return () => closers.delete(task);
+}
+
+export async function runBeforeClose(timeoutMs = 20_000) {
+  const limit = new Promise<void>((r) => setTimeout(r, timeoutMs));
+  await Promise.race([Promise.allSettled([...closers].map((t) => t())), limit]);
+}

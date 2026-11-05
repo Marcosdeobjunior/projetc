@@ -29,7 +29,10 @@ const key = (title: string) => title.trim().toLocaleLowerCase("pt-BR");
 /** Encontra cenas e notas pelo título, sem diferenciar maiúsculas. Notas têm prioridade. */
 export function titleIndex(project: Project): Map<string, DocRef> {
   const map = new Map<string, DocRef>();
-  for (const d of allDocs(project).reverse()) map.set(key(d.title), d);
+  const docs = allDocs(project);
+  // De trás para a frente: com títulos repetidos, fica o primeiro. Notas por último: ganham das cenas.
+  for (const d of docs.filter((x) => x.type === "scene").reverse()) map.set(key(d.title), d);
+  for (const d of docs.filter((x) => x.type !== "scene").reverse()) map.set(key(d.title), d);
   return map;
 }
 
@@ -62,9 +65,15 @@ export interface Mention {
   to: number;
 }
 
+const titlesCache = new WeakMap<Project, Map<string, string>>();
+
 export function findMentions(project: Project, text: string, matcher = mentionMatcher(project)) {
   if (!matcher) return [];
-  const byTitle = new Map(project.notes.map((n) => [n.title.trim(), n.id]));
+  let byTitle = titlesCache.get(project);
+  if (!byTitle) {
+    byTitle = new Map(project.notes.map((n) => [n.title.trim(), n.id]));
+    titlesCache.set(project, byTitle);
+  }
   const out: Mention[] = [];
   for (const m of text.matchAll(matcher)) {
     const noteId = byTitle.get(m[2]!);
