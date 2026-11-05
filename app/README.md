@@ -36,6 +36,84 @@ O primeiro `tauri dev` demora alguns minutos para compilar a parte em Rust. Os s
 | `cargo test` (em `src-tauri/`)                 | Testes da parte em Rust                                                           |
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | Qualidade de código                                                               |
 
+## Exportar o livro
+
+Configurações → aba **Exportar**. Formatos:
+
+- **Word (.docx)**: estilo "Livro" (serifa, recuo, página 14×21, A5 ou A4) ou "Manuscrito padrão"
+  (Times 12, espaço duplo, margens de 2,5 cm, cabeçalho "Sobrenome / TÍTULO / página"). O
+  sumário é um campo do Word: ao abrir, o Word pergunta se quer atualizar os campos (diga sim
+  para aparecerem os números de página).
+- **PDF**: abre a janela de impressão do sistema com o livro paginado (folha de rosto, sumário,
+  números de página); escolha "Salvar como PDF".
+- **E-book (.epub)**: EPUB 3, para Kindle (via "Enviar para Kindle"), Kobo, Apple Livros etc.
+- **Markdown** e **texto** num arquivo só.
+
+Escolhe-se quais capítulos entram, título e autor (o autor fica guardado no projeto), folha de
+rosto, sumário, "Capítulo 1" antes do título, títulos das cenas (ou separador `* * *`) e
+imagens. Os `[[links]]` viram texto comum e o marca-texto não sai no livro.
+
+## Diagramação (capa, lombada e miolo)
+
+Configurações → aba **Diagramação**. Abas:
+
+- **Capa**: subtítulo, autor, imagem de fundo (com escurecimento), cores, fonte e posição do título.
+- **Quarta capa**: frase de destaque, sinopse, "sobre o autor", imagem de fundo e espaço para o
+  código de barras (ISBN).
+- **Lombada e orelhas**: papel (offset ou pólen) e número de páginas (estimado pelo texto ou
+  digitado), que dão a largura da lombada; orelhas opcionais.
+- **Miolo**: tamanho do livro (14×21, 16×23, A5, A4), fonte, corpo, entrelinha, margens com
+  medianiz, ornamento entre cenas, capitular, cabeçalhos e 1º capítulo na página da direita.
+
+A prévia mostra o **livro em 3D** (arraste para girar), a **capa aberta** e uma página do miolo.
+Arquivos gerados: **PDF do miolo**, **PDF da capa aberta** (300 dpi, com 3 mm de sangria) e a
+**capa para e-book** (PNG de 1600 px de largura). Com o projeto gráfico feito, a capa entra no EPUB
+e a exportação em PDF usa a diagramação. Tudo fica em `.inkflow/livro.json`.
+
+Limites do PDF gerado pelo app (motor de impressão do Chromium): só o 1º capítulo tem garantia de
+começar na página da direita, e o cabeçalho aparece também na página de abertura de capítulo.
+
+## Sincronização com o Google Drive
+
+Cada projeto pode ser ligado a uma pasta `InkFlow/<nome do projeto>` no Google Drive
+(Configurações → Sincronização). O app sincroniza ao abrir e ao fechar o projeto, de tempos em
+tempos (5, 15 ou 30 minutos) e quando você pede. Em outro computador, conecte a mesma conta e
+use **Baixar** em "No Google Drive", na tela inicial.
+
+- Edições no mesmo texto feitas em dois computadores são **mescladas** (o `.yjs` de cada cena é
+  um documento Yjs). Se algum parágrafo de um dos lados não couber na mescla (por exemplo, um
+  lado dividiu o parágrafo que o outro editou), a versão inteira daquele lado vai para a Lixeira
+  e o app avisa.
+- Mudanças na estrutura (capítulos, cenas, notas) dos dois lados são juntadas pelo id.
+- Outros arquivos alterados nos dois lados: fica o deste computador; o do Drive vai para a Lixeira.
+- O que for excluído em outro computador vai para a Lixeira deste, em vez de sumir.
+- A Lixeira e `.inkflow/sync.json` ficam só no computador.
+
+### Credenciais do Google (uma vez só)
+
+O InkFlow usa o acesso `drive.file`: só enxerga as pastas e arquivos que ele mesmo criou no
+seu Drive. Para isso o app precisa de um "ID do cliente OAuth":
+
+1. Em https://console.cloud.google.com crie um projeto (ex.: "InkFlow").
+2. Em **APIs e serviços → Biblioteca**, ative a **Google Drive API**.
+3. Em **APIs e serviços → Tela de consentimento OAuth** (ou "Google Auth Platform"), escolha
+   "Externo", preencha o nome do app e o seu e-mail, e em **Público-alvo / Usuários de teste**
+   adicione as contas Google que vão usar o app.
+4. Em **Credenciais → Criar credenciais → ID do cliente OAuth**, escolha o tipo
+   **App para computador**. Copie o **ID do cliente** e a **Chave secreta do cliente**.
+5. No InkFlow: Configurações → Sincronização → cole os dois e clique em **Conectar conta Google**.
+
+Enquanto o app estiver em modo "Teste" no Google Cloud, o Google pede para entrar de novo a
+cada 7 dias. Para quem vai distribuir o app, as credenciais também podem vir na compilação, em
+`app/.env.local` (não vai para o Git):
+
+```
+VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_SECRET=...
+```
+
+A conta conectada (o token de renovação) fica guardada só neste computador.
+
 ## Organização do código
 
 ```
@@ -45,12 +123,18 @@ src/
   vault/       Formato do projeto em disco: criar, abrir, salvar cenas
   manuscript/  Estrutura de capítulos, cenas e notas (funções puras) e contagem de palavras
   links/       Links [[Nome]], menções automáticas e montagem do grafo
+  search/      Busca no projeto (ignora maiúsculas e acentos)
+  export/      Exportação: Word, PDF (impressão), EPUB, Markdown e texto
+  book/        Projeto gráfico: capa desenhada em canvas, lombada, diagramação do miolo
+  sync/        Sincronização com o Google Drive: cliente do Drive, decisão arquivo a arquivo
+               e junção de project.json
   markdown/    Conversão entre o documento do editor e Markdown
   editor/      Editor de texto (TipTap + Yjs)
   state/       Estado do app (zustand)
   ui/          Telas e componentes
 src-tauri/
-  src/vault.rs Comandos Rust que leem e gravam os arquivos do vault
+  src/vault.rs  Comandos Rust que leem e gravam os arquivos do vault
+  src/google.rs Login no Google (navegador + endereço local, com PKCE)
 ```
 
 A interface nunca acessa arquivos diretamente: ela usa a interface `VaultFs`
@@ -70,10 +154,15 @@ A Casa das Marés/
     personagens/helena.md     ← notas: personagens, lugares e ideias
     lugares/vila-serena.md
     ideias/o-segredo-do-pai.md
+  anexos/
+    mapa-da-vila.png          ← imagens, vídeos, áudios e outros arquivos
   .inkflow/
     project.json              ← título, ordem dos capítulos e das cenas
     ydoc/<id-da-cena>.yjs     ← estado do editor de cada cena (para o sync)
-    lixeira/                  ← cenas e capítulos excluídos
+    versoes/                  ← histórico: uma versão do projeto inteiro por arquivo
+    sync.json                 ← estado da sincronização com o Drive (só neste computador)
+    livro.json                ← projeto gráfico: capa, lombada e diagramação
+    lixeira/                  ← cenas, capítulos e anexos excluídos
 ```
 
 Cada cena `.md` começa com um cabeçalho:
@@ -97,6 +186,12 @@ Regras:
 - **Nada é apagado de verdade:** excluir move para `.inkflow/lixeira/`.
 - **Formatação:** negrito, itálico, ~~tachado~~, ==destaque== (como no Obsidian), títulos,
   listas, citações e o separador de cena `* * *` ficam em Markdown comum.
+- **Anexos** ficam em `anexos/` e entram no texto como `![nome](anexos/arquivo.ext)` numa
+  linha própria (a mesma sintaxe de imagem do Markdown e do Obsidian).
+- **Histórico:** cada versão em `.inkflow/versoes/` guarda a estrutura e o texto de todas as
+  cenas e notas (os anexos não). O app guarda versões ao abrir e fechar o projeto e a cada
+  10 minutos, só quando algo mudou; das automáticas antigas fica uma por dia. Restaurar o
+  projeto inteiro guarda antes a situação atual e manda `manuscrito/` e `notas/` para a lixeira.
 - **Links:** `[[Nome]]` (ou `[[Nome|texto]]`) liga a uma cena ou nota pelo título, como no
   Obsidian. Além disso, o nome de uma nota aparecendo no texto conta como menção. Os dois
   aparecem no Elo (o mapa de conexões, em que cada texto é uma estrela); os links ficam no `.md` como texto comum.

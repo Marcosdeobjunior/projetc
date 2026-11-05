@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { prosemirrorJSONToYDoc, yDocToProsemirrorJSON } from "@tiptap/y-tiptap";
 import type { VaultFs } from "../platform/types";
-import type { FsOp, Project } from "../manuscript/types";
+import { NOTE_KINDS, type FsOp, type Project } from "../manuscript/types";
 import { allDocs, chapterDirPath, createProject, findDoc, scenePath } from "../manuscript/tree";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toMarkdown, toPlainText } from "../markdown/serialize";
@@ -9,7 +9,8 @@ import type { PMNode } from "../markdown/types";
 import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { renameLinksInText } from "../links/links";
-import { PROJECT_FILE, TRASH_DIR, ydocPath } from "./paths";
+import { PROJECT_FILE, ydocPath } from "./paths";
+import { moveToTrash } from "./trash";
 
 /*
  * Leitura e gravação de um vault. Cada cena é guardada em dois formatos:
@@ -38,6 +39,8 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
     "LEIA-ME.md",
     `# ${project.title}\n\nEste é um projeto do InkFlow.\n\n` +
       "- `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.\n" +
+      "- `notas/` guarda os personagens, lugares e ideias.\n" +
+      "- `anexos/` guarda as imagens, vídeos, áudios e outros arquivos usados nos textos.\n" +
       "- `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.\n",
   );
   await saveProject(fs, project);
@@ -57,7 +60,56 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
     throw new VaultError("Este projeto foi criado por uma versão mais nova do InkFlow.");
   }
   // Projetos criados antes das notas existirem.
-  return { ...data, notes: data.notes ?? [] };
+  const project = { ...data, notes: data.notes ?? [] };
+  validateProject(project);
+  return project;
+}
+
+/** Nome de pasta ou arquivo que não sai do lugar (sem "/", "\\", ":", "..", controle). */
+const safeName = (n: unknown) =>
+  // eslint-disable-next-line no-control-regex -- caracteres de controle não podem estar em nomes
+  typeof n === "string" && n !== "" && n !== "." && n !== ".." && !/[/\\:\u0000-\u001f]/.test(n);
+
+/**
+ * Confere a estrutura de um project.json (editado fora do app ou vindo do
+ * Drive): nomes de pasta e de arquivo seguros, ids e listas no lugar.
+ */
+export function validateProject(p: Project): void {
+  const bad = (what: string) => {
+    throw new VaultError(
+      `Não foi possível abrir o projeto: a lista de capítulos e notas está danificada (${what}). Restaure uma cópia da pasta .inkflow ou fale com o suporte.`,
+    );
+  };
+  if (!p || typeof p !== "object" || !Array.isArray(p.chapters) || !Array.isArray(p.notes ?? []))
+    bad("estrutura");
+  if (typeof p.title !== "string") bad("título");
+  for (const c of p.chapters) {
+    if (
+      typeof c.id !== "string" ||
+      typeof c.title !== "string" ||
+      !safeName(c.dir) ||
+      !Array.isArray(c.scenes)
+    )
+      bad("capítulo");
+    for (const s of c.scenes) {
+      if (
+        typeof s.id !== "string" ||
+        typeof s.title !== "string" ||
+        !safeName(s.file) ||
+        !s.file.endsWith(".md")
+      )
+        bad("cena");
+    }
+  }
+  for (const n of p.notes ?? []) {
+    if (
+      typeof n.id !== "string" ||
+      typeof n.title !== "string" ||
+      !safeName(n.file) ||
+      !(NOTE_KINDS as readonly string[]).includes(n.kind)
+    )
+      bad("nota");
+  }
 }
 
 export async function saveProject(fs: VaultFs, project: Project): Promise<void> {
@@ -70,14 +122,7 @@ export async function applyOps(fs: VaultFs, ops: FsOp[]): Promise<void> {
     if (op.kind === "move") {
       if (await fs.exists(op.from)) await fs.rename(op.from, op.to);
     } else {
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const name = op.path.split("/").pop()!;
-      if (await fs.exists(op.path)) await fs.rename(op.path, `${TRASH_DIR}/${stamp}-${name}`);
-      for (const id of op.sceneIds) {
-        if (await fs.exists(ydocPath(id))) {
-          await fs.rename(ydocPath(id), `${TRASH_DIR}/${stamp}-${id}.yjs`);
-        }
-      }
+      await moveToTrash(fs, op.path, op.item, op.sceneIds);
     }
   }
 }
@@ -90,7 +135,7 @@ export async function ensureChapterDirs(fs: VaultFs, project: Project) {
   }
 }
 
-function sceneFile(doc: { id: string; title: string }, markdown: string) {
+export function sceneFile(doc: { id: string; title: string }, markdown: string) {
   return `---\nid: ${doc.id}\ntitle: ${JSON.stringify(doc.title)}\n---\n\n${markdown}`;
 }
 
@@ -133,7 +178,9 @@ export class ExternalChangeError extends Error {
  */
 export function sameText(a: string | null, b: string | null): boolean {
   if (a === null || b === null) return a === b;
-  return splitFrontmatter(a).body.trim() === splitFrontmatter(b).body.trim();
+  // Arquivos salvos no Windows (Bloco de Notas, git) podem ter \r\n: não é uma edição.
+  const body = (s: string) => splitFrontmatter(s).body.replace(/\r\n?/g, "\n").trim();
+  return body(a) === body(b);
 }
 
 export async function readSceneFile(
@@ -225,17 +272,6 @@ export async function readProjectTexts(
   return { words, texts };
 }
 
-function renameLinksInNode(node: PMNode, oldTitle: string, newTitle: string): number {
-  let count = 0;
-  if (node.type === "text" && node.text) {
-    const r = renameLinksInText(node.text, oldTitle, newTitle);
-    node.text = r.text;
-    count += r.count;
-  }
-  for (const child of node.content ?? []) count += renameLinksInNode(child, oldTitle, newTitle);
-  return count;
-}
-
 /**
  * Depois de renomear uma cena ou nota, troca [[Antigo]] por [[Novo]] nos
  * arquivos dos outros textos. `skip` são os textos abertos no editor, que
@@ -256,11 +292,12 @@ export async function renameLinksInFiles(
     if (skip.has(d.id)) continue;
     const md = await fs.readText(d.path);
     if (!md || !md.includes("[[")) continue;
-    const json = parseMarkdown(md);
-    const count = renameLinksInNode(json, oldTitle, newTitle);
-    if (count === 0) continue;
-    await fs.writeText(d.path, sceneFile(d, toMarkdown(json)));
-    changed.push({ id: d.id, text: toPlainText(json), count });
+    // Troca direto no texto do .md (sem reconverter o Markdown, que poderia mudar outras coisas).
+    const { body } = splitFrontmatter(md);
+    const r = renameLinksInText(body, oldTitle, newTitle);
+    if (r.count === 0) continue;
+    await fs.writeText(d.path, md.slice(0, md.length - body.length) + r.text);
+    changed.push({ id: d.id, text: toPlainText(parseMarkdown(r.text)), count: r.count });
   }
   return changed;
 }

@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
 import { useSettings } from "../state/settings";
+import { useApp } from "../state/store";
 import {
   BLOCK_STYLES,
   blockStyle,
@@ -12,7 +14,14 @@ import {
   type BlockStyle,
 } from "./formatting";
 
-export function Toolbar({ editor }: { editor: Editor | null }) {
+export function Toolbar({
+  editor,
+  onAttach,
+}: {
+  editor: Editor | null;
+  onAttach(files: File[]): void;
+}) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) =>
@@ -37,7 +46,7 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
   const blocks = [
     {
       id: "bullet",
-      label: "Lista",
+      label: "Lista com marcadores",
       icon: "list",
       on: state.bullet,
       run: () => chain().toggleBulletList().run(),
@@ -96,6 +105,22 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
       <ToolButton label="Limpar formatação" icon="clear" run={() => clearFormatting(editor)} />
       <span className="toolbar-sep" />
       <ToolButton
+        label="Anexar arquivo (imagem, vídeo, áudio…). Também dá para arrastar ou colar no texto."
+        icon="paperclip"
+        run={() => fileInput.current?.click()}
+      />
+      <input
+        ref={fileInput}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          onAttach([...(e.target.files ?? [])]);
+          e.target.value = "";
+        }}
+      />
+      <span className="toolbar-sep" />
+      <ToolButton
         label={`Desfazer (${shortcut("Mod+Z")})`}
         icon="undo"
         run={() => editor.commands.undo()}
@@ -106,6 +131,11 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
         run={() => editor.commands.redo()}
       />
       <span className="toolbar-spacer" />
+      <ToolButton
+        label="Histórico de versões"
+        icon="history"
+        run={() => useApp.getState().setView("history")}
+      />
       <ToolButton
         label={minimap ? "Esconder minimapa" : "Mostrar minimapa"}
         icon="star"

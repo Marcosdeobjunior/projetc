@@ -5,6 +5,8 @@ export function countWords(text: string): number {
   return text.match(WORD)?.length ?? 0;
 }
 
+const NUMBER = new Intl.NumberFormat("pt-BR");
+
 export function formatCount(n: number): string {
-  return n.toLocaleString("pt-BR");
+  return NUMBER.format(n);
 }

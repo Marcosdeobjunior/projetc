@@ -23,7 +23,7 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
 ];
 
 /** Seções da barra lateral que podem ser recolhidas. */
-export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias";
+export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
 
 interface Prefs {
   theme: Theme;
@@ -36,6 +36,8 @@ interface Prefs {
   accent: string | null;
   /** Nome do escritor, mostrado no topo da tela de projetos. */
   userName: string;
+  /** De quantos em quantos minutos sincronizar com o Drive (0 = só quando pedir). */
+  syncEvery: number;
 }
 
 interface SettingsState extends Prefs {
@@ -54,6 +56,7 @@ const DEFAULTS: Prefs = {
   collapsed: [],
   accent: null,
   userName: "",
+  syncEvery: 5,
 };
 
 function load(): Prefs {
@@ -137,6 +140,7 @@ useSettings.subscribe((s, prev) => {
     collapsed: s.collapsed,
     accent: s.accent,
     userName: s.userName,
+    syncEvery: s.syncEvery,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));

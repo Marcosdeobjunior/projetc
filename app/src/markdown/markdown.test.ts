@@ -56,6 +56,15 @@ describe("toMarkdown", () => {
     expect(toMarkdown(doc(p(t("a = b, c == d"))))).toBe("a = b, c \\== d\n");
   });
 
+  it("escreve anexos como imagem do Markdown", () => {
+    const a = (src: string, name: string): PMNode => ({ type: "attachment", attrs: { src, name } });
+    expect(toMarkdown(doc(a("anexos/mapa.png", "Mapa [v2]"), a("anexos/a b.mp3", "")))).toBe(
+      "![Mapa \\[v2\\]](anexos/mapa.png)\n\n![](<anexos/a b.mp3>)\n",
+    );
+    // Texto comum que parece um anexo não vira anexo.
+    expect(toMarkdown(doc(p(t("![x](y)"))))).toBe("\\![x](y)\n");
+  });
+
   it("documento vazio vira arquivo vazio", () => {
     expect(toMarkdown(doc())).toBe("");
     expect(toMarkdown({ type: "doc", content: [{ type: "paragraph" }] })).toBe("");
@@ -107,6 +116,12 @@ describe("ida e volta", () => {
     doc(p(t("Um "), t("trecho", "highlight"), t(" e "), t("nome", "highlight", "bold"), t("."))),
     doc(p(t("riscado", "strike"), t(" a = b == c ="))),
     doc(p(t("x="), t("marcado", "highlight"))),
+    doc(
+      p(t("Antes.")),
+      { type: "attachment", attrs: { src: "anexos/mapa.png", name: "Mapa [v2]" } },
+      { type: "attachment", attrs: { src: "anexos/tema 1.mp3", name: "tema 1.mp3" } },
+      p(t("![não é anexo](x.png)")),
+    ),
   ];
 
   it.each(samples.map((s, i) => [i, s] as const))("amostra %i volta igual", (_, sample) => {
@@ -117,5 +132,21 @@ describe("ida e volta", () => {
 describe("toPlainText", () => {
   it("separa blocos para a contagem de palavras", () => {
     expect(toPlainText(doc(p(t("um")), p(t("dois"))))).toBe("um\ndois");
+  });
+});
+
+describe("Markdown que outros programas entendem", () => {
+  it("fecha a marcação antes do espaço entre palavras formatadas", () => {
+    const p = (...content: PMNode[]): PMNode => ({ type: "paragraph", content });
+    const t = (text: string, ...marks: string[]): PMNode => ({
+      type: "text",
+      text,
+      marks: marks.map((type) => ({ type })),
+    });
+    const md = toMarkdown({
+      type: "doc",
+      content: [p(t("A", "bold"), { type: "text", text: " " }, t("B", "italic"))],
+    });
+    expect(md).toBe("**A** *B*\n");
   });
 });

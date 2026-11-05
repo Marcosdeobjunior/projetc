@@ -10,10 +10,18 @@ import { GraphView } from "./GraphView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
 import { Settings } from "./Settings";
+import { SearchPanel } from "./SearchPanel";
+import { AttachmentsTree } from "./AttachmentsTree";
+import { HistoryView } from "./HistoryView";
+import { TrashView } from "./TrashView";
+import { useSearch } from "../state/search";
+import { useSync } from "../state/sync";
+import { useSettings } from "../state/settings";
 import { Icon } from "./Icon";
 import { shortcut } from "../editor/formatting";
 
 const COLLAPSED_KEY = "inkflow.sidebarCollapsed";
+const VERSION_EVERY_MS = 10 * 60 * 1000;
 const isPhone = () => window.matchMedia("(max-width: 760px)").matches;
 
 function readCollapsed() {
@@ -29,6 +37,7 @@ export function Workspace({ session }: { session: Session }) {
   const saveState = useApp((s) => s.saveState);
   const setView = useApp((s) => s.setView);
   const [navOpen, setNavOpen] = useState(false);
+  const searching = useSearch((s) => s.open);
   /** Barra lateral recolhida no computador (no celular ela é uma gaveta). */
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [editingProject, setEditingProject] = useState(false);
@@ -54,10 +63,47 @@ export function Workspace({ session }: { session: Session }) {
     }
   }, [collapsed]);
 
-  // Ctrl/⌘ + \ mostra ou esconde a barra lateral.
+  // Sincronização com o Drive: ao abrir o projeto e de tempos em tempos.
+  const syncEvery = useSettings((s) => s.syncEvery);
+  useEffect(() => {
+    void useSync.getState().attach();
+  }, []);
+  useEffect(() => {
+    if (!syncEvery) return;
+    const t = window.setInterval(() => {
+      const { enabled, account, syncNow } = useSync.getState();
+      if (enabled && account) void syncNow();
+    }, syncEvery * 60_000);
+    return () => window.clearInterval(t);
+  }, [syncEvery]);
+
+  // A cada 10 minutos guarda uma versão no histórico (só se algo mudou).
+  useEffect(() => {
+    const t = window.setInterval(
+      () => void useApp.getState().saveVersion("Automática", true),
+      VERSION_EVERY_MS,
+    );
+    return () => window.clearInterval(t);
+  }, []);
+
+  const openSearch = () => {
+    useSearch.getState().show();
+    if (isPhone()) setNavOpen(true);
+    else setCollapsed(false);
+  };
+
+  // Ctrl/⌘ + \ mostra ou esconde a barra lateral; Ctrl/⌘ + Shift + F abre a busca.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "\\" || !(e.ctrlKey || e.metaKey) || isPhone()) return;
+      // Esc fecha a gaveta do menu (telas pequenas).
+      if (e.key === "Escape") setNavOpen(false);
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.shiftKey && e.code === "KeyF") {
+        e.preventDefault();
+        openSearch();
+        return;
+      }
+      if (e.key !== "\\" || isPhone()) return;
       e.preventDefault();
       setCollapsed((c) => !c);
     };
@@ -88,7 +134,7 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-close"
-            aria-label="Fechar menu"
+            aria-label="Fechar a barra lateral"
             onClick={closeNav}
           >
             <Icon name="close" />
@@ -96,8 +142,8 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-collapse"
-            aria-label="Recolher menu"
-            title={`Recolher menu (${shortcut("Mod+\\")})`}
+            aria-label="Recolher a barra lateral"
+            title={`Recolher a barra lateral (${shortcut("Mod+\\")})`}
             onClick={() => setCollapsed(true)}
           >
             <Icon name="sidebar" />
@@ -105,6 +151,16 @@ export function Workspace({ session }: { session: Session }) {
         </div>
         <div className="side-meta">
           <span className="project-total">{formatCount(total)} palavras</span>
+          <button
+            type="button"
+            className={"icon-btn sm" + (searching ? " on" : "")}
+            aria-pressed={searching}
+            title={`Buscar no projeto (${shortcut("Mod+Shift+F")})`}
+            aria-label="Buscar no projeto"
+            onClick={() => (searching ? useSearch.getState().close() : openSearch())}
+          >
+            <Icon name="search" size={16} />
+          </button>
           <button
             type="button"
             className={"graph-btn" + (view === "graph" ? " on" : "")}
@@ -118,23 +174,32 @@ export function Workspace({ session }: { session: Session }) {
           </button>
         </div>
 
-        <div className="side-scroll">
-          <ManuscriptTree session={session} onOpenScene={closeNav} />
-          <NotesTree session={session} onOpen={closeNav} />
-        </div>
+        {searching ? (
+          <SearchPanel session={session} onOpen={closeNav} />
+        ) : (
+          <div className="side-scroll">
+            <ManuscriptTree session={session} onOpenScene={closeNav} />
+            <NotesTree session={session} onOpen={closeNav} />
+            <AttachmentsTree session={session} />
+          </div>
+        )}
 
         <div className="side-foot">
-          <button
-            type="button"
-            className={"foot-btn" + (view === "settings" ? " on" : "")}
-            aria-pressed={view === "settings"}
-            onClick={() => {
-              setView(view === "settings" ? "editor" : "settings");
-              closeNav();
-            }}
-          >
-            <Icon name="settings" size={17} /> Configurações
-          </button>
+          {(["settings", "trash"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={"foot-btn" + (view === v ? " on" : "")}
+              aria-pressed={view === v}
+              onClick={() => {
+                setView(view === v ? "editor" : v);
+                closeNav();
+              }}
+            >
+              <Icon name={v === "settings" ? "settings" : "trash"} size={17} />
+              {v === "settings" ? "Configurações" : "Lixeira"}
+            </button>
+          ))}
         </div>
       </aside>
 
@@ -145,15 +210,23 @@ export function Workspace({ session }: { session: Session }) {
           <button
             type="button"
             className="icon-btn nav-toggle"
-            aria-label="Mostrar menu"
-            title={`Mostrar menu (${shortcut("Mod+\\")})`}
+            aria-label="Mostrar a barra lateral"
+            title={`Mostrar a barra lateral (${shortcut("Mod+\\")})`}
             onClick={showNav}
           >
             <Icon name="sidebar" />
           </button>
           {view !== "editor" ? (
             <div className="crumbs">
-              <span className="crumb-title">{view === "graph" ? "Elo" : "Configurações"}</span>
+              <span className="crumb-title">
+                {view === "graph"
+                  ? "Elo"
+                  : view === "history"
+                    ? "Histórico de versões"
+                    : view === "trash"
+                      ? "Lixeira"
+                      : "Configurações"}
+              </span>
             </div>
           ) : active ? (
             <div className="crumbs">
@@ -192,7 +265,10 @@ export function Workspace({ session }: { session: Session }) {
               Voltar ao texto
             </button>
           ) : (
-            <SaveIndicator state={saveState} />
+            <>
+              <SyncIndicator onOpen={() => setView("settings")} />
+              <SaveIndicator state={saveState} />
+            </>
           )}
         </header>
 
@@ -201,6 +277,10 @@ export function Workspace({ session }: { session: Session }) {
             <GraphView session={session} />
           ) : view === "settings" ? (
             <Settings />
+          ) : view === "history" ? (
+            <HistoryView session={session} />
+          ) : view === "trash" ? (
+            <TrashView session={session} />
           ) : active ? (
             <DocEditor key={active.id} session={session} sceneId={active.id} />
           ) : (
@@ -247,5 +327,32 @@ function SaveIndicator({ state }: { state: string }) {
       {state === "saved" && <Icon name="check" size={14} />}
       {text}
     </span>
+  );
+}
+
+function SyncIndicator({ onOpen }: { onOpen: () => void }) {
+  const { enabled, account, status, lastSync, error } = useSync();
+  if (!enabled || !account) return null;
+  const label =
+    status === "syncing"
+      ? "Sincronizando com o Drive…"
+      : status === "error"
+        ? `Não foi possível sincronizar: ${error ?? ""}`
+        : lastSync
+          ? `Sincronizado com o Drive às ${new Date(lastSync).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+          : "Sincronização ligada";
+  return (
+    <button
+      type="button"
+      className={"sync-indicator " + status}
+      title={label}
+      aria-label={label}
+      onClick={onOpen}
+    >
+      <Icon
+        name={status === "error" ? "cloudOff" : status === "syncing" ? "sync" : "cloud"}
+        size={17}
+      />
+    </button>
   );
 }

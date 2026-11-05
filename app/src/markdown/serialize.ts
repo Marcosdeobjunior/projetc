@@ -23,6 +23,7 @@ function escapeText(text: string): string {
 /** Escapa o que só tem sentido especial no começo da linha. */
 function escapeLineStart(line: string): string {
   return line
+    .replace(/^(\s*)!\[/, "$1\\![")
     .replace(/^(\s*)(#{1,6}\s|>|[-+*]\s|\d+[.)]\s)/, (_, sp: string, m: string) => {
       if (/^\d/.test(m)) return sp + m.replace(/([.)])/, "\\$1");
       return sp + "\\" + m;
@@ -48,8 +49,10 @@ function inline(nodes: PMNode[] = []): string {
     const marks = MARK_ORDER.filter((m) => node.marks?.some((x) => x.type === m));
     const text = node.text;
 
-    // Texto só com espaços não abre nem fecha marcação.
+    // Texto só com espaços fica fora das marcações: fechar antes evita "**A ***B*",
+    // que o app entende mas Obsidian e outros leitores de Markdown não.
     if (!text.trim()) {
+      closeTo(0);
       out += text;
       continue;
     }
@@ -85,7 +88,8 @@ function block(node: PMNode, prefix = ""): string[] {
       return [
         text
           .split("\n")
-          .map((l, i) => (i === 0 ? escapeLineStart(l) : l))
+          // Depois de uma quebra de linha, cada linha também não pode virar título, citação ou lista.
+          .map((l) => escapeLineStart(l))
           .join("\n" + prefix),
       ];
     }
@@ -119,6 +123,12 @@ function block(node: PMNode, prefix = ""): string[] {
     }
     case "horizontalRule":
       return ["* * *"];
+    case "attachment": {
+      // ![nome](anexos/arquivo.ext); caminhos com espaço ou parênteses vão entre < >.
+      const name = String(node.attrs?.name ?? "").replace(/[\\[\]]/g, "\\$&");
+      const src = String(node.attrs?.src ?? "");
+      return [`![${name}](${/[\s()<>]/.test(src) ? `<${src}>` : src})`];
+    }
     default:
       return c.length ? [blocks(c)] : [];
   }

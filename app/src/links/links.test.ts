@@ -105,3 +105,21 @@ describe("renomear links", () => {
     expect(ego.edges).toHaveLength(2);
   });
 });
+
+describe("prioridades", () => {
+  it("nota ganha de cena com o mesmo título", async () => {
+    const { titleIndex, resolveLink } = await import("./links");
+    const { createProject, addNote, renameScene } = await import("../manuscript/tree");
+    let p = createProject("x");
+    p = renameScene(p, p.chapters[0]!.scenes[0]!.id, "Helena").project;
+    const n = addNote(p, "personagens", "Helena");
+    expect(resolveLink(titleIndex(n.project), "helena")?.type).toBe("personagens");
+  });
+
+  it("títulos reservados do Windows não viram nome de arquivo", async () => {
+    const { slugify } = await import("../vault/paths");
+    expect(slugify("Con")).toBe("con-1");
+    expect(slugify("Aux")).toBe("aux-1");
+    expect(slugify("Conto")).toBe("conto");
+  });
+});

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type CSSProperties } from "react";
 import type { VaultRef } from "../platform";
 import { useSettings } from "../state/settings";
-import { syncStatus, useSync } from "../state/sync";
+import type { SyncStatus } from "../state/syncStatus";
 import { Icon, Quill } from "./Icon";
 import { coverHue } from "./library";
 
@@ -64,6 +64,8 @@ export function AppBar(props: {
   folder: string | null;
   folderTitle?: string;
   onEditName(): void;
+  /** Situação real da sincronização da pasta ativa. */
+  sync: SyncStatus;
 }) {
   const userName = useSettings((s) => s.userName.trim());
   return (
@@ -98,7 +100,7 @@ export function AppBar(props: {
           </button>
         )}
         <span className="appbar-sep" aria-hidden="true" />
-        <SyncIndicator />
+        <SyncIndicator status={props.sync} />
         {props.folder ? (
           <span className="appbar-folder" title={props.folderTitle ?? props.folder}>
             <span className="sr-only">Pasta ativa: </span>
@@ -113,11 +115,7 @@ export function AppBar(props: {
 }
 
 /** Ponto pulsante com o estado da sincronização; a explicação aparece ao passar o mouse. */
-function SyncIndicator() {
-  const enabled = useSync((s) => s.enabled);
-  const online = useSync((s) => s.online);
-  const error = useSync((s) => s.error);
-  const status = syncStatus({ enabled, online, error });
+function SyncIndicator({ status }: { status: SyncStatus }) {
   const tipId = useId();
   return (
     <span

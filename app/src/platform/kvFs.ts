@@ -81,6 +81,29 @@ export class KeyValueFs implements VaultFs {
     return (await this.filesUnder(path)).length > 0;
   }
 
+  async walk() {
+    const prefix = this.root + SEP;
+    const out: { path: string; size: number; mtime: null }[] = [];
+    for (const k of await this.store.keys(prefix)) {
+      const v = await this.store.get(k);
+      if (v === undefined) continue;
+      out.push({
+        path: k.slice(prefix.length),
+        size: typeof v === "string" ? v.length : v.length,
+        mtime: null,
+      });
+    }
+    return out.sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  async list(dir: string) {
+    const prefix = this.key(dir) + (normalizePath(dir) ? "/" : "");
+    const names = (await this.filesUnder(dir))
+      .map((k) => k.slice(prefix.length))
+      .filter((rest) => rest && !rest.includes("/"));
+    return [...new Set(names)].sort();
+  }
+
   async rename(from: string, to: string) {
     const src = this.key(from);
     const dst = this.key(to);

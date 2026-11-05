@@ -13,6 +13,9 @@ import { Icon } from "./Icon";
 import { Settings } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { useSync } from "../state/sync";
+import { useFolderSyncStatus } from "../state/syncStatus";
+import type { RemoteProject } from "../sync/drive";
 import {
   coverHue,
   quoteOfTheDay,
@@ -61,6 +64,7 @@ export function Home() {
     return q ? recent.filter((v) => v.title.toLocaleLowerCase("pt-BR").includes(q)) : recent;
   }, [recent, query]);
   const current = recent.find((v) => v.root === selected) ?? recent[0] ?? null;
+  const sync = useFolderSyncStatus(platform, current?.root ?? null);
   const known = Object.values(stats).filter((s): s is ProjectStats => !!s);
   const total = (f: (s: ProjectStats) => number) => known.reduce((n, s) => n + f(s), 0);
 
@@ -93,6 +97,7 @@ export function Home() {
         folder={current ? folderName(current, desktop) : null}
         folderTitle={current?.location}
         onEditName={() => setSettings(true)}
+        sync={sync}
       />
       <div className="projects-body">
         <HomeSidebar
@@ -133,7 +138,7 @@ export function Home() {
                 </div>
               </div>
               <div className="projects-actions">
-                <label className="search">
+                <label className="projects-search">
                   <Icon name="search" size={15} />
                   <span className="sr-only">Buscar projeto</span>
                   <input
@@ -161,8 +166,8 @@ export function Home() {
                 </p>
                 <p className="muted">
                   Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
-                  <code>manuscrito</code> e <code>.inkflow</code>. Os arquivos que já estão lá não
-                  são alterados.
+                  <code>manuscrito</code> e <code>.inkflow</code> e o arquivo{" "}
+                  <code>LEIA-ME.md</code>. Os arquivos que já estão lá não são alterados.
                 </p>
                 <div className="convert-actions">
                   <button
@@ -244,6 +249,8 @@ export function Home() {
               </div>
 
               <aside className="projects-side">
+                <DriveProjects />
+
                 <section className="panel" aria-labelledby="summary-title">
                   <h2 id="summary-title" className="kicker">
                     Resumo da biblioteca
@@ -681,6 +688,70 @@ function Progress({
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/** Projetos que estão no Google Drive, para baixar neste computador. */
+function DriveProjects() {
+  const available = useSync((s) => s.available);
+  const account = useSync((s) => s.account);
+  const busy = useSync((s) => s.busy);
+  const error = useSync((s) => s.error);
+  const listRemote = useSync((s) => s.listRemote);
+  const download = useSync((s) => s.download);
+  const vaults = useApp((s) => s.vaults);
+  const [list, setList] = useState<RemoteProject[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (!available || !account) return null;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setList(await listRemote());
+    } catch {
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="panel" aria-labelledby="drive-title">
+      <h2 id="drive-title" className="kicker">
+        No Google Drive
+      </h2>
+      {list === null ? (
+        <button type="button" className="pbtn" disabled={loading} onClick={() => void load()}>
+          <Icon name="cloud" size={15} /> {loading ? "Procurando…" : "Ver projetos no Drive"}
+        </button>
+      ) : list.length === 0 ? (
+        <p className="muted small">Nenhum projeto sincronizado no Drive desta conta ainda.</p>
+      ) : (
+        <ul className="drive-list">
+          {list.map((r) => (
+            <li key={r.folderId}>
+              <span>
+                <b>{r.title}</b>
+                <small>
+                  {vaults.some((v) => v.title === r.title)
+                    ? "Já existe um projeto com esse nome aqui"
+                    : "Ainda não está neste computador"}
+                </small>
+              </span>
+              <button
+                type="button"
+                className="pbtn"
+                disabled={busy}
+                onClick={() => void download(r)}
+              >
+                Baixar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="small warn">{error}</p>}
     </section>
   );
 }

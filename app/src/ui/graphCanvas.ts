@@ -121,18 +121,65 @@ export function mountGraph(
 
     const edge = css("--edge");
     const edgeHi = css("--accent");
-    for (const l of links) {
-      const s = l.source as SimNode;
-      const t = l.target as SimNode;
-      const on = hover && (s.id === hover.id || t.id === hover.id);
-      ctx.globalAlpha = focus && !on ? 0.12 : l.kind === "mention" ? 0.5 : 0.9;
-      ctx.strokeStyle = on ? edgeHi : edge;
-      ctx.lineWidth = (on ? 1.8 : 1.2) / Math.max(0.6, k);
-      ctx.setLineDash(l.kind === "mention" ? [4 / k, 3 / k] : []);
+    // As linhas são desenhadas em poucos traços (um por tipo), não uma a uma:
+    // com milhares de ligações isso é o que mais pesa em cada quadro.
+    const strokeAll = (
+      list: SimLink[],
+      color: string,
+      alpha: number,
+      width: number,
+      dash: number[],
+    ) => {
+      if (!list.length) return;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
       ctx.beginPath();
-      ctx.moveTo(s.x!, s.y!);
-      ctx.lineTo(t.x!, t.y!);
+      for (const l of list) {
+        const s = l.source as SimNode;
+        const t = l.target as SimNode;
+        ctx.moveTo(s.x!, s.y!);
+        ctx.lineTo(t.x!, t.y!);
+      }
       ctx.stroke();
+    };
+    const touches = (l: SimLink) =>
+      !!hover && ((l.source as SimNode).id === hover.id || (l.target as SimNode).id === hover.id);
+    const dash = [4 / k, 3 / k];
+    const thin = 1.2 / Math.max(0.6, k);
+    const rest = links.filter((l) => !touches(l));
+    strokeAll(
+      rest.filter((l) => l.kind === "link"),
+      edge,
+      focus ? 0.12 : 0.9,
+      thin,
+      [],
+    );
+    strokeAll(
+      rest.filter((l) => l.kind === "mention"),
+      edge,
+      focus ? 0.12 : 0.5,
+      thin,
+      dash,
+    );
+    if (hover) {
+      const on = links.filter(touches);
+      const wide = 1.8 / Math.max(0.6, k);
+      strokeAll(
+        on.filter((l) => l.kind === "link"),
+        edgeHi,
+        0.9,
+        wide,
+        [],
+      );
+      strokeAll(
+        on.filter((l) => l.kind === "mention"),
+        edgeHi,
+        0.5,
+        wide,
+        dash,
+      );
     }
     ctx.setLineDash([]);
 

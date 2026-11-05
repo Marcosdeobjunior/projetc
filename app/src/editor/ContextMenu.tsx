@@ -174,7 +174,7 @@ export function ContextMenu({ editor, links, x, y, onClose }: Props) {
       <div className="menu-sep" />
       <Item
         icon="heading"
-        label="Título"
+        label="Título 2"
         checked={active.heading}
         run={act(() => chain().toggleHeading({ level: 2 }).run())}
       />
@@ -186,7 +186,7 @@ export function ContextMenu({ editor, links, x, y, onClose }: Props) {
       />
       <Item
         icon="list"
-        label="Lista"
+        label="Lista com marcadores"
         checked={active.list}
         run={act(() => chain().toggleBulletList().run())}
       />
