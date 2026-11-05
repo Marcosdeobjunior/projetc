@@ -3,6 +3,8 @@ import type { VaultRef } from "../platform";
 import { useSettings } from "../state/settings";
 import type { SyncStatus } from "../state/syncStatus";
 import { Icon, Quill } from "./Icon";
+import { MusicPanel } from "./Music";
+import { useMusic } from "../state/music";
 import { coverHue } from "./library";
 
 const COLLAPSED_KEY = "inkflow.homeNavCollapsed";
@@ -161,86 +163,122 @@ export function HomeSidebar(props: {
     if (isNarrow()) props.onToggle();
   };
 
+  const playing = useMusic((s) => !!s.source);
+
   return (
     <nav id="home-nav" className="home-nav" aria-label="Navegação">
-      <div className="home-nav-group">
-        <button
-          type="button"
-          className="nav-item current"
-          aria-current="page"
-          title={tip("Projetos")}
-        >
-          <Icon name="list" size={17} />
-          <span className="nav-label">Projetos</span>
-        </button>
-        <button
-          type="button"
-          className="nav-item"
-          title={tip("Novo projeto")}
-          onClick={after(props.onCreate)}
-        >
-          <Icon name="plus" size={17} />
-          <span className="nav-label">Novo projeto</span>
-        </button>
-        {props.onCreateTestBook && (
+      {/* Recolher/mostrar: botão pequeno preso na borda da barra. */}
+      <button
+        type="button"
+        className="home-nav-edge"
+        aria-label={collapsed ? "Mostrar barra lateral" : "Recolher barra lateral"}
+        title={`${collapsed ? "Mostrar" : "Recolher"} barra lateral (Ctrl+\\)`}
+        aria-expanded={!collapsed}
+        aria-controls="home-nav"
+        onClick={props.onToggle}
+      >
+        <Icon name={collapsed ? "chevron" : "chevron-left"} size={15} />
+      </button>
+      <div className="home-nav-scroll" data-music-clip>
+        <div className="home-nav-group">
+          <button
+            type="button"
+            className="nav-item current"
+            aria-current="page"
+            title={tip("Projetos")}
+          >
+            <Icon name="list" size={17} />
+            <span className="nav-label">Projetos</span>
+          </button>
           <button
             type="button"
             className="nav-item"
-            title={collapsed ? "Livro de teste" : "Cria um livro grande, só para testes"}
-            disabled={props.busy}
-            onClick={after(props.onCreateTestBook)}
+            title={tip("Novo projeto")}
+            onClick={after(props.onCreate)}
           >
-            <Icon name="bulb" size={17} />
-            <span className="nav-label">Livro de teste</span>
+            <Icon name="plus" size={17} />
+            <span className="nav-label">Novo projeto</span>
           </button>
-        )}
-        {props.desktop && (
-          <button
-            type="button"
-            className="nav-item"
-            title={tip("Abrir projeto")}
-            disabled={props.busy}
-            onClick={after(props.onOpenFolder)}
-          >
-            <Icon name="folder" size={17} />
-            <span className="nav-label">Abrir projeto</span>
-          </button>
-        )}
-      </div>
-
-      {(props.vaults.length > 0 || props.emptyText) && (
-        <div className="home-nav-group home-nav-folders">
-          <p className="nav-heading">
-            <span className="nav-label">Pastas</span>
-          </p>
-          {props.emptyText && <p className="nav-empty nav-label">{props.emptyText}</p>}
-          <ul>
-            {props.vaults.map((v) => {
-              const active = v.root === props.activeRoot;
-              const name = folderName(v, props.desktop);
-              return (
-                <li key={v.root}>
-                  <button
-                    type="button"
-                    className={"nav-item folder" + (active ? " active" : "")}
-                    aria-pressed={active}
-                    title={collapsed ? name : "Duplo clique para abrir"}
-                    onClick={after(() => props.onSelect(v.root))}
-                    onDoubleClick={() => props.onOpen(v.root)}
-                  >
-                    <span
-                      className="nav-dot"
-                      style={{ "--hue": coverHue(v.title) } as CSSProperties}
-                      aria-hidden="true"
-                    />
-                    <span className="nav-label">{name}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {props.onCreateTestBook && (
+            <button
+              type="button"
+              className="nav-item"
+              title={collapsed ? "Livro de teste" : "Cria um livro grande, só para testes"}
+              disabled={props.busy}
+              onClick={after(props.onCreateTestBook)}
+            >
+              <Icon name="bulb" size={17} />
+              <span className="nav-label">Livro de teste</span>
+            </button>
+          )}
+          {props.desktop && (
+            <button
+              type="button"
+              className="nav-item"
+              title={tip("Abrir projeto")}
+              disabled={props.busy}
+              onClick={after(props.onOpenFolder)}
+            >
+              <Icon name="folder" size={17} />
+              <span className="nav-label">Abrir projeto</span>
+            </button>
+          )}
         </div>
-      )}
+
+        {(props.vaults.length > 0 || props.emptyText) && (
+          <div className="home-nav-group home-nav-folders">
+            <p className="nav-heading">
+              <span className="nav-label">Pastas</span>
+            </p>
+            {props.emptyText && <p className="nav-empty nav-label">{props.emptyText}</p>}
+            <ul>
+              {props.vaults.map((v) => {
+                const active = v.root === props.activeRoot;
+                const name = folderName(v, props.desktop);
+                return (
+                  <li key={v.root}>
+                    <button
+                      type="button"
+                      className={"nav-item folder" + (active ? " active" : "")}
+                      aria-pressed={active}
+                      title={collapsed ? name : "Duplo clique para abrir"}
+                      onClick={after(() => props.onSelect(v.root))}
+                      onDoubleClick={() => props.onOpen(v.root)}
+                    >
+                      <span
+                        className="nav-dot"
+                        style={{ "--hue": coverHue(v.title) } as CSSProperties}
+                        aria-hidden="true"
+                      />
+                      <span className="nav-label">{name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        <div className="home-nav-group home-nav-music">
+          <p className="nav-heading">
+            <span className="nav-label">Música</span>
+          </p>
+          {collapsed ? (
+            <button
+              type="button"
+              className="nav-item"
+              title={playing ? "Música (tocando)" : "Música"}
+              onClick={props.onToggle}
+            >
+              <Icon name="audio" size={17} />
+              {playing && <span className="music-live" aria-hidden="true" />}
+              <span className="nav-label">Música</span>
+            </button>
+          ) : (
+            <MusicPanel />
+          )}
+        </div>
+      </div>
 
       <div className="home-nav-group home-nav-foot">
         <button

@@ -14,6 +14,7 @@ import { Settings } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
 import { MiniBookSpread } from "./MiniBook";
+import { EloGlobe } from "./EloGlobe";
 import { loadMiniBook, type MiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
@@ -145,6 +146,7 @@ export function Home() {
                 </div>
               </div>
               <div className="projects-actions">
+                <EloGlobe vault={current} />
                 <label className="projects-search">
                   <Icon name="search" size={15} />
                   <span className="sr-only">Buscar projeto</span>
