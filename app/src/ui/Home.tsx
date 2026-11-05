@@ -772,17 +772,15 @@ function DriveProjects() {
   );
 }
 
-/** Fundo escolhido nas Configurações; sem imagem guardada, volta ao céu noturno. */
+/** Fundo escolhido nas Configurações; sem imagem guardada, volta ao da paleta. */
 function useHomeBackground() {
   const kind = useSettings((s) => s.homeBg);
-  const color = useSettings((s) => s.homeBgColor);
   const dim = useSettings((s) => s.homeBgDim);
   const image = useSettings((s) => s.homeBgImage);
-  if (kind === "imagem" && !image) return { kind: "ceu", style: undefined };
+  if (kind !== "imagem" || !image) return { kind: "paleta", style: undefined };
   const style = {
-    "--home-bg-color": color,
     "--home-bg-dim": `${dim}%`,
-    ...(image && kind === "imagem" ? { "--home-bg-image": cssUrl(image) } : {}),
+    "--home-bg-image": cssUrl(image),
   } as CSSProperties;
   return { kind, style };
 }

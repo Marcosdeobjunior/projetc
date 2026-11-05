@@ -5,7 +5,51 @@ import { create } from "zustand";
  * armazenamento local da janela.
  */
 
-export type Theme = "system" | "light" | "dark";
+/**
+ * Paletas do app. Cada uma define as cores de tudo (editor e tela de
+ * projetos) e se é clara ou escura; não há cores livres.
+ */
+export type PaletteId = "ambar" | "perola" | "esmeralda" | "natury";
+
+export const PALETTES: {
+  id: PaletteId;
+  label: string;
+  hint: string;
+  theme: "light" | "dark";
+  /** Amostras: fundo, painel, destaque, secundária. */
+  swatch: [string, string, string, string];
+}[] = [
+  {
+    id: "ambar",
+    label: "Âmbar",
+    hint: "Dourado e preto",
+    theme: "dark",
+    swatch: ["#0a0806", "#1d1810", "#e2b35a", "#c97a3a"],
+  },
+  {
+    id: "perola",
+    label: "Pérola",
+    hint: "Marfim iridescente",
+    theme: "light",
+    swatch: ["#f6f2ec", "#e6dfd8", "#7d5f86", "#b4698a"],
+  },
+  {
+    id: "esmeralda",
+    label: "Esmeralda",
+    hint: "Verde-joia no escuro",
+    theme: "dark",
+    swatch: ["#03100c", "#0d221a", "#3fd9a0", "#d9c57c"],
+  },
+  {
+    id: "natury",
+    label: "Natury",
+    hint: "Folha e terra",
+    theme: "light",
+    swatch: ["#eef0e4", "#dbe1cb", "#3f6b3a", "#b0573a"],
+  },
+];
+
+const isPalette = (v: unknown): v is PaletteId => PALETTES.some((p) => p.id === v);
 
 /** Onde o minimapa fica na página: 4 cantos ou o meio de cada lado. */
 export type MinimapPos =
@@ -22,29 +66,25 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
   "bottom-right",
 ];
 
-/** Fundos da tela de projetos: prontos, uma cor ou uma imagem do usuário. */
-export type HomeBg = "ceu" | "aurora" | "crepusculo" | "liso" | "cor" | "imagem";
+/** Fundo da tela de projetos: o da paleta ou uma imagem do usuário. */
+export type HomeBg = "paleta" | "imagem";
 
 /** Seções da barra lateral que podem ser recolhidas. */
 export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
 
 interface Prefs {
-  theme: Theme;
+  palette: PaletteId;
   minimap: boolean;
   minimapPos: MinimapPos;
   /** Conta as menções automáticas (nomes no texto) no minimapa. */
   minimapMentions: boolean;
   collapsed: SectionId[];
-  /** Cor de destaque escolhida (#rrggbb), ou null para a cor padrão. */
-  accent: string | null;
   /** Nome do escritor, mostrado no topo da tela de projetos. */
   userName: string;
   /** De quantos em quantos minutos sincronizar com o Drive (0 = só quando pedir). */
   syncEvery: number;
   /** Fundo da tela de projetos. */
   homeBg: HomeBg;
-  /** Cor usada quando o fundo é "cor" (#rrggbb). */
-  homeBgColor: string;
   /** Quanto a imagem de fundo é suavizada (0 a 85, em %), para o texto continuar legível. */
   homeBgDim: number;
 }
@@ -63,16 +103,14 @@ const OLD_THEME_KEY = "inkflow.theme";
 const BG_IMAGE_KEY = "inkflow.homeBgImage";
 
 const DEFAULTS: Prefs = {
-  theme: "system",
+  palette: "ambar",
   minimap: true,
   minimapPos: "bottom-right",
   minimapMentions: true,
   collapsed: [],
-  accent: null,
   userName: "",
   syncEvery: 5,
-  homeBg: "ceu",
-  homeBgColor: "#1d2433",
+  homeBg: "paleta",
   homeBgDim: 45,
 };
 
@@ -86,59 +124,43 @@ function loadImage(): string | null {
 
 function load(): Prefs {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as Partial<Prefs> | null;
-    if (saved) return { ...DEFAULTS, ...saved };
-    // Versões anteriores guardavam só o tema.
-    const theme = localStorage.getItem(OLD_THEME_KEY);
-    return { ...DEFAULTS, theme: theme === "light" || theme === "dark" ? theme : "system" };
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as
+      (Partial<Prefs> & { theme?: string }) | null;
+    // Versões anteriores tinham tema claro/escuro (e antes disso só o tema,
+    // em outra chave): o claro vira Pérola, o resto Âmbar.
+    const theme = saved?.theme ?? localStorage.getItem(OLD_THEME_KEY);
+    const palette = isPalette(saved?.palette)
+      ? saved.palette
+      : theme === "light"
+        ? "perola"
+        : DEFAULTS.palette;
+    return {
+      ...DEFAULTS,
+      ...pick(saved ?? {}),
+      palette,
+      // Os fundos prontos e o de uma cor saíram: fica o da paleta.
+      homeBg: saved?.homeBg === "imagem" ? "imagem" : "paleta",
+    };
   } catch {
     return DEFAULTS;
   }
 }
 
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  if (theme === "system") delete root.dataset.theme;
-  else root.dataset.theme = theme;
+/** Só as preferências que ainda existem (as antigas ficam para trás). */
+function pick(saved: Partial<Prefs>): Partial<Prefs> {
+  const out: Partial<Prefs> = {};
+  for (const k of Object.keys(DEFAULTS) as (keyof Prefs)[])
+    if (saved[k] !== undefined) (out as Record<string, unknown>)[k] = saved[k];
+  return out;
 }
 
-/** Matiz e saturação de uma cor #rrggbb. */
-export function hexToHueSat(hex: string): { h: number; s: number } | null {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const n = parseInt(m[1]!, 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255) as [
-    number,
-    number,
-    number,
-  ];
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  const l = (max + min) / 2;
-  if (d === 0) return { h: 0, s: 0 };
-  const s = d / (1 - Math.abs(2 * l - 1));
-  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  h = Math.round(h * 60);
-  return { h: h < 0 ? h + 360 : h, s: Math.round(s * 100) };
-}
-
-/**
- * Aplica a cor de destaque em todo o app. A claridade de cada tom vem do CSS,
- * para a cor ficar legível tanto no tema claro quanto no escuro.
- */
-function applyAccent(accent: string | null) {
+/** Aplica a paleta em todo o app: as cores vêm do CSS (`data-palette`). */
+function applyPalette(id: PaletteId) {
   const root = document.documentElement;
-  const hs = accent ? hexToHueSat(accent) : null;
-  if (!hs) {
-    delete root.dataset.accent;
-    root.style.removeProperty("--ac-h");
-    root.style.removeProperty("--ac-s");
-    return;
-  }
-  root.dataset.accent = "custom";
-  root.style.setProperty("--ac-h", String(hs.h));
-  root.style.setProperty("--ac-s", `${hs.s}%`);
+  const palette = PALETTES.find((p) => p.id === id) ?? PALETTES[0]!;
+  root.dataset.palette = palette.id;
+  // Claro ou escuro decide o resto (contrastes, sombras, cores das notas).
+  root.dataset.theme = palette.theme;
 }
 
 export const useSettings = create<SettingsState>((set, get) => ({
@@ -163,22 +185,18 @@ export const useSettings = create<SettingsState>((set, get) => ({
   },
 }));
 
-applyTheme(useSettings.getState().theme);
-applyAccent(useSettings.getState().accent);
+applyPalette(useSettings.getState().palette);
 useSettings.subscribe((s, prev) => {
-  if (s.theme !== prev.theme) applyTheme(s.theme);
-  if (s.accent !== prev.accent) applyAccent(s.accent);
+  if (s.palette !== prev.palette) applyPalette(s.palette);
   const prefs: Prefs = {
-    theme: s.theme,
+    palette: s.palette,
     minimap: s.minimap,
     minimapPos: s.minimapPos,
     minimapMentions: s.minimapMentions,
     collapsed: s.collapsed,
-    accent: s.accent,
     userName: s.userName,
     syncEvery: s.syncEvery,
     homeBg: s.homeBg,
-    homeBgColor: s.homeBgColor,
     homeBgDim: s.homeBgDim,
   };
   try {
