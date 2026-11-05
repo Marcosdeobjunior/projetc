@@ -196,32 +196,7 @@ export function Home() {
             <div className="projects-grid">
               <div className="projects-main">
                 {current ? (
-                  <div className="featured">
-                    <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
-                    <div className="featured-panels">
-                      <Progress vaults={recent} stats={stats} goals={goals} />
-                      <section className="panel" aria-labelledby="activity-title">
-                        <h2 id="activity-title" className="kicker">
-                          Atividade recente
-                        </h2>
-                        <ul className="activity">
-                          {activity(recent, stats).map((a) => (
-                            <li key={a.root + a.kind}>
-                              <span className="activity-dot">
-                                <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
-                              </span>
-                              <span>
-                                <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
-                                <small>
-                                  {timeAgo(a.at)} · {a.title}
-                                </small>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    </div>
-                  </div>
+                  <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
                 ) : (
                   <div className="panel empty-library">
                     <h2>Sua biblioteca está vazia</h2>
@@ -255,6 +230,33 @@ export function Home() {
                 )}
 
                 <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+
+                <Progress vaults={recent} stats={stats} goals={goals} />
+
+                <section className="panel" aria-labelledby="activity-title">
+                  <h2 id="activity-title" className="kicker">
+                    Atividade recente
+                  </h2>
+                  {recent.length === 0 ? (
+                    <p className="muted small">Nada por aqui ainda.</p>
+                  ) : (
+                    <ul className="activity">
+                      {activity(recent, stats).map((a) => (
+                        <li key={a.root + a.kind}>
+                          <span className="activity-dot">
+                            <Icon name={a.kind === "edit" ? "edit" : "clock"} size={13} />
+                          </span>
+                          <span>
+                            <b>{a.kind === "edit" ? "Sessão de escrita" : "Projeto aberto"}</b>
+                            <small>
+                              {timeAgo(a.at)} · {a.title}
+                            </small>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
               </aside>
             </div>
           </div>

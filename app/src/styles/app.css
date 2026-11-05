@@ -3673,18 +3673,6 @@ p {
   gap: 14px;
   min-width: 0;
 }
-.featured {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 28px;
-  align-items: start;
-}
-.featured-panels {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
 .empty-library {
   align-items: flex-start;
   padding: 28px;
@@ -4130,21 +4118,23 @@ p {
     min-height: 0;
     align-items: stretch;
   }
-  .projects-main,
-  .projects-side,
-  .featured,
-  .featured-panels {
+  .projects-main {
     min-height: 0;
   }
-  .featured {
-    height: 100%;
-  }
-  .featured-panels {
-    height: 100%;
-  }
-  .featured-panels > .panel {
+  /* A coluna lateral cabe na altura: Progresso e Atividade encolhem primeiro
+     (suas listas rolam por dentro); só se ainda faltar espaço a própria
+     coluna rola, nunca a página. */
+  .projects-side {
     min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .projects-side > .panel {
+    flex: none;
+  }
+  .projects-side > .panel:has(.goals, .activity) {
     flex: 0 1 auto;
+    min-height: 200px;
   }
   .goals,
   .activity {
@@ -4192,9 +4182,6 @@ p {
   }
 }
 @media (max-width: 720px) {
-  .featured {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .book-preview {
     --w: 180px;
     --h: 270px;
