@@ -13,6 +13,8 @@ import { Icon } from "./Icon";
 import { Settings } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { MiniBookSpread } from "./MiniBook";
+import { loadMiniBook, type MiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
@@ -453,7 +455,13 @@ const DEG_PER_PX = 0.5;
 /** Ângulo de descanso do livro (o mesmo de antes do giro existir). */
 const REST_Y = -32;
 
-/** O livro em 3D, fechado, como sai da diagramação. */
+/** Arrasto menor que isso (px) conta como clique, e o clique abre o livro. */
+const CLICK_PX = 4;
+
+/**
+ * O livro em 3D, fechado, como sai da diagramação. Arrastar gira; clicar
+ * abre a miniatura com o miolo diagramado, para folhear.
+ */
 function BookPreview({
   vault,
   stats,
@@ -461,14 +469,25 @@ function BookPreview({
   vault: VaultRef;
   stats: ProjectStats | null | undefined;
 }) {
-  const style = { "--hue": coverHue(vault.title) } as CSSProperties;
+  const platform = useApp((s) => s.platform);
+  const hue = coverHue(vault.title);
+  const style = { "--hue": hue } as CSSProperties;
   const line = stats?.excerpt ? firstSentence(stats.excerpt) : "";
+  const [open, setOpen] = useState(false);
+  const [mini, setMini] = useState<MiniBook | "loading" | "error" | null>(null);
+  const openBook = () => {
+    setOpen(true);
+    if (mini && mini !== "error") return;
+    if (!platform) return;
+    setMini("loading");
+    loadMiniBook(platform.fs(vault.root)).then(setMini, () => setMini("error"));
+  };
   // Giro em torno do eixo vertical, arrastando na horizontal. O livro não sai
   // do lugar: só o ângulo muda, e ao soltar ele para onde está. O ângulo vai
   // direto no estilo, sem re-renderizar o React a cada movimento.
   const body = useRef<HTMLDivElement>(null);
   const angle = useRef(REST_Y);
-  const drag = useRef<{ id: number; x: number; from: number } | null>(null);
+  const drag = useRef<{ id: number; x: number; from: number; moved: boolean } | null>(null);
 
   const apply = (deg: number) => {
     angle.current = deg;
@@ -479,30 +498,60 @@ function BookPreview({
     e.preventDefault(); // não seleciona texto nem arrasta a imagem
     e.currentTarget.setPointerCapture(e.pointerId);
     e.currentTarget.classList.add("dragging");
-    drag.current = { id: e.pointerId, x: e.clientX, from: angle.current };
+    drag.current = { id: e.pointerId, x: e.clientX, from: angle.current, moved: false };
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     if (d?.id !== e.pointerId) return;
-    apply(d.from + (e.clientX - d.x) * DEG_PER_PX);
+    if (Math.abs(e.clientX - d.x) > CLICK_PX) d.moved = true;
+    if (d.moved) apply(d.from + (e.clientX - d.x) * DEG_PER_PX);
   };
   const onPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
-    if (drag.current?.id !== e.pointerId) return;
+    const d = drag.current;
+    if (d?.id !== e.pointerId) return;
     drag.current = null;
     e.currentTarget.classList.remove("dragging");
+    if (e.type === "pointerup" && !d.moved) openBook();
+  };
+  // O livro fechado volta no ângulo de descanso (o giro fica no estilo da peça).
+  const closeBook = () => {
+    angle.current = REST_Y;
+    setOpen(false);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      return openBook();
+    }
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
     apply(angle.current + (e.key === "ArrowRight" ? 15 : -15));
   };
+  if (open)
+    return (
+      <figure className="book-preview open">
+        {mini && typeof mini === "object" ? (
+          <MiniBookSpread book={mini} height={330} hue={hue} onClose={closeBook} />
+        ) : (
+          <div className="minibook-status" role="status">
+            {mini === "error" ? "Não foi possível abrir o livro." : "Abrindo o livro…"}
+          </div>
+        )}
+        <figcaption>
+          <span>Clique na página da esquerda para voltar e na da direita para avançar.</span>
+          <button type="button" className="pbtn" onClick={closeBook}>
+            Fechar livro
+          </button>
+        </figcaption>
+      </figure>
+    );
   return (
     <figure className="book-preview">
       <div
         className="book3d"
         style={style}
-        role="img"
-        aria-label={`Capa de ${vault.title}. Arraste para os lados ou use as setas para girar o livro.`}
+        role="button"
+        aria-label={`Capa de ${vault.title}. Clique ou Enter para abrir e folhear; arraste para os lados ou use as setas para girar.`}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

@@ -3852,6 +3852,158 @@ p {
   font-size: 13px;
 }
 
+/* Livro aberto em miniatura: duas páginas diagramadas, para folhear */
+.book-preview.open {
+  align-items: center;
+  padding: 0;
+}
+.book-preview.open figcaption {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-style: normal;
+  margin-left: 0;
+}
+.minibook-status {
+  display: grid;
+  place-items: center;
+  width: calc(var(--w) * 2);
+  height: var(--h);
+  color: var(--p-muted);
+}
+.minibook {
+  --hue: 200;
+  position: relative;
+  /* A capa dura aparece em volta das páginas. */
+  padding: 7px;
+  border-radius: 6px;
+  background: linear-gradient(170deg, hsl(var(--hue) 45% 16%), hsl(calc(var(--hue) + 40) 55% 9%));
+  box-shadow:
+    0 30px 50px -28px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px hsl(var(--hue) 60% 70% / 0.25);
+  perspective: 1600px;
+}
+.minibook:focus-visible {
+  outline: 2px solid var(--p-teal);
+  outline-offset: 6px;
+}
+.mb-measure {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.mb-flow {
+  position: relative;
+}
+.mb-spread {
+  display: flex;
+}
+.mb-page {
+  position: relative;
+  width: var(--mb-w);
+  height: var(--mb-h);
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: #fbf8f1;
+  cursor: pointer;
+  font: inherit;
+  text-align: initial;
+}
+.mb-page.left {
+  cursor: w-resize;
+  border-radius: 3px 0 0 3px;
+}
+.mb-page.right {
+  cursor: e-resize;
+  border-radius: 0 3px 3px 0;
+}
+/* Sombra da costura, no meio da abertura. */
+.mb-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mb-page.left::after {
+  background: linear-gradient(
+    90deg,
+    transparent 82%,
+    rgba(60, 40, 20, 0.16) 96%,
+    rgba(60, 40, 20, 0.28)
+  );
+}
+.mb-page.right::after {
+  background: linear-gradient(
+    270deg,
+    transparent 82%,
+    rgba(60, 40, 20, 0.12) 96%,
+    rgba(60, 40, 20, 0.24)
+  );
+}
+.mb-page:hover::after {
+  box-shadow: inset 0 0 0 999px rgba(120, 90, 40, 0.04);
+}
+.mb-endpaper {
+  background: linear-gradient(170deg, hsl(var(--hue) 30% 78%), hsl(var(--hue) 25% 68%));
+}
+.mb-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+.mb-window {
+  position: absolute;
+  overflow: hidden;
+}
+.mb-head,
+.mb-folio {
+  position: absolute;
+  text-align: center !important;
+  font-style: italic;
+  font-size: 0.8em !important;
+  line-height: 1 !important;
+  color: #5a524a;
+}
+.mb-folio {
+  font-style: normal;
+}
+.mb-folio.left {
+  text-align: left !important;
+}
+.mb-folio.right {
+  text-align: right !important;
+}
+.mb-spread.turn-next .mb-page.right,
+.mb-spread.turn-prev .mb-page.left {
+  animation: mb-turn 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.mb-spread.turn-next .mb-page.right {
+  transform-origin: left center;
+}
+.mb-spread.turn-prev .mb-page.left {
+  transform-origin: right center;
+  animation-direction: normal;
+}
+@keyframes mb-turn {
+  from {
+    opacity: 0.4;
+    transform: rotateY(var(--mb-from, -28deg));
+  }
+}
+.mb-spread.turn-prev .mb-page.left {
+  --mb-from: 28deg;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mb-spread .mb-page {
+    animation: none !important;
+  }
+}
+
 /* Livro em destaque: capa dura em 3D, fechada */
 .book-preview {
   margin: 0;
