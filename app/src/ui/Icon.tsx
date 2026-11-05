@@ -10,6 +10,20 @@ const PATHS: Record<string, string> = {
   chevron: "m9 6 6 6-6 6",
   "chevron-left": "m15 6-6 6 6 6",
   play: "M7 5v14l11-7z",
+  pause: "M8 5v14M16 5v14",
+  next: "M6 5l9 7-9 7zM18 5v14",
+  prev: "M18 5 9 12l9 7zM6 5v14",
+  volume: "M4 9.5h3.5L12 6v12l-4.5-3.5H4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10",
+  mute: "M4 9.5h3.5L12 6v12l-4.5-3.5H4zM16 10l4 4M20 10l-4 4",
+  music:
+    "M9 18V6l11-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM9 10l11-2",
+  /* Toca-discos antigo: caixa, prato com o disco e o braço da agulha. */
+  turntable:
+    "M3 7h18v12H3zM5.5 13a4.5 4.5 0 1 0 9 0 4.5 4.5 0 1 0-9 0M8.5 13a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0M18 9v5.5l-3.2 2.2M17 17.5h2M5 21h1.5M17.5 21H19",
+  lyre: "M8 4c-3.5 3-3.5 10 0 13M16 4c3.5 3 3.5 10 0 13M7.5 17h9M10 7v10M12 6v11M14 7v10M9 21h6M12 17v4",
+  wave: "M2 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0c.7 1.7 1.4 2.6 2 3",
+  rain: "M7 15a4 4 0 0 1-.6-8 5.5 5.5 0 0 1 10.6 1.5A3.5 3.5 0 0 1 17 15zM8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5",
+  leaf: "M5 19c0-8.5 6-14 15-14 0 9-5.5 15-14 15M5 19l8-8",
   up: "m6 15 6-6 6 6",
   down: "m6 9 6 6 6-6",
   edit: "M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z",

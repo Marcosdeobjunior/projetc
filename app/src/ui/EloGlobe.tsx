@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { VaultRef } from "../platform";
 import type { Project } from "../manuscript/types";
 import { useApp } from "../state/store";
@@ -6,13 +6,78 @@ import { loadProject, readProjectTexts } from "../vault/vault";
 import { Elo } from "./GraphView";
 import { Icon } from "./Icon";
 
-/** Órbitas do sistema solar do globo: tamanho (% do globo), volta (s) e planeta. */
+/** Órbitas do globo (raios da elipse no viewBox 40×40), volta (s) e planeta. */
 const ORBITS = [
-  { size: 34, turn: 6, planet: 5, tone: "rose" },
-  { size: 52, turn: 10, planet: 7, tone: "gold" },
-  { size: 70, turn: 16, planet: 6, tone: "teal" },
-  { size: 88, turn: 26, planet: 8, tone: "fg" },
+  { rx: 7, ry: 2.6, turn: 5, r: 1.3, tone: "rose" },
+  { rx: 11, ry: 4.1, turn: 9, r: 1.7, tone: "gold" },
+  { rx: 15, ry: 5.6, turn: 15, r: 1.5, tone: "teal" },
 ];
+
+/** Elipse como caminho (começa à direita), para o planeta seguir. */
+const ellipse = (rx: number, ry: number) =>
+  `M${20 + rx} 20a${rx} ${ry} 0 1 1 ${-2 * rx} 0a${rx} ${ry} 0 1 1 ${2 * rx} 0`;
+
+/** O ícone do Elo: um globo com a estrela do Elo no centro e planetas em órbita. */
+function GlobeIcon() {
+  // Quem pediu menos movimento no sistema vê o globo parado.
+  const ref = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () =>
+      mq.matches ? ref.current?.pauseAnimations() : ref.current?.unpauseAnimations();
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return (
+    <svg
+      ref={ref}
+      className="elo-globe-svg"
+      viewBox="0 0 40 40"
+      width="40"
+      height="40"
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id="elo-globe-fill" cx="0.36" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="var(--elo-glass-hi)" />
+          <stop offset="0.55" stopColor="var(--elo-glass)" />
+          <stop offset="1" stopColor="var(--elo-glass-lo)" />
+        </radialGradient>
+      </defs>
+      <circle cx="20" cy="20" r="19" fill="url(#elo-globe-fill)" className="elo-globe-rim" />
+      {/* O plano das órbitas, inclinado, dá a volta inteira devagar. */}
+      <g className="elo-plane">
+        {ORBITS.map((o) => (
+          <g key={o.rx}>
+            <path d={ellipse(o.rx, o.ry)} className="elo-orbit" />
+            <circle r={o.r} className={"elo-planet " + o.tone}>
+              <animateMotion
+                dur={`${o.turn}s`}
+                repeatCount="indefinite"
+                path={ellipse(o.rx, o.ry)}
+              />
+            </circle>
+          </g>
+        ))}
+      </g>
+      {/* Sol: a estrela do Elo. */}
+      <circle cx="20" cy="20" r="3.4" className="elo-sun-glow" />
+      <path
+        className="elo-sun"
+        d="M20 14.5 21.1 18.9 25.5 20 21.1 21.1 20 25.5 18.9 21.1 14.5 20 18.9 18.9Z"
+      />
+      <ellipse
+        cx="14"
+        cy="11"
+        rx="6"
+        ry="3.2"
+        className="elo-shine"
+        transform="rotate(-28 14 11)"
+      />
+    </svg>
+  );
+}
 
 /**
  * Globo com um sistema solar girando. Clicar abre o Elo do projeto
@@ -30,27 +95,7 @@ export function EloGlobe({ vault }: { vault: VaultRef | null }) {
         aria-label={vault ? `Abrir o Elo de ${vault.title}` : "Elo (nenhum projeto selecionado)"}
         onClick={() => setOpen(true)}
       >
-        <span className="elo-globe-sky" aria-hidden="true">
-          <span className="elo-system">
-            <span className="elo-sun" />
-            {ORBITS.map((o) => (
-              <span
-                key={o.size}
-                className="elo-orbit"
-                style={{
-                  width: `${o.size}%`,
-                  height: `${o.size}%`,
-                  animationDuration: `${o.turn}s`,
-                }}
-              >
-                <span
-                  className={"elo-planet " + o.tone}
-                  style={{ width: o.planet, height: o.planet }}
-                />
-              </span>
-            ))}
-          </span>
-        </span>
+        <GlobeIcon />
       </button>
       {open && vault && <EloDialog vault={vault} onClose={() => setOpen(false)} />}
     </>

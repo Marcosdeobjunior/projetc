@@ -3,7 +3,7 @@ import type { VaultRef } from "../platform";
 import { useSettings } from "../state/settings";
 import type { SyncStatus } from "../state/syncStatus";
 import { Icon, Quill } from "./Icon";
-import { MusicPanel } from "./Music";
+import { MusicPlayer } from "./Music";
 import { useMusic } from "../state/music";
 import { coverHue } from "./library";
 
@@ -154,6 +154,8 @@ export function HomeSidebar(props: {
   onCreateTestBook?(): void;
   onOpenFolder(): void;
   onSettings(): void;
+  /** Abre as Configurações na seção de música. */
+  onMusicSettings?(): void;
 }) {
   const { collapsed } = props;
   // Recolhida, a barra mostra só ícones: o nome vira dica (title).
@@ -163,22 +165,31 @@ export function HomeSidebar(props: {
     if (isNarrow()) props.onToggle();
   };
 
-  const playing = useMusic((s) => !!s.source);
+  const playing = useMusic(
+    (s) =>
+      (s.active === "library" && s.playing) || s.active === "spotify" || s.active === "youtube",
+  );
+  const showMusic = useMusic((s) => s.prefs.showInSidebar);
+  const panelOpen = useMusic((s) => s.panelOpen);
+  const setPanelOpen = useMusic((s) => s.setPanelOpen);
 
   return (
     <nav id="home-nav" className="home-nav" aria-label="Navegação">
-      {/* Recolher/mostrar: botão pequeno preso na borda da barra. */}
-      <button
-        type="button"
-        className="home-nav-edge"
-        aria-label={collapsed ? "Mostrar barra lateral" : "Recolher barra lateral"}
-        title={`${collapsed ? "Mostrar" : "Recolher"} barra lateral (Ctrl+\\)`}
-        aria-expanded={!collapsed}
-        aria-controls="home-nav"
-        onClick={props.onToggle}
-      >
-        <Icon name={collapsed ? "chevron" : "chevron-left"} size={15} />
-      </button>
+      {/* Recolher/mostrar: primeira linha da própria barra, sem sobrepor nada. */}
+      <div className="home-nav-head">
+        <span className="nav-heading nav-label">Menu</span>
+        <button
+          type="button"
+          className="home-nav-toggle"
+          aria-label={collapsed ? "Mostrar barra lateral" : "Recolher barra lateral"}
+          title={`${collapsed ? "Mostrar" : "Recolher"} barra lateral (Ctrl+\\)`}
+          aria-expanded={!collapsed}
+          aria-controls="home-nav"
+          onClick={props.onToggle}
+        >
+          <Icon name={collapsed ? "chevron" : "chevron-left"} size={15} />
+        </button>
+      </div>
       <div className="home-nav-scroll" data-music-clip>
         <div className="home-nav-group">
           <button
@@ -259,25 +270,47 @@ export function HomeSidebar(props: {
           </div>
         )}
 
-        <div className="home-nav-group home-nav-music">
-          <p className="nav-heading">
-            <span className="nav-label">Música</span>
-          </p>
-          {collapsed ? (
-            <button
-              type="button"
-              className="nav-item"
-              title={playing ? "Música (tocando)" : "Música"}
-              onClick={props.onToggle}
-            >
-              <Icon name="audio" size={17} />
-              {playing && <span className="music-live" aria-hidden="true" />}
-              <span className="nav-label">Música</span>
-            </button>
-          ) : (
-            <MusicPanel />
-          )}
-        </div>
+        {showMusic && (
+          <div className="home-nav-group home-nav-music">
+            {collapsed ? (
+              <button
+                type="button"
+                className="nav-item"
+                title={playing ? "Música (tocando)" : "Música"}
+                onClick={() => {
+                  setPanelOpen(true);
+                  props.onToggle();
+                }}
+              >
+                <Icon name="music" size={17} />
+                {playing && <span className="music-live" aria-hidden="true" />}
+                <span className="nav-label">Música</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={"nav-item music-toggle" + (panelOpen ? " open" : "")}
+                  aria-expanded={panelOpen}
+                  aria-controls="home-music"
+                  onClick={() => setPanelOpen(!panelOpen)}
+                >
+                  <Icon name="turntable" size={18} />
+                  <span className="nav-label">Música</span>
+                  {playing && <span className="music-live" aria-hidden="true" />}
+                  <span className="music-caret" aria-hidden="true">
+                    <Icon name="down" size={14} />
+                  </span>
+                </button>
+                <div id="home-music" className={"music-drawer" + (panelOpen ? " open" : "")}>
+                  <div className="music-drawer-inner" inert={!panelOpen}>
+                    <MusicPlayer onSettings={props.onMusicSettings ?? props.onSettings} />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="home-nav-group home-nav-foot">

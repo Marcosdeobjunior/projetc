@@ -3325,36 +3325,51 @@ p {
   margin: -2px;
   padding: 2px;
 }
-/* Botão de recolher: quadradinho preso na borda direita, perto do topo. */
-.home-nav-edge {
-  position: absolute;
-  z-index: 2;
-  top: 18px;
-  right: -14px;
+/* Recolher/mostrar: primeira linha da barra, dentro dela (não sobrepõe nada). */
+.home-nav-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  padding-left: 11px;
+}
+.home-nav-head .nav-heading {
+  height: auto;
+  padding: 0;
+}
+.nav-collapsed .home-nav-head {
+  justify-content: center;
+  padding-left: 0;
+}
+.nav-collapsed .home-nav-head .nav-heading {
+  display: none;
+}
+.home-nav-toggle {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
+  flex: none;
   padding: 0;
   border-radius: 8px;
   border: 1px solid var(--p-line);
-  background: var(--p-bg);
+  background: color-mix(in srgb, var(--p-panel-2) 70%, transparent);
   color: var(--p-fg);
-  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.45);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
 }
-.home-nav-edge:hover {
+.home-nav-toggle:hover {
   border-color: var(--p-line-hi);
   background: var(--p-panel-2);
 }
-.home-nav-edge:focus-visible {
+.home-nav-toggle:focus-visible {
   outline: 2px solid var(--p-teal);
   outline-offset: 2px;
 }
-/* No computador o botão da borda substitui o do topo; na gaveta (tela
+/* No computador o botão da barra substitui o do topo; na gaveta (tela
    estreita) o do topo continua, porque a barra fechada some da tela. */
 @media (min-width: 761px) {
   .appbar-toggle {
@@ -3362,7 +3377,7 @@ p {
   }
 }
 @media (max-width: 760px) {
-  .home-nav-edge {
+  .home-nav-head .home-nav-toggle {
     display: none;
   }
 }
@@ -4679,36 +4694,363 @@ p {
 }
 
 /* ---------- Música ---------- */
-.home-nav-music .music,
-.home-nav-music .music-form {
-  padding: 4px 6px 0;
+/* Entrada na barra lateral: toca-discos + nome + seta; o player desliza abaixo. */
+.nav-item.music-toggle .music-caret {
+  margin-left: auto;
+  display: grid;
+  transition: transform 0.25s var(--nav-ease);
 }
-.music {
+.nav-item.music-toggle.open .music-caret {
+  transform: rotate(180deg);
+}
+.nav-item.music-toggle .music-live {
+  position: static;
+  box-shadow: none;
+}
+.music-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.3s var(--nav-ease),
+    opacity 0.2s ease;
+}
+.music-drawer.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.music-drawer-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.music-drawer .mplayer {
+  padding: 6px 4px 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-drawer,
+  .nav-item.music-toggle .music-caret {
+    transition: none;
+  }
+}
+
+/* O player (mesmo componente na barra e no cartão do editor). Usa as cores
+   da tela de projetos quando está nela, e as do app no editor. */
+.mplayer {
+  --m-fg: var(--p-fg, var(--fg));
+  --m-muted: var(--p-muted, var(--muted));
+  --m-faint: var(--p-faint, var(--faint));
+  --m-line: var(--p-line, var(--line));
+  --m-accent: var(--p-teal, var(--accent));
+  --m-panel: var(--p-panel-2, var(--panel-2));
+  --m-on: var(--p-bg, var(--on-accent));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--m-fg);
+  font-family: var(--font-ui);
+  white-space: normal;
+}
+.mplayer-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--m-line);
+  background: none;
+  color: var(--m-muted);
+  font: 600 11px/1 var(--font-ui);
+  cursor: pointer;
+}
+.mchip[aria-selected="true"] {
+  border-color: var(--m-accent);
+  color: var(--m-fg);
+  background: color-mix(in srgb, var(--m-accent) 14%, transparent);
+}
+.mplayer-lib {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mplayer-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.music-cover {
+  --hue: 30;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 8px;
+  color: hsl(var(--hue) 70% 92%);
+  background:
+    radial-gradient(circle at 30% 25%, hsl(calc(var(--hue) + 30) 70% 62% / 0.8), transparent 60%),
+    linear-gradient(150deg, hsl(var(--hue) 55% 38%), hsl(calc(var(--hue) + 25) 60% 18%));
+  box-shadow: inset 0 0 0 1px hsl(var(--hue) 60% 80% / 0.2);
+}
+.mplayer-now-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mplayer-now-text b {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mplayer-now-text small,
+.mrow-text small {
+  font-size: 11px;
+  color: var(--m-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Barras finas (posição e volume), preenchidas até --p. */
+.mplayer input[type="range"] {
+  --p: 0%;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  margin: 6px 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--m-accent) var(--p), var(--m-line) var(--p));
+  cursor: pointer;
+}
+.mplayer input[type="range"]:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.mplayer input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--m-fg);
+  border: 0;
+}
+.mplayer input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--m-fg);
+  border: 0;
+}
+.mplayer input[type="range"]:focus-visible {
+  outline: 2px solid var(--m-accent);
+  outline-offset: 3px;
+}
+.mplayer-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -4px;
+  font-size: 10px;
+  color: var(--m-faint);
+  font-variant-numeric: tabular-nums;
+}
+.mplayer-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mbtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--m-fg);
+  cursor: pointer;
+}
+.mbtn svg {
+  fill: currentColor;
+}
+.mbtn:hover:not(:disabled) {
+  background: var(--m-panel);
+}
+.mbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.mbtn.play {
+  width: 36px;
+  height: 36px;
+  background: var(--m-accent);
+  color: var(--m-on);
+}
+.mbtn.play:hover {
+  background: color-mix(in srgb, var(--m-accent) 85%, white);
+}
+.mbtn.sm {
+  width: 24px;
+  height: 24px;
+}
+.mbtn.sm svg {
+  fill: none;
+}
+.mbtn:focus-visible {
+  outline: 2px solid var(--m-accent);
+  outline-offset: 2px;
+}
+.mspin {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--m-accent);
+  animation: mspin 0.8s linear infinite;
+}
+@keyframes mspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mplayer-volume {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: var(--m-muted);
+}
+.mplayer-volume svg {
+  flex: none;
+}
+.mplayer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 38px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--m-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mrow:hover {
+  background: var(--m-panel);
+}
+.mrow.on {
+  background: color-mix(in srgb, var(--m-accent) 13%, transparent);
+}
+.mrow > svg {
+  margin-left: auto;
+  flex: none;
+  color: var(--m-faint);
+}
+.mrow-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.mrow-text b {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mrow-num {
+  width: 18px;
+  flex: none;
+  text-align: center;
+  font-size: 11px;
+  color: var(--m-faint);
+  font-variant-numeric: tabular-nums;
+}
+.mrow.on .mrow-num {
+  color: var(--m-accent);
+}
+/* Três barrinhas dançando: faixa tocando. */
+.mbars {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  background:
+    linear-gradient(var(--m-accent), var(--m-accent)) 0 100% / 3px 40% no-repeat,
+    linear-gradient(var(--m-accent), var(--m-accent)) 50% 100% / 3px 90% no-repeat,
+    linear-gradient(var(--m-accent), var(--m-accent)) 100% 100% / 3px 60% no-repeat;
+  animation: mbars 0.9s ease-in-out infinite alternate;
+}
+@keyframes mbars {
+  to {
+    background-size:
+      3px 90%,
+      3px 35%,
+      3px 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mbars,
+  .mspin {
+    animation: none;
+  }
+}
+.mplayer-tracks-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.mplayer-tracks-head b {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mplayer .link-btn {
+  font-size: 11px;
+}
+.mplayer-settings {
+  align-self: flex-start;
+  color: var(--m-muted);
+}
+.mplayer-external {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+.mplayer-note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--m-muted);
+}
 .music-slot {
   border-radius: 12px;
-  background: color-mix(in srgb, var(--fg, #888) 8%, transparent);
-}
-.music-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-}
-.music-service {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--p-muted, var(--muted));
-}
-.music .link-btn,
-.music-form .link-btn {
-  font-size: 11px;
+  background: color-mix(in srgb, var(--m-fg) 6%, transparent);
 }
 .music-dock {
   position: fixed;
@@ -4723,89 +5065,12 @@ p {
   border: 0;
   border-radius: 12px;
 }
-.music-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.music-help {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--p-muted, var(--muted));
-  white-space: normal;
-}
-.music-input {
-  display: flex;
-  gap: 6px;
-}
-.music-input input {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--p-line, var(--line));
-  background: var(--p-panel, var(--panel));
-  color: var(--p-fg, var(--fg));
-  font: 12px var(--font-ui);
-}
-.music-input input:focus {
-  outline: none;
-  border-color: var(--p-line-hi, var(--accent));
-}
-.music-input input[aria-invalid="true"] {
-  border-color: var(--danger);
-}
-.music-go {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 8px;
-  border: 0;
-  background: var(--p-teal, var(--accent));
-  color: var(--p-bg, var(--on-accent));
-  cursor: pointer;
-}
-.music-go:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.music-go svg {
-  fill: currentColor;
-}
 .music-error {
   font-size: 12px;
   color: var(--danger);
 }
-.music-recent {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.music-recent button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 5px 6px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--p-muted, var(--muted));
-  font: 12px var(--font-ui);
-  text-align: left;
-  cursor: pointer;
-}
-.music-recent button:hover {
-  background: var(--p-panel-2, var(--panel-2));
-  color: var(--p-fg, var(--fg));
-}
 .music-dot {
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -4846,47 +5111,59 @@ p {
   z-index: 35;
   left: 10px;
   bottom: 56px;
-  width: 280px;
+  width: 290px;
+  max-height: calc(100vh - 80px);
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow);
 }
-.music-float .kicker {
+.music-float-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 11px/1 var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--accent);
 }
+.music-accounts-hint {
+  display: block;
+  line-height: 1.5;
+}
+.setting-label .music-dot {
+  margin-right: 4px;
+}
 
-/* ---------- Globo do Elo (tela de projetos) ---------- */
+/* ---------- Ícone do Elo (tela de projetos) ---------- */
 .elo-globe {
-  position: relative;
-  width: 44px;
-  height: 44px;
+  --elo-glass-hi: color-mix(in srgb, var(--p-teal) 45%, white);
+  --elo-glass: color-mix(in srgb, var(--p-teal) 30%, #0b1220);
+  --elo-glass-lo: #050813;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border: 1px solid var(--p-line-hi);
+  border: 0;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.28), transparent 42%),
-    radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--p-teal) 22%, #05060c), #03040a 75%);
-  box-shadow:
-    inset 0 -6px 12px rgba(0, 0, 0, 0.55),
-    0 0 18px -4px color-mix(in srgb, var(--p-teal) 60%, transparent);
+  background: none;
   cursor: pointer;
-  overflow: hidden;
   flex: none;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--p-teal) 45%, transparent));
   transition:
     transform 0.2s ease,
-    box-shadow 0.2s ease;
+    filter 0.2s ease;
 }
 .elo-globe:hover:not(:disabled) {
   transform: scale(1.08);
-  box-shadow:
-    inset 0 -6px 12px rgba(0, 0, 0, 0.55),
-    0 0 26px -2px color-mix(in srgb, var(--p-teal) 75%, transparent);
+  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--p-teal) 70%, transparent));
 }
 .elo-globe:disabled {
   opacity: 0.5;
@@ -4896,83 +5173,52 @@ p {
   outline: 2px solid var(--p-teal);
   outline-offset: 3px;
 }
-.elo-globe-sky {
-  position: absolute;
-  inset: 0;
-  perspective: 120px;
+.elo-globe-svg {
+  display: block;
+  overflow: visible;
 }
-/* O sistema inclinado, girando inteiro em 360°; cada órbita gira no seu ritmo. */
-.elo-system {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  animation: elo-tilt 40s linear infinite;
+.elo-globe-rim {
+  stroke: color-mix(in srgb, var(--p-teal) 70%, transparent);
+  stroke-width: 1;
 }
-@keyframes elo-tilt {
-  from {
-    transform: rotateX(62deg) rotateZ(0deg);
-  }
+.elo-plane {
+  transform-origin: 20px 20px;
+  transform: rotate(-22deg);
+  animation: elo-plane 48s linear infinite;
+}
+@keyframes elo-plane {
   to {
-    transform: rotateX(62deg) rotateZ(360deg);
+    transform: rotate(338deg);
   }
-}
-.elo-sun {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  margin: -4.5px 0 0 -4.5px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff6d6, #ffc24a 55%, #ff8a1f);
-  box-shadow: 0 0 10px 3px rgba(255, 190, 80, 0.75);
 }
 .elo-orbit {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border: 1px solid color-mix(in srgb, var(--p-teal) 45%, transparent);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  animation: elo-orbit linear infinite;
-}
-@keyframes elo-orbit {
-  from {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-.elo-planet {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 6px currentColor;
+  fill: none;
+  stroke: color-mix(in srgb, var(--p-teal) 60%, white);
+  stroke-width: 0.7;
+  opacity: 0.85;
 }
 .elo-planet.rose {
-  color: var(--p-rose);
-  background: var(--p-rose);
+  fill: var(--p-rose);
 }
 .elo-planet.gold {
-  color: var(--p-gold);
-  background: var(--p-gold);
+  fill: var(--p-gold);
 }
 .elo-planet.teal {
-  color: var(--p-teal);
-  background: var(--p-teal);
+  fill: #9fd8ff;
 }
-.elo-planet.fg {
-  color: #9fc4ff;
-  background: #9fc4ff;
+.elo-sun {
+  fill: #fff4cf;
+}
+.elo-sun-glow {
+  fill: color-mix(in srgb, #ffc95a 55%, transparent);
+  filter: blur(1.5px);
+}
+.elo-shine {
+  fill: rgba(255, 255, 255, 0.14);
 }
 @media (prefers-reduced-motion: reduce) {
-  .elo-system,
-  .elo-orbit {
-    animation-duration: 0s !important;
-    animation-iteration-count: 1;
+  .elo-plane {
+    animation: none;
   }
 }
 /* Janela do Elo */

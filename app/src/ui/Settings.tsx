@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { PALETTES, useSettings, type MinimapPos } from "../state/settings";
 import { useSync } from "../state/sync";
+import { SERVICE_LABEL, parseMusicLink, useMusic, type MusicService } from "../state/music";
+import { PLAYLISTS } from "../music/library";
 import { useApp } from "../state/store";
 import { Icon } from "./Icon";
 import { BookDesignView } from "./BookDesignView";
@@ -31,10 +33,11 @@ const GRID: (MinimapPos | null)[] = [
   "bottom-right",
 ];
 
-export type SettingsTab = "geral" | "sync" | "diagramacao" | "exportar";
+export type SettingsTab = "geral" | "musica" | "sync" | "diagramacao" | "exportar";
 
 const TABS: { id: SettingsTab; label: string; icon: string; project?: boolean }[] = [
   { id: "geral", label: "Geral", icon: "settings" },
+  { id: "musica", label: "Música", icon: "turntable" },
   { id: "sync", label: "Sincronização", icon: "cloud" },
   { id: "diagramacao", label: "Diagramação", icon: "book", project: true },
   { id: "exportar", label: "Exportação", icon: "export", project: true },
@@ -51,11 +54,11 @@ function lastTab(): SettingsTab {
 }
 
 /** Configurações, em abas: Geral, Sincronização e, com um projeto aberto, Diagramação e Exportar. */
-export function Settings() {
+export function Settings({ initialTab }: { initialTab?: SettingsTab } = {}) {
   const session = useApp((s) => s.session);
   const tabs = TABS.filter((t) => !t.project || session);
   const [tab, setTab] = useState<SettingsTab>(() => {
-    const last = lastTab();
+    const last = initialTab ?? lastTab();
     return tabs.some((t) => t.id === last) ? last : "geral";
   });
   const choose = (t: SettingsTab) => {
@@ -90,11 +93,189 @@ export function Settings() {
         <ExportView session={session} />
       ) : (
         <div className="settings-scroll" role="tabpanel">
-          <div className="settings-inner">{tab === "sync" ? <SyncSection /> : <General />}</div>
+          <div className="settings-inner">
+            {tab === "sync" ? <SyncSection /> : tab === "musica" ? <MusicSettings /> : <General />}
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+/** Aba Música: preferências do player e contas vinculadas. O player só toca. */
+function MusicSettings() {
+  const prefs = useMusic((m) => m.prefs);
+  const setPrefs = useMusic((m) => m.setPrefs);
+  return (
+    <>
+      <Section title="Player">
+        <Field
+          label="Mostrar o player na barra lateral"
+          hint="Na tela de projetos, como o toca-discos da barra; no editor, como o botão no pé da barra."
+        >
+          <Switch
+            label="Mostrar o player na barra lateral"
+            on={prefs.showInSidebar}
+            onChange={(showInSidebar) => setPrefs({ showInSidebar })}
+          />
+        </Field>
+        <Field
+          label="Volume"
+          hint="Da biblioteca do InkFlow. Spotify e YouTube têm o volume deles."
+        >
+          <div className="bg-dim">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={prefs.volume}
+              aria-label="Volume"
+              onChange={(e) => setPrefs({ volume: Number(e.target.value) })}
+            />
+            <span>{Math.round(prefs.volume * 100)}%</span>
+          </div>
+        </Field>
+        <Field label="Ordem das faixas">
+          <div className="segmented" role="radiogroup" aria-label="Ordem das faixas">
+            {(
+              [
+                [false, "Em sequência"],
+                [true, "Aleatória"],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={label}
+                type="button"
+                role="radio"
+                aria-checked={prefs.shuffle === v}
+                onClick={() => setPrefs({ shuffle: v })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Ao terminar">
+          <div className="segmented" role="radiogroup" aria-label="Ao terminar">
+            {(
+              [
+                ["off", "Parar"],
+                ["all", "Repetir a playlist"],
+                ["one", "Repetir a faixa"],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={prefs.repeat === v}
+                onClick={() => setPrefs({ repeat: v })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field
+          label="Sons contínuos sem pausa"
+          hint="Chuva, ruído marrom e natureza emendam o fim no começo e tocam até você parar."
+        >
+          <Switch
+            label="Sons contínuos sem pausa"
+            on={prefs.ambientLoop}
+            onChange={(ambientLoop) => setPrefs({ ambientLoop })}
+          />
+        </Field>
+      </Section>
+
+      <Section title="Contas vinculadas">
+        <p className="setting hint music-accounts-hint">
+          A biblioteca do InkFlow toca sem conta nenhuma. Para ouvir as suas playlists, cole aqui o
+          link de uma playlist, álbum ou música; o player toca com a conta que estiver logada nele
+          (no Spotify sem login, só trechos de 30 segundos).
+        </p>
+        <LinkField service="spotify" placeholder="https://open.spotify.com/playlist/…" />
+        <LinkField service="youtube" placeholder="https://music.youtube.com/playlist?list=…" />
+      </Section>
+
+      <Section title="Biblioteca do InkFlow">
+        <p className="setting hint music-accounts-hint">
+          {PLAYLISTS.length} playlists ({PLAYLISTS.reduce((n, p) => n + p.tracks.length, 0)} faixas)
+          que vêm com o app e funcionam sem internet: Barroco (Bach, Petzold, Pachelbel, obras em
+          domínio público), Chill & Relax, Foco, Ruído marrom, Chuva e Natureza. Todo o áudio foi
+          gerado por síntese para o InkFlow e é de uso livre (CC0).
+        </p>
+      </Section>
+    </>
+  );
+}
+
+function LinkField({ service, placeholder }: { service: MusicService; placeholder: string }) {
+  const source = useMusic((m) => m.links[service]);
+  const link = useMusic((m) => m.link);
+  const unlink = useMusic((m) => m.unlink);
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const label = SERVICE_LABEL[service];
+  return (
+    <form
+      className="setting bg-url"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const parsed = parseMusicLink(value);
+        if (!parsed) return setError("Esse link não é de uma playlist, álbum ou música.");
+        if (parsed.service !== service)
+          return setError(`Esse link é do ${SERVICE_LABEL[parsed.service]}.`);
+        link(parsed);
+        setValue("");
+        setError(null);
+      }}
+    >
+      <div className="setting-text">
+        <span className="setting-label">
+          <span className={"music-dot " + service} aria-hidden="true" /> {label}
+        </span>
+        <span className="hint" title={source?.url}>
+          {source
+            ? `Vinculado: ${source.kind.toLowerCase()} · ${shortLink(source.url)}`
+            : "Não vinculado"}
+        </span>
+        {error && (
+          <span className="setting-error" role="alert">
+            {error}
+          </span>
+        )}
+      </div>
+      <div className="bg-url-row">
+        <input
+          className="text-input"
+          type="url"
+          inputMode="url"
+          value={value}
+          placeholder={placeholder}
+          aria-label={`Link do ${label}`}
+          aria-invalid={!!error}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(null);
+          }}
+        />
+        <button type="submit" className="btn ghost sm" disabled={!value.trim()}>
+          {source ? "Trocar" : "Vincular"}
+        </button>
+        {source && (
+          <button type="button" className="btn ghost sm" onClick={() => unlink(service)}>
+            Desvincular
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
+function shortLink(url: string) {
+  return url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 42) + (url.length > 50 ? "…" : "");
 }
 
 function General() {
