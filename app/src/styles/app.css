@@ -3654,24 +3654,86 @@ p {
   background: var(--p-panel-2);
 }
 
-/* Grade principal */
-.projects-grid {
+/* Home: destaque, linha meta/atividade, projetos recentes */
+.home-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 40px;
+  padding: 32px 40px;
+}
+.home-hero .selected {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.hero-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.home-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
 }
-.projects-main {
+.home-recent {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  min-width: 0;
+  gap: 12px;
 }
-.projects-side {
+.recent-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.recent-grid > li {
   display: flex;
-  flex-direction: column;
+}
+.recent-card {
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
   gap: 14px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.recent-card .cover.sm {
+  width: 52px;
+  flex: none;
+}
+.recent-card .cover-title {
+  display: none;
+}
+.recent-card > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
+}
+.recent-card small {
+  color: var(--p-faint);
+}
+.recent-card:hover {
+  border-color: var(--p-line-hi);
+}
+.recent-new {
+  justify-content: center;
+  border-style: dashed;
+  min-height: 100px;
+}
+@media (max-width: 900px) {
+  .home-hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px;
+  }
 }
 .empty-library {
   align-items: flex-start;
@@ -4083,67 +4145,6 @@ p {
   color: var(--p-faint);
 }
 
-/* A tela cabe na altura da janela: o conteúdo ocupa o espaço entre o topo e
-   o pé, e só as listas que crescem com o número de livros (metas e atividade)
-   rolam dentro do próprio painel. Em telas baixas ou estreitas a página volta
-   a rolar normalmente, para nada ficar espremido. */
-@media (min-width: 1100px) and (min-height: 620px) {
-  .projects {
-    height: 100vh;
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .projects-body {
-    min-height: 0;
-  }
-  .projects-content {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    padding: 18px 0 20px;
-    /* Rede de segurança: se algo ainda passar, rola só esta área. */
-    overflow-y: auto;
-  }
-  .projects-inner {
-    flex: 1;
-    min-height: 0;
-    gap: 16px;
-  }
-  .projects-head {
-    padding-bottom: 12px;
-  }
-  .projects-grid {
-    flex: 1;
-    min-height: 0;
-    align-items: stretch;
-  }
-  .projects-main {
-    min-height: 0;
-  }
-  /* A coluna lateral cabe na altura: Progresso e Atividade encolhem primeiro
-     (suas listas rolam por dentro); só se ainda faltar espaço a própria
-     coluna rola, nunca a página. */
-  .projects-side {
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-  .projects-side > .panel {
-    flex: none;
-  }
-  .projects-side > .panel:has(.goals, .activity) {
-    flex: 0 1 auto;
-    min-height: 200px;
-  }
-  .goals,
-  .activity {
-    min-height: 0;
-    overflow-y: auto;
-    /* Folga para a barra de rolagem não cobrir o texto. */
-    padding-right: 4px;
-  }
-}
 /* Telas um pouco mais baixas: livro e cabeçalho menores. */
 @media (min-width: 1100px) and (min-height: 620px) and (max-height: 820px) {
   .book-preview {
@@ -4169,18 +4170,6 @@ p {
   }
 }
 
-/* A coluna lateral desce quando sobra pouco espaço; com a barra aberta isso
-   acontece antes, porque ela come parte da largura. */
-@media (max-width: 1099px) {
-  .projects-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .projects-side {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    align-items: start;
-  }
-}
 @media (max-width: 720px) {
   .book-preview {
     --w: 180px;
