@@ -22,6 +22,9 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
   "bottom-right",
 ];
 
+/** Fundos da tela de projetos: prontos, uma cor ou uma imagem do usuário. */
+export type HomeBg = "ceu" | "aurora" | "crepusculo" | "liso" | "cor" | "imagem";
+
 /** Seções da barra lateral que podem ser recolhidas. */
 export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
 
@@ -38,15 +41,26 @@ interface Prefs {
   userName: string;
   /** De quantos em quantos minutos sincronizar com o Drive (0 = só quando pedir). */
   syncEvery: number;
+  /** Fundo da tela de projetos. */
+  homeBg: HomeBg;
+  /** Cor usada quando o fundo é "cor" (#rrggbb). */
+  homeBgColor: string;
+  /** Quanto a imagem de fundo é suavizada (0 a 85, em %), para o texto continuar legível. */
+  homeBgDim: number;
 }
 
 interface SettingsState extends Prefs {
+  /** Imagem de fundo (data URL). Fica guardada à parte, por ser grande. */
+  homeBgImage: string | null;
   set(patch: Partial<Prefs>): void;
   toggleSection(id: SectionId): void;
+  /** Troca a imagem de fundo. Devolve false se não couber no armazenamento. */
+  setHomeBgImage(image: string | null): boolean;
 }
 
 const KEY = "inkflow.settings";
 const OLD_THEME_KEY = "inkflow.theme";
+const BG_IMAGE_KEY = "inkflow.homeBgImage";
 
 const DEFAULTS: Prefs = {
   theme: "system",
@@ -57,7 +71,18 @@ const DEFAULTS: Prefs = {
   accent: null,
   userName: "",
   syncEvery: 5,
+  homeBg: "ceu",
+  homeBgColor: "#1d2433",
+  homeBgDim: 45,
 };
+
+function loadImage(): string | null {
+  try {
+    return localStorage.getItem(BG_IMAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
 function load(): Prefs {
   try {
@@ -118,8 +143,19 @@ function applyAccent(accent: string | null) {
 
 export const useSettings = create<SettingsState>((set, get) => ({
   ...load(),
+  homeBgImage: loadImage(),
   set(patch) {
     set(patch);
+  },
+  setHomeBgImage(image) {
+    try {
+      if (image) localStorage.setItem(BG_IMAGE_KEY, image);
+      else localStorage.removeItem(BG_IMAGE_KEY);
+    } catch {
+      if (image) return false;
+    }
+    set({ homeBgImage: image });
+    return true;
   },
   toggleSection(id) {
     const c = get().collapsed;
@@ -141,6 +177,9 @@ useSettings.subscribe((s, prev) => {
     accent: s.accent,
     userName: s.userName,
     syncEvery: s.syncEvery,
+    homeBg: s.homeBg,
+    homeBgColor: s.homeBgColor,
+    homeBgDim: s.homeBgDim,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));

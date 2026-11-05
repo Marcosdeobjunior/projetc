@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { useSettings, type MinimapPos, type Theme } from "../state/settings";
+import { useSettings, type HomeBg, type MinimapPos, type Theme } from "../state/settings";
 import { useSync } from "../state/sync";
 import { useApp } from "../state/store";
 import { Icon } from "./Icon";
@@ -23,6 +23,35 @@ const ACCENTS: { hex: string | null; label: string; swatch: string }[] = [
   { hex: "#e45aa5", label: "Rosa", swatch: "#e45aa5" },
   { hex: "#e0475b", label: "Vermelho", swatch: "#e0475b" },
 ];
+
+/** Fundos prontos da tela de projetos. */
+const BACKGROUNDS: { id: HomeBg; label: string }[] = [
+  { id: "ceu", label: "Céu noturno" },
+  { id: "aurora", label: "Aurora" },
+  { id: "crepusculo", label: "Crepúsculo" },
+  { id: "liso", label: "Liso" },
+];
+
+/** Lado maior da imagem de fundo guardada: nítida em telas grandes, leve no armazenamento. */
+const BG_MAX_SIDE = 2400;
+
+/** Lê a imagem escolhida e reduz para um JPEG leve. */
+async function shrinkImage(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const k = Math.min(1, BG_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * k);
+    canvas.height = Math.round(img.naturalHeight * k);
+    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.82);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 export const POS_LABEL: Record<MinimapPos, string> = {
   "top-left": "Canto superior esquerdo",
@@ -182,6 +211,8 @@ function General() {
         </Field>
       </Section>
 
+      <HomeBackground />
+
       <Section title="Minimapa">
         <Field
           label="Mostrar minimapa nos textos"
@@ -234,6 +265,121 @@ function General() {
         </Field>
       </Section>
     </>
+  );
+}
+
+function HomeBackground() {
+  const s = useSettings();
+  const [error, setError] = useState<string | null>(null);
+  const image = s.homeBg === "imagem" && s.homeBgImage;
+
+  const pickImage = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    try {
+      const data = await shrinkImage(file);
+      if (!s.setHomeBgImage(data)) {
+        setError("A imagem é grande demais para guardar. Tente uma menor.");
+        return;
+      }
+      s.set({ homeBg: "imagem" });
+    } catch {
+      setError("Não foi possível abrir essa imagem. Use um arquivo JPG, PNG ou WebP.");
+    }
+  };
+
+  return (
+    <Section title="Tela de projetos">
+      <Field
+        label="Fundo"
+        hint="Um fundo pronto, uma cor ou uma imagem sua. A barra lateral e o topo são transparentes e mostram o fundo."
+      >
+        <div className="bg-picker" role="radiogroup" aria-label="Fundo da tela de projetos">
+          {BACKGROUNDS.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              role="radio"
+              className={"bg-swatch bg-" + b.id}
+              aria-checked={s.homeBg === b.id}
+              aria-label={b.label}
+              title={b.label}
+              onClick={() => s.set({ homeBg: b.id })}
+            />
+          ))}
+          <label
+            className="bg-swatch bg-cor"
+            title="Uma cor"
+            data-checked={s.homeBg === "cor"}
+            style={{ background: s.homeBgColor }}
+          >
+            <input
+              type="color"
+              value={s.homeBgColor}
+              aria-label="Fundo de uma cor"
+              onClick={() => s.set({ homeBg: "cor" })}
+              onChange={(e) => s.set({ homeBg: "cor", homeBgColor: e.target.value })}
+            />
+          </label>
+          <label
+            className="bg-swatch bg-imagem"
+            title={
+              s.homeBgImage ? "Usar a imagem (clique de novo para trocar)" : "Escolher uma imagem"
+            }
+            data-checked={s.homeBg === "imagem"}
+            style={s.homeBgImage ? { backgroundImage: `url("${s.homeBgImage}")` } : undefined}
+            onClick={(e) => {
+              // Já existe imagem e ela não está em uso: o primeiro clique só volta a usá-la.
+              if (s.homeBgImage && s.homeBg !== "imagem") {
+                e.preventDefault();
+                s.set({ homeBg: "imagem" });
+              }
+            }}
+          >
+            {!s.homeBgImage && <Icon name="plus" size={16} />}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label="Escolher imagem de fundo"
+              onChange={(e) => {
+                void pickImage(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+      </Field>
+      {error && <p className="setting-error bg-error">{error}</p>}
+      {image && (
+        <Field
+          label="Suavizar a imagem"
+          hint="Cobre a imagem com a cor do tema, para os textos continuarem fáceis de ler."
+        >
+          <div className="bg-dim">
+            <input
+              type="range"
+              min={0}
+              max={85}
+              step={5}
+              value={s.homeBgDim}
+              aria-label="Suavizar a imagem"
+              onChange={(e) => s.set({ homeBgDim: Number(e.target.value) })}
+            />
+            <span>{s.homeBgDim}%</span>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                s.setHomeBgImage(null);
+                s.set({ homeBg: "ceu" });
+              }}
+            >
+              Remover imagem
+            </button>
+          </div>
+        </Field>
+      )}
+    </Section>
   );
 }
 

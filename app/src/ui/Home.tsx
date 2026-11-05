@@ -14,6 +14,7 @@ import { Settings } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
 import { useSync } from "../state/sync";
+import { useSettings } from "../state/settings";
 import { useFolderSyncStatus } from "../state/syncStatus";
 import type { RemoteProject } from "../sync/drive";
 import {
@@ -64,6 +65,7 @@ export function Home() {
     return q ? recent.filter((v) => v.title.toLocaleLowerCase("pt-BR").includes(q)) : recent;
   }, [recent, query]);
   const current = recent.find((v) => v.root === selected) ?? recent[0] ?? null;
+  const background = useHomeBackground();
   const sync = useFolderSyncStatus(platform, current?.root ?? null);
   const known = Object.values(stats).filter((s): s is ProjectStats => !!s);
   const total = (f: (s: ProjectStats) => number) => known.reduce((n, s) => n + f(s), 0);
@@ -90,7 +92,10 @@ export function Home() {
   }
 
   return (
-    <div className={"projects" + (nav.collapsed ? " nav-collapsed" : "")}>
+    <div
+      className={"projects bg-" + background.kind + (nav.collapsed ? " nav-collapsed" : "")}
+      style={background.style}
+    >
       <AppBar
         collapsed={nav.collapsed}
         onToggle={nav.toggle}
@@ -754,4 +759,19 @@ function DriveProjects() {
       {error && <p className="small warn">{error}</p>}
     </section>
   );
+}
+
+/** Fundo escolhido nas Configurações; sem imagem guardada, volta ao céu noturno. */
+function useHomeBackground() {
+  const kind = useSettings((s) => s.homeBg);
+  const color = useSettings((s) => s.homeBgColor);
+  const dim = useSettings((s) => s.homeBgDim);
+  const image = useSettings((s) => s.homeBgImage);
+  if (kind === "imagem" && !image) return { kind: "ceu", style: undefined };
+  const style = {
+    "--home-bg-color": color,
+    "--home-bg-dim": `${dim}%`,
+    ...(image && kind === "imagem" ? { "--home-bg-image": `url("${image}")` } : {}),
+  } as CSSProperties;
+  return { kind, style };
 }

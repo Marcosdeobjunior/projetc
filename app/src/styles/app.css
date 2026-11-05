@@ -2961,6 +2961,24 @@ p {
   flex-direction: column;
   min-height: 100%;
   color: var(--p-fg);
+  background: var(--p-bg);
+  background-attachment: fixed;
+}
+
+/* Fundos da tela de projetos (escolhidos em Configurações → Geral). As
+   mesmas classes pintam as amostras do seletor. */
+.bg-swatch {
+  --p-bg: #07070f;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .bg-swatch {
+    --p-bg: #f6f2ea;
+  }
+}
+:root[data-theme="light"] .bg-swatch {
+  --p-bg: #f6f2ea;
+}
+.bg-ceu {
   background:
     radial-gradient(1px 1px at 12% 18%, #fff8 50%, transparent 51%),
     radial-gradient(1px 1px at 72% 9%, #fff6 50%, transparent 51%),
@@ -2970,6 +2988,35 @@ p {
     radial-gradient(1.5px 1.5px at 6% 78%, #9ff3ff66 50%, transparent 51%),
     radial-gradient(900px 600px at 15% 0%, rgba(110, 30, 90, 0.45), transparent 70%),
     radial-gradient(800px 600px at 95% 100%, rgba(20, 90, 110, 0.4), transparent 70%), var(--p-bg);
+}
+.bg-aurora {
+  background:
+    radial-gradient(1100px 700px at 85% -10%, rgba(40, 170, 150, 0.38), transparent 70%),
+    radial-gradient(900px 700px at 0% 110%, rgba(90, 60, 210, 0.36), transparent 70%),
+    radial-gradient(600px 400px at 40% 40%, rgba(60, 120, 220, 0.12), transparent 70%), var(--p-bg);
+}
+.bg-crepusculo {
+  background:
+    radial-gradient(1200px 700px at 50% 120%, rgba(235, 120, 60, 0.38), transparent 70%),
+    radial-gradient(900px 600px at 5% -5%, rgba(170, 40, 95, 0.32), transparent 70%),
+    radial-gradient(700px 500px at 100% 30%, rgba(230, 180, 90, 0.14), transparent 70%), var(--p-bg);
+}
+.bg-liso {
+  background: var(--p-bg);
+}
+.bg-cor {
+  background: var(--home-bg-color, var(--p-bg));
+}
+.bg-imagem {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--p-bg) var(--home-bg-dim, 45%), transparent),
+      color-mix(in srgb, var(--p-bg) var(--home-bg-dim, 45%), transparent)
+    ),
+    var(--home-bg-image, none) center / cover no-repeat,
+    var(--p-bg);
+}
+.projects[class*="bg-"] {
   background-attachment: fixed;
 }
 @media (prefers-color-scheme: light) {
@@ -3046,8 +3093,10 @@ p {
   height: var(--appbar-h);
   padding: 0 max(14px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--p-line);
-  background: color-mix(in srgb, var(--p-bg) 80%, transparent);
-  backdrop-filter: blur(10px);
+  /* Transparente: mostra o fundo escolhido. O desfoque só separa o topo do
+     conteúdo que rola por baixo dele. */
+  background: transparent;
+  backdrop-filter: blur(12px);
 }
 .appbar-id {
   display: flex;
@@ -3282,7 +3331,7 @@ p {
   padding: 14px 10px 12px max(10px, env(safe-area-inset-left, 0px));
   overflow: hidden auto;
   border-right: 1px solid var(--p-line);
-  background: color-mix(in srgb, var(--p-panel) 60%, transparent);
+  background: transparent;
 }
 .home-nav-group {
   display: flex;
@@ -4268,4 +4317,54 @@ p {
 .drive-list small {
   font-size: 11px;
   color: var(--p-faint);
+}
+
+/* Seletor de fundo (Configurações → Geral) */
+.bg-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.bg-swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 38px;
+  padding: 0;
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  overflow: hidden;
+  background-attachment: scroll !important;
+}
+.bg-swatch.bg-imagem {
+  background: var(--panel-2) center / cover no-repeat;
+}
+.bg-swatch[aria-checked="true"],
+.bg-swatch[data-checked="true"] {
+  box-shadow: 0 0 0 2px var(--fg);
+}
+.bg-swatch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.bg-dim {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bg-dim span {
+  width: 3ch;
+  font-size: 13px;
+  color: var(--muted);
+}
+.bg-error {
+  padding: 0 18px 14px;
 }
