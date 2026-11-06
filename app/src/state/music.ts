@@ -141,6 +141,8 @@ interface MusicState extends Saved {
    * recolher a barra ou trocar de tela. null = lista de playlists.
    */
   browsing: string | null;
+  /** A janela do Rádio (playlists, biblioteca e player completo) está aberta. */
+  radioOpen: boolean;
 
   playPlaylist(playlistId: string, trackIndex?: number): void;
   toggle(): void;
@@ -157,6 +159,7 @@ interface MusicState extends Saved {
   setSlot(el: HTMLElement | null): void;
   setFloatingOpen(open: boolean): void;
   setBrowsing(playlistId: string | null): void;
+  setRadioOpen(open: boolean): void;
 }
 
 const KEY = "inkflow.music";
@@ -222,6 +225,7 @@ export const useMusic = create<MusicState>((set, get) => ({
   slot: null,
   floatingOpen: false,
   browsing: null,
+  radioOpen: false,
 
   playPlaylist(playlistId, trackIndex) {
     const list = findPlaylist(playlistId);
@@ -299,6 +303,9 @@ export const useMusic = create<MusicState>((set, get) => ({
   },
   setFloatingOpen(floatingOpen) {
     set({ floatingOpen });
+  },
+  setRadioOpen(radioOpen) {
+    set({ radioOpen });
   },
   setBrowsing(browsing) {
     set({ browsing: findPlaylist(browsing) ? browsing : null });

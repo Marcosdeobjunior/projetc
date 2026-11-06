@@ -11,16 +11,28 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import type { Graph, GraphEdge, GraphNode } from "../links/links";
-import { clockFor, cycleAt, drawStar, isLightTheme, type StarClock } from "./starGlyph";
+import { drawStar } from "./starGlyph";
 
 /*
  * Desenho interativo do grafo num <canvas>, usado pelo grafo completo e pelo
  * minimapa: arrastar pontos, mover a visão, zoom com a roda, destacar os
  * vizinhos ao passar o mouse e clicar para abrir. Cada texto é uma estrela
- * (veja starGlyph.ts) cujo brilho muda de cor no próprio ritmo.
+ * (veja starGlyph.ts) de quatro pontas, na cor do tipo de texto.
  */
 
 type SimNode = GraphNode & SimulationNodeDatum;
+
+/** Cor de cada tipo de texto: variáveis da paleta ativa. */
+const NODE_COLOR: Record<string, string> = {
+  scene: "--node-scene",
+  personagens: "--node-person",
+  lugares: "--node-place",
+  ideias: "--node-idea",
+};
+
+/** Zoom a partir do qual os nomes aparecem, e a faixa em que surgem aos poucos. */
+export const LABEL_K = 1.05;
+const LABEL_FADE = 0.25;
 type SimLink = SimulationLinkDatum<SimNode> & { kind: GraphEdge["kind"] };
 
 export interface View {
@@ -81,16 +93,23 @@ export function mountGraph(
       "link",
       forceLink<SimNode, SimLink>(links)
         .id((d) => d.id)
-        .distance(compact ? 64 : 70)
-        .strength(0.5),
+        // Mais distância e mais repulsão: os pontos se espalham pela área em vez
+        // de se amontoar no meio (os tamanhos dos pontos não mudam).
+        .distance(compact ? 64 : 118)
+        .strength(compact ? 0.5 : 0.35),
     )
-    .force("charge", forceManyBody().strength(compact ? -260 : -220))
+    .force(
+      "charge",
+      forceManyBody()
+        .strength(compact ? -260 : -560)
+        .distanceMax(900),
+    )
     .force("center", forceCenter(0, 0))
     .force("x", forceX(0).strength(0.05))
     .force("y", forceY(0).strength(0.05))
     .force(
       "collide",
-      forceCollide<SimNode>((d) => radius(d) + (compact ? 14 : 6)),
+      forceCollide<SimNode>((d) => radius(d) + (compact ? 14 : 30)),
     )
     .stop();
 
@@ -103,9 +122,16 @@ export function mountGraph(
   };
 
   const fresh = nodes.some((n) => n.x === undefined);
-  const clocks = new Map<string, StarClock>(nodes.map((n) => [n.id, clockFor(n.id)]));
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)");
   const css = (name: string) => getComputedStyle(box).getPropertyValue(name).trim();
+  // Cores da paleta ativa, resolvidas pelo navegador (as variáveis podem usar
+  // color-mix(), que o canvas não entende em todo WebView).
+  const probe = document.createElement("span");
+  probe.style.display = "none";
+  box.append(probe);
+  const color = (name: string) => {
+    probe.style.color = `var(${name})`;
+    return getComputedStyle(probe).color;
+  };
 
   const draw = () => {
     frame = 0;
@@ -183,35 +209,53 @@ export function mountGraph(
     }
     ctx.setLineDash([]);
 
-    const fg = css("--fg");
-    const muted = css("--muted");
-    const light = isLightTheme();
-    const now = performance.now();
-    // A sombra borrada pesa; em grafos grandes o halo sozinho já dá o brilho.
-    const blur = nodes.length <= 80;
+    const fg = color("--fg");
+    const muted = color("--muted");
+    const tint: Record<string, string> = {};
+    const starColor = (type: string) => (tint[type] ??= color(NODE_COLOR[type] ?? "--node-scene"));
+    for (const n of nodes) {
+      const R = radius(n) * 1.45;
+      ctx.globalAlpha = lit(n.id) ? 1 : 0.2;
+      drawStar(ctx, n.x!, n.y!, R, starColor(n.type), {
+        lead: n.id === activeId || n === hover,
+        ring: fg,
+      });
+    }
+
+    // Nomes: só a partir de um zoom (LABEL_K), surgindo aos poucos, para o
+    // Elo afastado mostrar a forma das ligações sem um mar de texto. O ponto
+    // sob o mouse, os vizinhos dele e o texto aberto mostram o nome sempre.
+    // Nomes que encostariam em outro já desenhado ficam de fora.
+    const zoomAlpha = compact ? 1 : Math.min(1, Math.max(0, (k - LABEL_K) / LABEL_FADE));
     const size = compact ? 11 : 12;
-    ctx.font = `500 ${size / Math.max(0.75, k)}px ${css("--font-ui")}`;
+    const fontPx = size / Math.max(0.75, k);
+    ctx.font = `500 ${fontPx}px ${css("--font-ui")}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    for (const n of nodes) {
-      const r = radius(n);
-      const R = r * 2.3;
-      ctx.globalAlpha = lit(n.id) ? 1 : 0.18;
-      const lead = n.id === activeId || n === hover;
-      // O texto aberto e a estrela sob o mouse brilham mais.
-      drawStar(ctx, n.x!, n.y!, R, cycleAt(clocks.get(n.id)!, now, still.matches), {
-        light,
-        boost: lead ? 1.5 : 1,
-        blur,
-      });
-      // Rótulos aparecem com zoom, ou no ponto destacado e nos vizinhos.
-      const showLabel =
-        compact || k > 0.9 || (focus && lit(n.id)) || n.degree >= 4 || n.id === activeId;
-      if (showLabel) {
-        ctx.globalAlpha = lit(n.id) ? 0.95 : 0.15;
-        ctx.fillStyle = compact && n.id !== activeId && n !== hover ? muted : fg;
-        ctx.fillText(n.title, n.x!, n.y! + R * 0.95 + 2 / k);
-      }
+    const must = (n: SimNode) => n.id === activeId || n === hover || (!!focus && focus.has(n.id));
+    const order = [...nodes].sort(
+      (a, b) => Number(must(b)) - Number(must(a)) || b.degree - a.degree,
+    );
+    const taken: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    const pad = 3 / k;
+    for (const n of order) {
+      const forced = must(n);
+      const alpha = forced ? 1 : zoomAlpha;
+      if (alpha <= 0.01) continue;
+      const R = radius(n) * 1.45;
+      const w = ctx.measureText(n.title).width;
+      const rect = {
+        x0: n.x! - w / 2 - pad,
+        y0: n.y! + R + 2 / k - pad,
+        x1: n.x! + w / 2 + pad,
+        y1: n.y! + R + 2 / k + fontPx * 1.2 + pad,
+      };
+      if (taken.some((t) => rect.x0 < t.x1 && rect.x1 > t.x0 && rect.y0 < t.y1 && rect.y1 > t.y0))
+        continue;
+      taken.push(rect);
+      ctx.globalAlpha = (lit(n.id) ? 0.95 : 0.15) * alpha;
+      ctx.fillStyle = compact && !forced ? muted : fg;
+      ctx.fillText(n.title, n.x!, n.y! + R + 2 / k);
     }
     ctx.globalAlpha = 1;
   };
@@ -219,17 +263,6 @@ export function mountGraph(
     if (!frame) frame = requestAnimationFrame(draw);
   };
 
-  // O brilho das estrelas é animado: redesenha ~30 vezes por segundo enquanto
-  // a página está visível, a menos que o sistema peça menos movimento.
-  let twinkle = 0;
-  let last = 0;
-  const animate = (t: number) => {
-    twinkle = requestAnimationFrame(animate);
-    if (still.matches || document.hidden || t - last < 33) return;
-    last = t;
-    schedule();
-  };
-  twinkle = requestAnimationFrame(animate);
   sim.on("tick", () => {
     for (const n of nodes) positions.set(n.id, { x: n.x!, y: n.y! });
     schedule();
@@ -403,7 +436,10 @@ export function mountGraph(
 
   // O tema (claro/escuro) muda as cores: redesenha.
   const mo = new MutationObserver(schedule);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  mo.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme", "data-palette"],
+  });
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
   mq.addEventListener("change", schedule);
 
@@ -429,7 +465,7 @@ export function mountGraph(
       mo.disconnect();
       mq.removeEventListener("change", schedule);
       cancelAnimationFrame(frame);
-      cancelAnimationFrame(twinkle);
+      probe.remove();
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);

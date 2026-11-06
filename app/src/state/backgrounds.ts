@@ -17,10 +17,12 @@ export type HomeBg = "tema" | "liso" | "imagem";
 
 /** Fundo padrão de cada paleta (arquivos em public/backgrounds). */
 export const THEME_BACKGROUNDS: Record<PaletteId, { src: string; label: string; dim: number }> = {
-  ambar: { src: "ambar.webp", label: "Reino dourado", dim: 18 },
-  perola: { src: "perola.svg", label: "Seda de pérola", dim: 10 },
-  esmeralda: { src: "esmeralda.svg", label: "Aurora no lago", dim: 12 },
-  natury: { src: "natury.svg", label: "Manhã no campo", dim: 8 },
+  // Véu leve: as superfícies são opacas, então o texto já fica legível e o
+  // fundo pode aparecer mais.
+  ambar: { src: "ambar.svg", label: "Noite dourada", dim: 6 },
+  perola: { src: "perola.svg", label: "Seda de pérola", dim: 4 },
+  esmeralda: { src: "esmeralda.svg", label: "Aurora no lago", dim: 5 },
+  natury: { src: "natury.svg", label: "Manhã no campo", dim: 3 },
 };
 
 /** Endereço do fundo padrão da paleta, relativo à raiz do app. */

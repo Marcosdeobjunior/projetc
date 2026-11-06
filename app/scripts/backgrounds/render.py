@@ -2,9 +2,9 @@
 """
 Gera os fundos padrão das paletas (public/backgrounds/*.svg).
 
-Cada paleta tem um fundo próprio para a tela inicial. O do Âmbar é uma
-ilustração (ambar.webp); os outros são cenas vetoriais geradas aqui, com
-sementes fixas (o resultado é sempre o mesmo). Arquivos e script: CC0.
+Cada paleta tem um fundo próprio para a tela inicial: cenas vetoriais
+geradas aqui, com sementes fixas (o resultado é sempre o mesmo). Arquivos e
+script: CC0.
 
 Uso:  python3 scripts/backgrounds/render.py
 """
@@ -77,6 +77,45 @@ def svg(defs: str, body: str) -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
         f'preserveAspectRatio="xMidYMid slice"><defs>{defs}</defs>{body}</svg>\n'
     )
+
+
+def ambar() -> str:
+    """Noite dourada: lua cheia sobre serras em camadas e um rio que reflete a luz."""
+    rng = random.Random(9)
+    defs = (
+        '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#070503"/><stop offset=".6" stop-color="#1c1307"/>'
+        '<stop offset="1" stop-color="#2c1d0a"/></linearGradient>'
+        '<radialGradient id="moon"><stop offset="0" stop-color="#fff3cf"/>'
+        '<stop offset=".45" stop-color="#f2d08a" stop-opacity=".55"/><stop offset="1" stop-color="#e2b35a" stop-opacity="0"/></radialGradient>'
+        '<linearGradient id="river" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#3a2810"/><stop offset="1" stop-color="#0b0804"/></linearGradient>'
+        '<filter id="b30" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="30"/></filter>'
+        '<filter id="b6"><feGaussianBlur stdDeviation="6"/></filter>'
+    )
+    body = '<rect width="100%" height="100%" fill="url(#sky)"/>'
+    body += stars(rng, 240, 620, "#f6e3b8")
+    # A lua fica à direita, longe do título da tela.
+    body += '<circle cx="1420" cy="300" r="260" fill="url(#moon)" opacity=".6"/>'
+    body += '<circle cx="1420" cy="300" r="92" fill="#f4dca6" opacity=".95"/>'
+    body += '<circle cx="1390" cy="280" r="20" fill="#e2c07e" opacity=".35"/><circle cx="1450" cy="330" r="13" fill="#e2c07e" opacity=".3"/>'
+    # Nuvens finas cruzando a lua.
+    for y, w, o in ((340, 520, 0.35), (380, 380, 0.25)):
+        body += f'<ellipse cx="1380" cy="{y}" rx="{w}" ry="18" fill="#2a1c0b" opacity="{o}" filter="url(#b6)"/>'
+    layers = [(560, 70, "#2a1d0d", 34), (640, 60, "#1d1409", 28), (720, 55, "#140e06", 22)]
+    for base, amp, color, step in layers:
+        d = ridge(rng, base, amp, step)
+        body += f'<path d="{d}" fill="{color}"/>'
+        body += f'<path d="{d}" fill="none" stroke="#e2b35a" stroke-width="1.2" opacity=".28"/>'
+    # Rio sinuoso refletindo a lua.
+    body += '<path d="M1040 1080 C 1180 930, 1420 900, 1300 820 S 1180 760, 1260 730 L 1380 730 C 1310 770, 1420 820, 1500 880 S 1640 1000, 1780 1080 Z" fill="url(#river)"/>'
+    for i in range(14):
+        y = 740 + i * 24
+        w = 40 + i * 14
+        x = 1320 + math.sin(i * 0.7) * (20 + i * 6)
+        body += f'<rect x="{x - w / 2:.0f}" y="{y}" width="{w}" height="2.5" rx="1.2" fill="#f2d08a" opacity="{0.5 - i * 0.03:.2f}" filter="url(#b6)"/>'
+    body += '<rect y="600" width="100%" height="200" fill="#e2b35a" opacity=".05" filter="url(#b30)"/>'
+    return svg(defs, body)
 
 
 def esmeralda() -> str:
@@ -224,7 +263,7 @@ def natury() -> str:
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    for name, fn in (("esmeralda", esmeralda), ("perola", perola), ("natury", natury)):
+    for name, fn in (("ambar", ambar), ("esmeralda", esmeralda), ("perola", perola), ("natury", natury)):
         path = os.path.join(OUT, name + ".svg")
         with open(path, "w", encoding="utf-8") as f:
             f.write(fn())

@@ -110,7 +110,8 @@ com erro; passe o mouse para ver o motivo) e o nome da pasta ativa. A barra late
 
 - **Início**, **Novo projeto** (abre a janela de criação) e, no app desktop, **Abrir projeto**;
 - **Pastas** — os projetos conhecidos. Um clique seleciona; dois cliques abrem;
-- no pé da barra, separados por um traço: **Música** (o player abre para cima) e **Configurações**.
+- no pé da barra, separados por um traço: **Música** (o player compacto, com o que está tocando e
+  os controles; abre para cima) e **Configurações**.
 
 Recolha a barra com o botão no topo dela ou com **Ctrl+\\**; recolhida, ela vira um trilho de ícones.
 
