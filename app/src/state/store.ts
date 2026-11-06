@@ -60,6 +60,11 @@ interface AppState {
   platform: (Platform & { persistent?: boolean }) | null;
   vaults: VaultRef[];
   session: Session | null;
+  /**
+   * Pasta (projeto) ativa na tela inicial: a última escolhida ou aberta.
+   * Fica guardada, então o app volta para ela ao abrir.
+   */
+  activeFolder: string | null;
   saveState: SaveState;
   message: string | null;
   /** "info" para avisos comuns; "error" (padrão) para problemas. */
@@ -69,6 +74,8 @@ interface AppState {
   folderToConvert: ChosenFolder | null;
 
   init(): Promise<void>;
+  /** Escolhe a pasta ativa da tela inicial (sem abrir o projeto). */
+  setActiveFolder(root: string | null): void;
   refreshVaults(): Promise<void>;
   /**
    * Cria um projeto. Por padrão já abre o projeto; com `open: false` só o
@@ -117,6 +124,7 @@ interface AppState {
 
 const SAMPLE_FLAG = "inkflow.sampleCreated";
 const LAST_KEY = "inkflow.lastVault";
+const ACTIVE_KEY = "inkflow.activeFolder";
 let initOnce: Promise<void> | undefined;
 
 function storageGet(key: string) {
@@ -170,7 +178,9 @@ export const useApp = create<AppState>((set, get) => {
       openedAt: Date.now(),
     });
     storageSet(LAST_KEY, root);
+    storageSet(ACTIVE_KEY, root);
     set({
+      activeFolder: root,
       session: {
         root,
         fs,
@@ -225,19 +235,18 @@ export const useApp = create<AppState>((set, get) => {
     });
     await get().refreshVaults();
 
-    // Reabre o último projeto usado, se ele ainda existir.
-    const last = storageGet(LAST_KEY);
-    if (last && get().vaults.some((v) => v.root === last)) {
-      try {
-        await open(last);
-        return;
-      } catch {
-        storageSet(LAST_KEY, null);
-      }
+    // O app sempre começa na tela inicial. A pasta ativa (a última escolhida
+    // ou aberta) continua selecionada, então basta "Continuar" para voltar a ela.
+    const known = (root: string | null) =>
+      root && get().vaults.some((v) => v.root === root) ? root : null;
+    const active = known(storageGet(ACTIVE_KEY)) ?? known(storageGet(LAST_KEY));
+    if (active) {
+      set({ activeFolder: active });
+      return;
     }
 
-    // Primeira visita à prévia no navegador: abre um projeto de exemplo. Se o
-    // navegador não guarda dados, os projetos somem e o exemplo volta sempre.
+    // Primeira visita à prévia no navegador: cria um projeto de exemplo e o
+    // deixa selecionado. Se o navegador não guarda dados, o exemplo volta sempre.
     if (
       platform.kind === "browser" &&
       get().vaults.length === 0 &&
@@ -245,10 +254,18 @@ export const useApp = create<AppState>((set, get) => {
     ) {
       const root = await platform.chooseNewVaultRoot("exemplo");
       if (root) {
-        await createSampleVault(platform.fs(root));
+        const fs = platform.fs(root);
+        await createSampleVault(fs);
         storageSet(SAMPLE_FLAG, "1");
-        await open(root);
+        const project = await loadProject(fs);
+        await platform.rememberVault({
+          root,
+          title: project.title,
+          location: "Salvo neste navegador",
+          openedAt: Date.now(),
+        });
         await get().refreshVaults();
+        get().setActiveFolder(root);
       }
     }
   }
@@ -323,6 +340,12 @@ export const useApp = create<AppState>((set, get) => {
     messageTone: "error",
     busy: false,
     folderToConvert: null,
+    activeFolder: null,
+
+    setActiveFolder(root) {
+      storageSet(ACTIVE_KEY, root);
+      set({ activeFolder: root });
+    },
 
     init() {
       // Em modo de desenvolvimento o React chama efeitos duas vezes.
@@ -565,6 +588,7 @@ export const useApp = create<AppState>((set, get) => {
     forgetVault: (root) =>
       guarded(async () => {
         await get().platform?.forgetVault(root);
+        if (get().activeFolder === root) get().setActiveFolder(null);
         await get().refreshVaults();
       }),
 

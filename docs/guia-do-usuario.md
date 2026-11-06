@@ -99,19 +99,34 @@ os capítulos e cenas (arquivos `.md` que qualquer editor de texto abre), as not
 uma pasta escondida `.inkflow` com os dados do app (ordem dos capítulos, histórico, lixeira). O
 formato exato está em [Formato do projeto](formato-do-projeto.md).
 
-### 2.1 A tela inicial
+### 2.1 A tela inicial (Início)
 
-Ao abrir o app sem nenhum projeto aberto, você vê:
+O InkFlow **sempre abre no Início**. A pasta (projeto) que estava ativa da última vez continua
+selecionada: clique em **Continuar** para voltar a escrever nela. Nada precisa ser escolhido de novo.
 
-- **Novo projeto** — o campo "Nome do livro" e o botão **Criar projeto**;
-- **Abrir projeto existente** — para escolher uma pasta do computador;
-- **Abertos recentemente** — os últimos projetos usados (até 12). Clique para abrir. O **×** ao
-  lado tira o projeto da lista; **a pasta continua no computador**;
-- **No Google Drive** (só se uma conta Google estiver conectada) — veja
-  [Baixar um projeto do Drive](#baixar-um-projeto-do-drive-em-outro-computador);
-- o botão de **Configurações** (engrenagem), no alto.
+O topo e a barra lateral formam uma moldura só. No topo ficam o seu nome (vem das Configurações),
+o ponto de sincronização (verde: sincronizando com o Drive; vermelho: desligada, sem internet ou
+com erro; passe o mouse para ver o motivo) e o nome da pasta ativa. A barra lateral tem:
 
-Ao abrir o app, o InkFlow **reabre sozinho o último projeto** que estava aberto.
+- **Início**, **Novo projeto** (abre a janela de criação) e, no app desktop, **Abrir projeto**;
+- **Pastas** — os projetos conhecidos. Um clique seleciona; dois cliques abrem;
+- no pé da barra, separados por um traço: **Música** (o player abre para cima) e **Configurações**.
+
+Recolha a barra com o botão no topo dela ou com **Ctrl+\\**; recolhida, ela vira um trilho de ícones.
+
+No centro ficam o livro em 3D do projeto ativo (arraste para girar; clique para abrir a capa e
+folhear o miolo diagramado), os números do projeto, o progresso, a atividade recente, os outros
+projetos e, com uma conta Google conectada, os projetos que estão no Drive.
+
+Na **estante**, cada projeto aparece como um livro de lombada para fora. A lombada, a capa e a
+quarta capa (no livro 3D) vêm do projeto gráfico de cada livro: se você enviou a **capa pronta**
+(Configurações → Diagramação → Capa → *Já tenho a capa pronta*), aparece a arte enviada; senão,
+o desenho padrão do InkFlow. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
+busca abre o **Elo** do projeto ativo.
+
+Cada paleta tem um **fundo próprio**, que troca junto com ela. Em **Configurações → Geral → Tela
+de projetos** dá para escolher o fundo liso ou uma imagem sua; essa escolha vale em qualquer
+paleta até você voltar para o fundo do tema.
 
 ### 2.2 Criar um projeto
 

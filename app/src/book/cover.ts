@@ -1,4 +1,5 @@
 import { attachmentUrl } from "../editor/attachments";
+import type { VaultFs } from "../platform/types";
 import { BLEED, coverSpread, FONTS, TRIM, type BookDesign } from "./design";
 
 /*
@@ -22,8 +23,9 @@ const images = new Map<string, Promise<HTMLImageElement | null>>();
  * Imagem de um anexo. O cache é pelo endereço blob:, que muda quando o
  * projeto troca ou o arquivo é substituído (então nunca mostra a imagem errada).
  */
-async function loadImage(src: string): Promise<HTMLImageElement | null> {
+async function loadImage(src: string, fs?: VaultFs): Promise<HTMLImageElement | null> {
   if (!src) return null;
+  if (fs) return loadFromFs(src, fs);
   const url = await attachmentUrl(src);
   if (!url) return null;
   let p = images.get(url);
@@ -37,6 +39,39 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
     images.set(url, p);
   }
   return p;
+}
+
+/**
+ * Imagem lida direto de um projeto que não está aberto (a estante da tela
+ * inicial desenha as capas de todos). Sem cache: cada capa é desenhada uma
+ * vez e guardada pronta pela tela.
+ */
+async function loadFromFs(src: string, fs: VaultFs): Promise<HTMLImageElement | null> {
+  const bytes = await fs.readBytes(src).catch(() => null);
+  if (!bytes) return null;
+  const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>]));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Arte pronta de cada parte (enviada pelo cliente), se houver. */
+export function partArt(design: BookDesign, part: Part): string {
+  const c = design.cover;
+  return part === "front"
+    ? c.frontArt
+    : part === "back"
+      ? c.backArt
+      : part === "spine"
+        ? c.spineArt
+        : "";
 }
 
 /** Garante que as fontes da capa estão carregadas antes de desenhar. */
@@ -174,6 +209,7 @@ async function drawPart(
   design: BookDesign,
   info: BookInfo,
   dpi: number,
+  fs?: VaultFs,
 ) {
   const c = design.cover;
   const u = (mm: number) => (mm / MM_PER_IN) * dpi; // mm → px
@@ -182,10 +218,19 @@ async function drawPart(
   ctx.rect(bleed.x, bleed.y, bleed.w, bleed.h);
   ctx.clip();
 
+  // Arte pronta: a imagem cobre a parte inteira (com a sangria), sem textos.
+  const art = await loadImage(partArt(design, part), fs);
+  if (art) {
+    fillBackground(ctx, bleed, c.background, c.background2);
+    drawCover(ctx, art, bleed);
+    ctx.restore();
+    return;
+  }
+
   const front = part === "front";
   const imgSrc = front ? c.image : part === "back" ? c.backImage : "";
   fillBackground(ctx, bleed, c.background, c.background2);
-  const img = await loadImage(imgSrc);
+  const img = await loadImage(imgSrc, fs);
   if (img) {
     drawCover(ctx, img, bleed);
     if (c.shade > 0) {
@@ -366,6 +411,8 @@ export async function renderPart(
   info: BookInfo,
   dpi: number,
   spineMm = 15,
+  /** Projeto de onde ler as imagens, quando não é o projeto aberto. */
+  fs?: VaultFs,
 ): Promise<HTMLCanvasElement> {
   await fontsReady(design);
   const trim = TRIM[design.layout.trim];
@@ -379,7 +426,7 @@ export async function renderPart(
   canvas.width = px(wMm, dpi);
   canvas.height = px(trim.h, dpi);
   const r = { x: 0, y: 0, w: canvas.width, h: canvas.height };
-  await drawPart(canvas.getContext("2d")!, part, r, r, design, info, dpi);
+  await drawPart(canvas.getContext("2d")!, part, r, r, design, info, dpi, fs);
   return canvas;
 }
 

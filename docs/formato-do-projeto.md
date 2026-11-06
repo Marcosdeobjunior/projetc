@@ -365,6 +365,9 @@ o que for inválido volta ao padrão.
 | **`cover`**             |         |              | **Capa, quarta capa, lombada e orelhas**                                           |
 | `cover.image`           | string  | `""`         | Imagem da capa: `anexos/<arquivo>` ou vazio                                        |
 | `cover.backImage`       | string  | `""`         | Imagem de fundo da quarta capa: `anexos/<arquivo>` ou vazio                        |
+| `cover.frontArt`        | string  | `""`         | Capa pronta (arte enviada, já com textos): `anexos/<arquivo>` ou vazio             |
+| `cover.spineArt`        | string  | `""`         | Lombada pronta: `anexos/<arquivo>` ou vazio                                        |
+| `cover.backArt`         | string  | `""`         | Quarta capa pronta: `anexos/<arquivo>` ou vazio                                    |
 | `cover.background`      | cor     | `#1d2a44`    | Cor de fundo (`#rrggbb`)                                                           |
 | `cover.background2`     | cor     | `#0b1020`    | Segunda cor (degradê de cima para baixo); `""` = cor única                         |
 | `cover.textColor`       | cor     | `#f5efe3`    | Cor do texto                                                                       |

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
@@ -50,9 +50,13 @@ describe("makeOrder", () => {
 });
 
 describe("biblioteca embutida", () => {
-  it("tem as seis playlists, e cada faixa tem arquivo de verdade", () => {
+  it("tem as playlists por estilo, e cada faixa tem arquivo de verdade", () => {
     expect(PLAYLISTS.map((p) => p.id)).toEqual([
       "barroco",
+      "piano",
+      "lofi",
+      "cinematica",
+      "ambiente",
       "chill",
       "foco",
       "ruido-marrom",
@@ -66,7 +70,14 @@ describe("biblioteca embutida", () => {
         expect(ids.has(t.id)).toBe(false);
         ids.add(t.id);
         expect(t.src.endsWith(`music/${t.id}.mp3`)).toBe(true);
-        expect(existsSync(join(root, "public", "music", `${t.id}.mp3`))).toBe(true);
+        const path = join(root, "public", "music", `${t.id}.mp3`);
+        expect(existsSync(path)).toBe(true);
+        // Um MP3 de verdade (quadro MPEG ou ID3 no começo), com pelo menos ~20 s.
+        const head = readFileSync(path).subarray(0, 3);
+        expect(head[0] === 0xff || head.toString("latin1") === "ID3").toBe(true);
+        expect(statSync(path).size).toBeGreaterThan(200_000);
+        expect(t.title.trim()).toBeTruthy();
+        expect(t.by.trim()).toBeTruthy();
         expect(t.license).toBeTruthy();
       }
     }
@@ -75,7 +86,7 @@ describe("biblioteca embutida", () => {
   it("marca os sons contínuos para repetir sem emenda", () => {
     for (const id of ["ruido-marrom", "chuva", "natureza"])
       expect(PLAYLISTS.find((p) => p.id === id)!.tracks.every((t) => t.loop)).toBe(true);
-    for (const id of ["barroco", "chill", "foco"])
+    for (const id of ["barroco", "piano", "lofi", "cinematica", "ambiente", "chill", "foco"])
       expect(PLAYLISTS.find((p) => p.id === id)!.tracks.some((t) => t.loop)).toBe(false);
   });
 });

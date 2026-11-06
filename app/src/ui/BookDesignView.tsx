@@ -258,6 +258,39 @@ export function BookDesignView({ session }: { session: Session }) {
                   onChange={(e) => setAuthor(e.target.value)}
                 />
               </Field>
+              <details
+                className="design-art"
+                open={!!(cover.frontArt || cover.backArt || cover.spineArt)}
+              >
+                <summary>Já tenho a capa pronta</summary>
+                <p className="hint">
+                  Se a capa foi feita por um capista (ou enviada pelo cliente), use as imagens
+                  prontas: elas aparecem como estão na estante, no livro 3D, na impressão e no
+                  e-book, sem textos do InkFlow por cima. O que ficar vazio usa o desenho abaixo.
+                </p>
+                {(
+                  [
+                    ["frontArt", "Capa pronta", TRIM[layout.trim].w],
+                    ["spineArt", "Lombada pronta", spine],
+                    ["backArt", "Quarta capa pronta", TRIM[layout.trim].w],
+                  ] as const
+                ).map(([key, label, widthMm]) => (
+                  <ImagePicker
+                    key={key}
+                    trim={layout.trim}
+                    widthMm={widthMm}
+                    label={label}
+                    empty="Sem arte pronta (usar o desenho)"
+                    value={cover[key]}
+                    images={imageFiles}
+                    onChange={(v) => setCover({ [key]: v })}
+                    onUpload={async (file) => {
+                      const [added] = await addAttachments([file]);
+                      if (added) setCover({ [key]: added.src });
+                    }}
+                  />
+                ))}
+              </details>
               <ImagePicker
                 trim={layout.trim}
                 label="Imagem da capa"
@@ -772,10 +805,16 @@ function ImagePicker({
   value,
   images,
   trim,
+  widthMm,
+  empty = "Sem imagem (só cor)",
   onChange,
   onUpload,
 }: {
   trim: LayoutDesign["trim"];
+  /** Largura da parte (mm), quando não é a da página (a lombada). */
+  widthMm?: number;
+  /** Texto da opção "nenhuma imagem". */
+  empty?: string;
   label: string;
   value: string;
   images: string[];
@@ -788,7 +827,7 @@ function ImagePicker({
       <span>{label}</span>
       <div className="design-image">
         <select className="tool-select" value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Sem imagem (só cor)</option>
+          <option value="">{empty}</option>
           {images.map((name) => (
             <option key={name} value={`${ATTACHMENTS_DIR}/${name}`}>
               {name}
@@ -811,8 +850,8 @@ function ImagePicker({
         />
       </div>
       <small className="hint">
-        Para a impressão sair nítida, use uma imagem de pelo menos {printPx(TRIM[trim].w)} ×{" "}
-        {printPx(TRIM[trim].h)} px.
+        Para a impressão sair nítida, use uma imagem de pelo menos{" "}
+        {printPx(widthMm ?? TRIM[trim].w)} × {printPx(TRIM[trim].h)} px.
       </small>
     </div>
   );

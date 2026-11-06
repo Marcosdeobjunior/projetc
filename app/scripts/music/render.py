@@ -21,6 +21,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import zlib
 
 import numpy as np
 from scipy.io import wavfile
@@ -727,6 +728,657 @@ def nature(kind: str):
     return master(loopable(x, LOOP, XF), level)
 
 
+# ---------------------------------------------------------------- novos instrumentos
+
+_note_cache: dict = {}
+
+
+def cached(kind: str, f: float, dur: float, vel: float, fn):
+    """Notas repetidas (mesma altura, duração e força) são sintetizadas uma vez só."""
+    key = (kind, round(f, 2), round(dur, 2), round(vel, 2))
+    hit = _note_cache.get(key)
+    if hit is None:
+        seed = zlib.crc32(repr(key).encode())
+        hit = fn(np.random.default_rng(seed))
+        if len(_note_cache) > 4000:
+            _note_cache.clear()
+        _note_cache[key] = hit
+    return hit
+
+
+def piano(f: float, dur: float, rng=None, vel=1.0) -> np.ndarray:
+    """Piano: parciais levemente desafinados (inarmonicidade), duas cordas em
+    uníssono, decaimento em dois estágios, martelo e abafador."""
+
+    def make(r):
+        ring = min(dur + 0.9, 5.0)
+        n = secs(ring)
+        t = tl(n)
+        y = np.zeros(n)
+        B = 0.00025 * (f / 261.6) ** 0.5
+        bright = 0.6 + 0.6 * vel
+        k = 1
+        while k * f < 7500 and k <= 14:
+            fk = k * f * np.sqrt(1 + B * k * k)
+            amp = (1 / k**1.15) * np.exp(-(k - 1) * 0.18 / bright)
+            d1 = 1.1 + 0.0011 * fk
+            d2 = 0.22 + 0.00035 * fk + 0.25 * (f / 1000)
+            env = 0.65 * np.exp(-d1 * t) + 0.35 * np.exp(-d2 * t)
+            for det in ((-0.0007, 0.0007) if f > 110 else (0.0,)):
+                y += amp * env * np.sin(2 * np.pi * fk * (1 + det) * t + r.random() * 6.28)
+            k += 1
+        ham = r.standard_normal(secs(0.012)) * np.exp(-np.arange(secs(0.012)) / 60)
+        y[: len(ham)] += band(ham, 800, 5000, 2) * 0.08 * vel
+        d = secs(dur)
+        if d < n:
+            y[d:] *= np.exp(-(t[d:] - t[d]) * 9)
+        y *= 1 - np.exp(-t / 0.0012)
+        return y * 0.16 * vel
+
+    return cached("piano", f, dur, vel, make)
+
+
+def celesta(f: float, rng=None, vel=1.0) -> np.ndarray:
+    def make(r):
+        n = secs(2.4)
+        t = tl(n)
+        y = np.sin(2 * np.pi * f * t) * np.exp(-t * 1.5)
+        y += 0.35 * np.sin(2 * np.pi * f * 4.0 * t + 1) * np.exp(-t * 5)
+        y += 0.12 * np.sin(2 * np.pi * f * 9.3 * t) * np.exp(-t * 13)
+        y *= 1 - np.exp(-t / 0.0008)
+        return y * 0.2 * vel
+
+    return cached("celesta", f, 0, vel, make)
+
+
+def timpani(f: float, rng=None, vel=1.0) -> np.ndarray:
+    def make(r):
+        n = secs(3.0)
+        t = tl(n)
+        glide = f * (1 + 0.025 * np.exp(-t * 12))
+        ph = 2 * np.pi * np.cumsum(glide) / SR
+        y = np.sin(ph) * np.exp(-t * 1.2) + 0.5 * np.sin(1.5 * ph) * np.exp(-t * 2.2)
+        y += 0.3 * np.sin(1.99 * ph) * np.exp(-t * 3)
+        thump = band(r.standard_normal(n), 60, 900, 2) * np.exp(-t * 30) * 0.6
+        return (y + thump) * (1 - np.exp(-t / 0.002)) * 0.45 * vel
+
+    return cached("timp", f, 0, vel, make)
+
+
+def horn(f: float, dur: float, rng, vel=1.0) -> np.ndarray:
+    """Metais suaves (trompa): cordas escuras com ataque lento."""
+    y = strings(f, dur, rng, vel, 0.42)
+    n = len(y)
+    t = tl(n)
+    return y * np.minimum(1, t / 0.35)
+
+
+def snare(rng) -> np.ndarray:
+    n = secs(0.25)
+    t = tl(n)
+    tone = np.sin(2 * np.pi * 190 * t) * np.exp(-t * 30) * 0.3
+    noise = band(rng.standard_normal(n), 1500, 8000, 2) * np.exp(-t * 16) * 0.35
+    return (tone + noise) * 0.5
+
+
+def wow(x: np.ndarray, rng, depth=0.0018, rate=0.45) -> np.ndarray:
+    """Oscilação de fita/vinil: atraso que varia devagar (a afinação ondula)."""
+    n = len(x)
+    t = tl(n)
+    d = depth * (1 + np.sin(2 * np.pi * rate * t)) / 2 + 0.0004 * np.sin(2 * np.pi * 6.1 * t)
+    idx = np.arange(n) - d * SR
+    out = np.empty_like(x)
+    for ch in range(x.shape[1]):
+        out[:, ch] = np.interp(idx, np.arange(n), x[:, ch])
+    return out
+
+
+def sing(m: Mix, seq: str, beat: float, t0: float, inst, rng, pan=0.0, gain=1.0, legato=1.0, human=0.0):
+    """Toca uma linha 'nota:tempos' (aceita acordes com '+': 'C4+E4:2')."""
+    t = t0
+    for tok in seq.split():
+        name, d = tok.split(":")
+        d = float(d)
+        if name != "r":
+            for k, note in enumerate(name.split("+")):
+                at = t + k * 0.012 + (rng.random() - 0.5) * human
+                v = 0.85 + 0.15 * rng.random() if human else 1.0
+                m.add(inst(midi(note), d * beat * legato, rng, v), max(0, at), pan=pan, gain=gain)
+        t += d * beat
+    return t
+
+
+def octave(seq: str, k: int) -> str:
+    """Sobe (ou desce) a linha k oitavas."""
+    out = []
+    for tok in seq.split():
+        name, d = tok.split(":")
+        if name != "r":
+            name = "+".join(n[:-1] + str(int(n[-1]) + k) for n in name.split("+"))
+        out.append(f"{name}:{d}")
+    return " ".join(out)
+
+
+def length(seq: str) -> float:
+    return sum(float(tok.split(":")[1]) for tok in seq.split())
+
+
+# ---------------------------------------------------------------- Piano (domínio público)
+
+# Beethoven, "Für Elise" (WoO 59, 1810): a seção A, em semicolcheias.
+ELISE_A_RH = (
+    "E5:1 D#5:1 E5:1 D#5:1 E5:1 B4:1 D5:1 C5:1 A4:2 r:1 C4:1 E4:1 A4:1 B4:2 r:1 E4:1 G#4:1 B4:1 "
+    "C5:2 r:1 E4:1 E5:1 D#5:1 E5:1 D#5:1 E5:1 B4:1 D5:1 C5:1 A4:2 r:1 C4:1 E4:1 A4:1 "
+    "B4:2 r:1 E4:1 C5:1 B4:1"
+)
+ELISE_A_LH = (
+    "r:2 r:6 A2:1 E3:1 A3:1 r:3 E2:1 E3:1 G#3:1 r:3 A2:1 E3:1 A3:1 r:3 r:6 "
+    "A2:1 E3:1 A3:1 r:3 E2:1 E3:1 G#3:1 r:3"
+)
+ELISE_END1_RH = "A4:2 r:2"
+ELISE_END1_LH = "A2:1 E3:1 A3:1 r:1"
+ELISE_END2_RH = "A4:2 r:1 B4:1 C5:1 D5:1"
+ELISE_END2_LH = "A2:1 E3:1 A3:1 r:3"
+ELISE_B_RH = "E5:3 G4:1 F5:1 E5:1 D5:3 F4:1 E5:1 D5:1 C5:3 E4:1 D5:1 C5:1 B4:2 r:1 E4:1 E5:1 r:1 r:4"
+ELISE_B_LH = "C3:1 G3:1 C4:1 r:3 G2:1 G3:1 B3:1 r:3 A2:1 E3:1 A3:1 r:3 E2:1 E3:1 G#3:1 r:3 r:4"
+
+
+def fur_elise():
+    rng = np.random.default_rng(1810)
+    s = 0.17
+    form = 2 * [
+        (ELISE_A_RH + " " + ELISE_END1_RH, ELISE_A_LH + " " + ELISE_END1_LH),
+        (ELISE_A_RH + " " + ELISE_END2_RH, ELISE_A_LH + " " + ELISE_END2_LH),
+        (ELISE_B_RH, ELISE_B_LH),
+        (ELISE_A_RH + " " + ELISE_END1_RH, ELISE_A_LH + " " + ELISE_END1_LH),
+        (ELISE_A_RH + " " + ELISE_END2_RH, ELISE_A_LH + " " + ELISE_END2_LH),
+        (ELISE_B_RH, ELISE_B_LH),
+    ] + [(ELISE_A_RH, ELISE_A_LH)]
+    total = sum(length(r) for r, _ in form) * s + 8
+    m = Mix(total)
+    t = 0.0
+    for k, (rh, lh) in enumerate(form):
+        step = s * (1.0 if k < len(form) - 1 else 1.04)
+        sing(m, rh, step, t, piano, rng, pan=0.15, gain=1.0, legato=1.3, human=0.008)
+        sing(m, lh, step, t, piano, rng, pan=-0.2, gain=0.75, legato=2.2, human=0.008)
+        t += length(rh) * step
+    for k, note in enumerate(["A2", "E3", "A3", "C4", "E4", "A4"]):
+        m.add(piano(midi(note), 3.5, rng, 0.7), t + k * 0.06, pan=-0.2 + 0.08 * k)
+    x = reverb(m.buf, rng, 2.2, 0.24, 6000)
+    return master(fade(x[: secs(t + 4.5)], 0.01, 2.5), -20)
+
+
+# Brahms, "Wiegenlied" (op. 49 nº 4, 1868), em Sol maior, compasso 3/4.
+BRAHMS = (
+    "B4:.5 B4:.5 D5:2 B4:.5 B4:.5 D5:2 B4:.5 D5:.5 G5:1 F#5:1.5 E5:.5 E5:1 D5:1 A4:.5 B4:.5 "
+    "C5:1 A4:1 A4:.5 B4:.5 C5:2 A4:.5 C5:.5 F#5:.5 E5:.5 D5:1 F#5:1 G5:2 G4:.5 G4:.5 "
+    "G5:2 E5:.5 C5:.5 D5:2 B4:.5 G4:.5 C5:1 D5:1 E5:1 D5:2 G4:.5 G4:.5 "
+    "G5:2 E5:.5 C5:.5 D5:2 B4:.5 G4:.5 C5:1 B4:1 A4:1 G4:3"
+)
+BRAHMS_CHORDS = ["G", "G", "G", "D", "D", "D7", "D7", "G", "C", "G", "C", "G", "C", "G", "D7", "G"]
+TRIADS = {
+    "G": ["G2", "D3", "G3", "B3"], "D": ["D2", "A2", "D3", "F#3"], "D7": ["D2", "A2", "C3", "F#3"],
+    "C": ["C3", "G3", "C4", "E4"], "Am": ["A2", "E3", "A3", "C4"], "E": ["E2", "B2", "E3", "G#3"],
+    "Em": ["E2", "B2", "E3", "G3"], "F": ["F2", "C3", "F3", "A3"], "Dm": ["D3", "A3", "D4", "F4"],
+    "Bb": ["Bb2", "F3", "Bb3", "D4"], "A": ["A2", "E3", "A3", "C#4"], "Gm": ["G2", "D3", "G3", "Bb3"],
+}
+
+
+def brahms():
+    rng = np.random.default_rng(1868)
+    beat = 60 / 76
+    bars = len(BRAHMS_CHORDS)
+    verse = (bars * 3 + 1) * beat
+    m = Mix(verse * 3 + 8)
+    for v in range(3):
+        t0 = v * verse
+        # A melodia começa em anacruse (um tempo antes do primeiro acorde).
+        # Na segunda estrofe, uma oitava acima, na celesta.
+        mel = octave(BRAHMS, 1) if v == 1 else BRAHMS
+        if v == 1:
+            sing(m, mel, beat, t0, lambda f, d, r, vv: celesta(f, r, vv), rng, pan=0.2, gain=0.9, human=0.01)
+        else:
+            sing(m, mel, beat, t0, piano, rng, pan=0.15, gain=1.0, legato=1.2, human=0.01)
+        for b, ch in enumerate(BRAHMS_CHORDS):
+            notes = TRIADS[ch]
+            tb = t0 + beat + b * 3 * beat
+            m.add(piano(midi(notes[0]), beat * 2.6, rng, 0.6), tb, pan=-0.25)
+            for k, nn in enumerate(notes[1:]):
+                m.add(piano(midi(nn), beat * 0.9, rng, 0.42), tb + beat * (1 + k * 0.5) * (2 / 3), pan=-0.1)
+            if v == 1:
+                m.add(pad([midi(n) for n in notes[1:]], beat * 3, rng, 1.0, 1.5, 1800), tb, gain=0.9)
+    end = verse * 3
+    x = reverb(m.buf, rng, 2.8, 0.3, 5000)
+    return master(fade(x[: secs(end + 4)], 0.05, 3.5), -21)
+
+
+# Beethoven, tema da "Ode à Alegria" (9ª sinfonia, 1824), em Sol maior.
+ODE = (
+    "B4:1 B4:1 C5:1 D5:1 D5:1 C5:1 B4:1 A4:1 G4:1 G4:1 A4:1 B4:1 B4:1.5 A4:.5 A4:2 "
+    "B4:1 B4:1 C5:1 D5:1 D5:1 C5:1 B4:1 A4:1 G4:1 G4:1 A4:1 B4:1 A4:1.5 G4:.5 G4:2 "
+    "A4:1 A4:1 B4:1 G4:1 A4:1 B4:.5 C5:.5 B4:1 G4:1 A4:1 B4:.5 C5:.5 B4:1 A4:1 G4:1 A4:1 D4:2 "
+    "B4:1 B4:1 C5:1 D5:1 D5:1 C5:1 B4:1 A4:1 G4:1 G4:1 A4:1 B4:1 A4:1.5 G4:.5 G4:2"
+)
+ODE_CHORDS = "G G G D G G D G D G D G C G D G".split()
+
+
+def ode():
+    rng = np.random.default_rng(1824)
+    beat = 60 / 84
+    per = 4 * beat
+    rounds = 3
+    m = Mix(rounds * 16 * per + 8)
+    for r in range(rounds):
+        t0 = r * 16 * per
+        # Segunda vez uma oitava acima, com arpejos.
+        mel = octave(ODE, 1) if r == 1 else ODE
+        sing(m, mel, beat, t0, piano, rng, pan=0.15, gain=1.0 if r != 1 else 0.85, legato=1.1, human=0.01)
+        for b, ch in enumerate(ODE_CHORDS):
+            notes = TRIADS[ch]
+            tb = t0 + b * per
+            if r == 1:
+                arp = [notes[0], notes[1], notes[2], notes[3], notes[2], notes[1], notes[2], notes[3]]
+                for i, nn in enumerate(arp):
+                    m.add(piano(midi(nn), beat * 0.6, rng, 0.45), tb + i * beat / 2, pan=-0.2)
+            else:
+                m.add(piano(midi(notes[0]), per * 0.9, rng, 0.55), tb, pan=-0.25)
+                for k in (1, 2, 3):
+                    m.add(piano(midi(notes[1]), beat * 0.8, rng, 0.35), tb + k * beat, pan=-0.1)
+                    m.add(piano(midi(notes[2]), beat * 0.8, rng, 0.32), tb + k * beat + 0.01, pan=-0.05)
+    end = rounds * 16 * per
+    for k, nn in enumerate(["G2", "D3", "G3", "B3", "D4", "G4"]):
+        m.add(piano(midi(nn), 3.5, rng, 0.65), end + k * 0.05)
+    x = reverb(m.buf, rng, 2.4, 0.26, 6000)
+    return master(fade(x[: secs(end + 4.5)], 0.02, 3), -20)
+
+
+# "Greensleeves" (tradicional inglesa, séc. XVI), em Lá menor, 6/8 (colcheias).
+GREEN_A = (
+    "A4:1 C5:2 D5:1 E5:1.5 F5:.5 E5:1 D5:2 B4:1 G4:1.5 A4:.5 B4:1 C5:2 A4:1 A4:1.5 G#4:.5 A4:1 "
+    "B4:2 G#4:1 E4:2 A4:1 C5:2 D5:1 E5:1.5 F5:.5 E5:1 D5:2 B4:1 G4:1.5 A4:.5 B4:1 "
+    "C5:1.5 B4:.5 A4:1 G#4:1.5 F#4:.5 G#4:1 A4:3 A4:2"
+)
+GREEN_B = (
+    "r:1 G5:3 G5:1.5 F#5:.5 E5:1 D5:2 B4:1 G4:1.5 A4:.5 B4:1 C5:2 A4:1 A4:1.5 G#4:.5 A4:1 "
+    "B4:2 G#4:1 E4:3 G5:3 G5:1.5 F#5:.5 E5:1 D5:2 B4:1 G4:1.5 A4:.5 B4:1 "
+    "C5:1.5 B4:.5 A4:1 G#4:1.5 F#4:.5 G#4:1 A4:3 A4:2"
+)
+GREEN_CH_A = "Am G Am E Am G E Am".split()
+GREEN_CH_B = "C G Am E C G E Am".split()
+
+
+def greensleeves():
+    rng = np.random.default_rng(1580)
+    e = 60 / 150  # colcheia
+    seq = [(GREEN_A, GREEN_CH_A), (GREEN_B, GREEN_CH_B), (GREEN_A, GREEN_CH_A), (GREEN_B, GREEN_CH_B)]
+    total = sum(length(a) for a, _ in seq) * e + 8
+    m = Mix(total)
+    t = 0.0
+    for k, (mel, chords) in enumerate(seq):
+        inst = (lambda f, d, r, v: pluck(f, d, r, v)) if k % 2 == 0 else (lambda f, d, r, v: strings(f, d, r, v * 0.8, 0.8))
+        tl0 = t + e  # os compassos começam depois da anacruse
+        sing(m, mel, e, t, inst, rng, pan=0.2, gain=1.0, legato=0.95, human=0.008)
+        for b, ch in enumerate(chords):
+            notes = TRIADS[ch]
+            tb = tl0 + b * 6 * e
+            for i, nn in enumerate([notes[0], notes[2], notes[3], notes[1], notes[3], notes[2]]):
+                m.add(pluck(midi(nn), e * 1.6, rng, 0.5), tb + i * e, pan=-0.3)
+            if k >= 1:
+                m.add(pad([midi(n) for n in notes[1:]], 6 * e, rng, 1.2, 2.0, 1500), tb, gain=0.6)
+        t += length(mel) * e
+    x = reverb(m.buf, rng, 3.0, 0.32, 4500)
+    return master(fade(x[: secs(t + 4)], 0.05, 3.5), -21)
+
+
+# ---------------------------------------------------------------- composições originais
+
+PENTA = {"A": ["A4", "C5", "D5", "E5", "G5", "A5"], "D": ["D5", "E5", "F#5", "A5", "B5", "D6"],
+         "C": ["C5", "D5", "E5", "G5", "A5", "C6"], "Eb": ["Eb5", "F5", "G5", "Bb5", "C6", "Eb6"]}
+
+
+def melody(rng, scale: list[str], beats: int, density=0.5, step=0.5) -> list[tuple[float, str, float]]:
+    """Frase com passos curtos (melodia cantável): (tempo, nota, duração)."""
+    out = []
+    i = int(rng.integers(1, len(scale) - 1))
+    t = 0.0
+    while t < beats - step:
+        if rng.random() < density:
+            i = int(np.clip(i + rng.choice([-2, -1, -1, 1, 1, 2, 0]), 0, len(scale) - 1))
+            d = step * rng.choice([1, 1, 2, 2, 3, 4])
+            out.append((t, scale[i], d))
+            t += d
+        else:
+            t += step
+    return out
+
+
+def folhas():
+    """Piano: arpejos em Lá menor e uma melodia que vai e volta."""
+    rng = np.random.default_rng(301)
+    beat = 60 / 72
+    prog = ["Am", "F", "C", "G", "Am", "F", "Em", "E"]
+    vo = {"Am": "A2 E3 A3 C4 E4 C4 A3 E3", "F": "F2 C3 F3 A3 C4 A3 F3 C3", "C": "C3 G3 C4 E4 G4 E4 C4 G3",
+          "G": "G2 D3 G3 B3 D4 B3 G3 D3", "Em": "E2 B2 E3 G3 B3 G3 E3 B2", "E": "E2 B2 E3 G#3 B3 G#3 E3 B2"}
+    bars = 40
+    m = Mix(bars * 4 * beat + 8)
+    for bar in range(bars):
+        t = bar * 4 * beat
+        ch = prog[bar % len(prog)]
+        for i, nn in enumerate(vo[ch].split()):
+            m.add(piano(midi(nn), beat * 1.2, rng, 0.42 + 0.08 * (i == 0)), t + i * beat / 2 + rng.random() * 0.006, pan=-0.2 + 0.05 * i)
+        if 4 <= bar < bars - 2 and bar % 8 not in (6, 7) or bar in (bars - 4,):
+            for (tt, nn, d) in melody(rng, PENTA["A"], 4, 0.45 if bar < 20 else 0.6):
+                m.add(piano(midi(nn), d * beat, rng, 0.72), t + tt * beat, pan=0.2)
+    end = bars * 4 * beat
+    m.add(piano(midi("A2"), 4, rng, 0.6), end)
+    m.add(piano(midi("E4"), 4, rng, 0.5), end + 0.05)
+    m.add(piano(midi("A4"), 4, rng, 0.5), end + 0.1)
+    x = reverb(m.buf, rng, 2.6, 0.28, 5500)
+    return master(fade(x[: secs(end + 4.5)], 0.3, 3), -21)
+
+
+def carta():
+    """Piano: acordes abertos em Ré maior, notas esparsas e muito espaço."""
+    rng = np.random.default_rng(302)
+    beat = 60 / 60
+    prog = [("D3", "A3 E4 F#4 C#5"), ("B2", "F#3 D4 A4 C#5"), ("G2", "D3 B3 F#4 A4"), ("A2", "E3 C#4 G4 B4")]
+    bars = 28
+    m = Mix(bars * 4 * beat + 10)
+    for bar in range(bars):
+        t = bar * 4 * beat
+        root, up = prog[bar % 4]
+        m.add(piano(midi(root), 4 * beat, rng, 0.55), t, pan=-0.25)
+        for k, nn in enumerate(up.split()):
+            m.add(piano(midi(nn), 3.5 * beat, rng, 0.32), t + 0.5 * beat + k * 0.09, pan=-0.1 + 0.08 * k)
+        if bar >= 2 and bar < bars - 1:
+            for (tt, nn, d) in melody(rng, PENTA["D"], 4, 0.3, 1.0):
+                m.add(piano(midi(nn), d * beat, rng, 0.62), t + tt * beat, pan=0.22)
+    end = bars * 4 * beat
+    for k, nn in enumerate(["D2", "A2", "F#3", "E4", "A4"]):
+        m.add(piano(midi(nn), 5, rng, 0.5), end + k * 0.08)
+    x = reverb(m.buf, rng, 3.4, 0.34, 4500)
+    return master(fade(x[: secs(end + 6)], 0.5, 4), -22)
+
+
+def valsa():
+    """Valsa lenta: baixo no primeiro tempo e acorde no segundo, melodia longa."""
+    rng = np.random.default_rng(303)
+    beat = 60 / 84
+    prog = [("G2", "B3 D4 F#4"), ("D2", "A3 C#4 F#4"), ("E2", "B3 D4 G4"), ("C2", "G3 B3 E4"),
+            ("A2", "C4 E4 G4"), ("D2", "A3 C4 F#4"), ("G2", "B3 D4 F#4"), ("D2", "A3 C#4 E4")]
+    scale = ["D4", "E4", "F#4", "G4", "A4", "B4", "C#5", "D5", "E5", "F#5"]
+    bars = 64
+    m = Mix(bars * 3 * beat + 8)
+    for bar in range(bars):
+        t = bar * 3 * beat
+        root, up = prog[bar % len(prog)]
+        m.add(piano(midi(root), 2 * beat, rng, 0.55), t, pan=-0.25)
+        for k, nn in enumerate(up.split()):
+            m.add(piano(midi(nn), 1.4 * beat, rng, 0.33), t + beat + k * 0.01, pan=-0.05)
+        if bar % 2 == 0 and 4 <= bar < bars - 4:
+            for (tt, nn, d) in melody(rng, scale, 6, 0.35, 1.0):
+                m.add(piano(midi(nn) * 2, d * beat, rng, 0.6), t + tt * beat, pan=0.2)
+    end = bars * 3 * beat
+    x = reverb(m.buf, rng, 2.8, 0.3, 5000)
+    return master(fade(x[: secs(end + 4)], 0.2, 4), -21)
+
+
+def lofi(seed: int, bpm: float, prog: list[str], key: str, bars: int, keys=rhodes):
+    """Lo-fi: acordes com swing, baixo, bateria abafada, chiado de vinil e fita ondulando."""
+    rng = np.random.default_rng(seed)
+    beat = 60 / bpm
+    m = Mix(bars * 4 * beat + 6)
+    swing = beat * 0.08
+    for bar in range(bars):
+        t = bar * 4 * beat
+        notes = prog[bar % len(prog)].split()
+        intro = bar < 2 or bar >= bars - 1
+        for k, nn in enumerate(notes[1:]):
+            m.add(keys(midi(nn), beat * 1.6, rng, 0.7), t + k * 0.015, pan=-0.15 + 0.08 * k)
+            m.add(keys(midi(nn), beat * 0.9, rng, 0.5), t + 2.5 * beat + swing + k * 0.015, pan=-0.15 + 0.08 * k)
+        if not intro:
+            m.add(bass(midi(notes[0]), beat * 1.5, rng), t)
+            m.add(bass(midi(notes[0]) * (1.5 if bar % 2 else 1), beat * 0.6, rng, 0.7), t + 2.5 * beat + swing)
+            m.add(kick(rng), t, gain=0.9)
+            m.add(kick(rng), t + 2.5 * beat + swing, gain=0.6)
+            m.add(snare(rng), t + beat, pan=0.05, gain=0.75)
+            m.add(snare(rng), t + 3 * beat, pan=0.05, gain=0.75)
+            for e in range(8):
+                m.add(hat(rng), t + e * beat / 2 + (swing if e % 2 else 0), pan=0.3, gain=0.7 + 0.4 * (e % 2))
+        if 4 <= bar < bars - 2 and bar % 4 in (1, 2):
+            for (tt, nn, d) in melody(rng, PENTA[key], 4, 0.5):
+                m.add(keys(midi(nn), d * beat, rng, 0.6), t + tt * beat + (swing if (tt * 2) % 2 else 0), pan=0.25)
+    x = m.buf
+    x[:, 0] += crackle(rng, len(x)) * 1.4
+    x[:, 1] += crackle(rng, len(x)) * 1.4
+    x = wow(x, rng)
+    x = np.tanh(x * 1.6) / 1.6
+    x = reverb(x, rng, 1.6, 0.18, 4000)
+    x = band(x, 40, 5200, 2)
+    return master(fade(x[: secs(bars * 4 * beat + 2.5)], 1.0, 3), -20)
+
+
+def cafe():
+    return lofi(401, 82, ["C2 E4 G4 B4 D5", "A1 C4 E4 G4 B4", "D2 F4 A4 C5 E5", "G1 F4 A4 B4 E5"], "C", 44)
+
+
+def caderno():
+    return lofi(402, 76, ["Eb2 G4 Bb4 D5", "C2 Eb4 G4 Bb4", "F2 Ab4 C5 Eb5", "Bb1 Ab4 D5 F5"], "Eb", 40,
+                lambda f, d, r, v: piano(f, d, r, v * 0.9))
+
+
+def madrugada():
+    return lofi(403, 70, ["A1 G4 C5 E5", "D2 F4 A4 C5", "G1 F#4 B4 D5", "C2 E4 G4 B4"], "A", 36)
+
+
+def horizonte():
+    """Cinematográfica: ostinato de piano, cordas que crescem e tímpanos."""
+    rng = np.random.default_rng(501)
+    beat = 60 / 88
+    prog = ["Dm", "Bb", "F", "C"]
+    up = {"Dm": "D4 F4 A4", "Bb": "D4 F4 Bb4", "F": "C4 F4 A4", "C": "C4 E4 G4"}
+    bars = 48
+    m = Mix(bars * 4 * beat + 10)
+    for bar in range(bars):
+        t = bar * 4 * beat
+        ch = prog[bar % 4]
+        notes = TRIADS[ch]
+        lvl = min(1.0, 0.3 + bar / 28) if bar < 40 else max(0.25, 1 - (bar - 40) / 8)
+        osti = up[ch].split()
+        for e in range(8):
+            m.add(piano(midi(osti[[0, 1, 2, 1][e % 4]]) * 2, beat * 0.45, rng, 0.38 + 0.1 * (e % 4 == 0)), t + e * beat / 2, pan=0.25)
+        if bar >= 4:
+            for k, nn in enumerate(notes[1:]):
+                m.add(strings(midi(nn), 4 * beat, rng, 0.55 * lvl, 0.8), t, pan=-0.5 + 0.35 * k, gain=0.9)
+            m.add(strings(midi(notes[0]), 4 * beat, rng, 0.7 * lvl, 0.6), t, pan=-0.3)
+        if bar >= 12 and bar < 44:
+            for (tt, nn, d) in melody(rng, ["D5", "E5", "F5", "G5", "A5", "C6", "D6"], 4, 0.4, 1.0):
+                m.add(strings(midi(nn), d * beat, rng, 0.6 * lvl, 0.9), t + tt * beat, pan=0.1, gain=0.9)
+        if bar >= 16 and bar % 2 == 0 and bar < 44:
+            m.add(timpani(midi(notes[0]) * (1 if notes[0][-1] == "2" else 0.5), rng, 0.6 * lvl), t)
+            m.add(timpani(midi(notes[0]) * (1 if notes[0][-1] == "2" else 0.5), rng, 0.35 * lvl), t + 3.5 * beat)
+        if bar >= 24 and bar < 44 and bar % 4 == 0:
+            m.add(horn(midi("D3"), 8 * beat, rng, 0.6 * lvl), t, pan=-0.15)
+            m.add(horn(midi("A3"), 8 * beat, rng, 0.5 * lvl), t, pan=0.15)
+    end = bars * 4 * beat
+    m.add(strings(midi("D3"), 5, rng, 0.6, 0.6), end)
+    m.add(strings(midi("A3"), 5, rng, 0.5, 0.6), end)
+    m.add(timpani(midi("D2"), rng, 0.6), end)
+    x = reverb(m.buf, rng, 3.2, 0.34, 6000)
+    return master(fade(x[: secs(end + 6)], 0.4, 4.5), -20)
+
+
+def reinos():
+    """Cinematográfica épica: cordas graves em semicolcheias, metais e tímpanos."""
+    rng = np.random.default_rng(502)
+    beat = 60 / 96
+    prog = ["Dm", "Bb", "Gm", "A", "Dm", "Bb", "F", "A"]
+    bars = 40
+    m = Mix(bars * 4 * beat + 10)
+    for bar in range(bars):
+        t = bar * 4 * beat
+        ch = prog[bar % len(prog)]
+        notes = TRIADS[ch]
+        lvl = min(1.0, 0.35 + bar / 16) if bar < 34 else max(0.3, 1 - (bar - 34) / 6)
+        root = midi(notes[0])
+        for s16 in range(16):
+            f = root * (2 if s16 % 4 == 2 else 1)
+            m.add(strings(f, beat * 0.22, rng, (0.55 + 0.2 * (s16 % 4 == 0)) * lvl, 0.75), t + s16 * beat / 4, pan=-0.35)
+        if bar >= 4:
+            for k, nn in enumerate(notes[1:]):
+                m.add(horn(midi(nn), 4 * beat, rng, 0.55 * lvl), t, pan=-0.2 + 0.2 * k)
+        if bar >= 8:
+            m.add(timpani(root, rng, 0.8 * lvl), t)
+            m.add(timpani(root, rng, 0.45 * lvl), t + 2 * beat)
+            m.add(timpani(root, rng, 0.55 * lvl), t + 3.5 * beat)
+        if bar >= 12 and bar < 36:
+            scale = ["A4", "Bb4", "C5", "D5", "E5", "F5", "G5", "A5"]
+            for (tt, nn, d) in melody(rng, scale, 4, 0.55, 1.0):
+                m.add(strings(midi(nn), d * beat, rng, 0.75 * lvl, 1.0), t + tt * beat, pan=0.15)
+                m.add(strings(midi(nn) / 2, d * beat, rng, 0.5 * lvl, 0.8), t + tt * beat, pan=-0.1)
+    end = bars * 4 * beat
+    for nn in ("D2", "D3", "A3", "D4", "F4"):
+        m.add(horn(midi(nn), 5, rng, 0.6), end)
+    m.add(timpani(midi("D2"), rng, 0.9), end)
+    x = reverb(m.buf, rng, 3.4, 0.33, 6500)
+    return master(fade(x[: secs(end + 6)], 0.2, 5), -19)
+
+
+def primeira_luz():
+    """Cinematográfica suave: cordas em Mi maior, celesta e harpa."""
+    rng = np.random.default_rng(503)
+    beat = 60 / 70
+    prog = [("E2", "B3 E4 G#4"), ("C#2", "C#4 E4 G#4"), ("A1", "A3 C#4 E4"), ("B1", "B3 D#4 F#4")]
+    bars = 36
+    m = Mix(bars * 4 * beat + 10)
+    for bar in range(bars):
+        t = bar * 4 * beat
+        root, up = prog[bar % 4]
+        lvl = min(1.0, 0.4 + bar / 20)
+        m.add(strings(midi(root), 4 * beat, rng, 0.55 * lvl, 0.6), t, pan=-0.3)
+        for k, nn in enumerate(up.split()):
+            m.add(strings(midi(nn), 4 * beat, rng, 0.42 * lvl, 0.75), t, pan=-0.4 + 0.4 * k, gain=0.85)
+        arp = up.split() + [up.split()[1]]
+        for i in range(8):
+            m.add(pluck(midi(arp[i % 4]) * 2, beat, rng, 0.45), t + i * beat / 2, pan=0.35)
+        if bar >= 6 and bar < bars - 2:
+            for (tt, nn, d) in melody(rng, ["E5", "F#5", "G#5", "B5", "C#6", "E6"], 4, 0.35, 1.0):
+                m.add(celesta(midi(nn), rng, 0.7), t + tt * beat, pan=0.15)
+    end = bars * 4 * beat
+    x = reverb(m.buf, rng, 3.6, 0.38, 5000)
+    return master(fade(x[: secs(end + 6)], 1.0, 5), -21)
+
+
+def ambient(seed: int, chords: list[str], step: float, rounds: int, bells: str | None, sub=False, bright=1700.0):
+    rng = np.random.default_rng(seed)
+    n = len(chords) * rounds
+    m = Mix(n * step + 14)
+    for i in range(n):
+        c = chords[i % len(chords)]
+        m.add(pad(chord(c), step + 5, rng, 6, 8, bright), i * step, gain=1.0)
+        if sub:
+            m.add(pad([midi(c.split()[0]) / 2], step + 4, rng, 5, 7, 220), i * step, gain=1.4)
+        if bells:
+            scale = bells.split()
+            for _ in range(int(rng.integers(2, 6))):
+                note = scale[int(rng.integers(0, len(scale)))]
+                m.add(celesta(midi(note), rng, 0.3 + 0.3 * rng.random()), i * step + rng.random() * step,
+                      pan=rng.random() * 1.6 - 0.8)
+    x = reverb(m.buf, rng, 5.0, 0.55, 3500)
+    return master(fade(x[: secs(n * step + 10)], 5, 9), -22)
+
+
+def aurora():
+    return ambient(601, ["E3 B3 F#4 G#4", "C#3 G#3 D#4 E4", "A2 E3 B3 C#4", "B2 F#3 C#4 D#4"], 14, 3,
+                   "E5 F#5 G#5 B5 C#6 E6")
+
+
+def profundezas():
+    return ambient(602, ["C2 G2 D3 Eb3", "Ab1 Eb2 Bb2 C3", "F1 C2 G2 Ab2", "G1 D2 Ab2 B2"], 16, 3, None, True, 900)
+
+
+def constelacoes():
+    rng = np.random.default_rng(603)
+    chords = ["F3 C4 G4 A4", "D3 A3 E4 F4", "Bb2 F3 C4 D4", "C3 G3 D4 E4"]
+    step = 12.0
+    rounds = 3
+    n = len(chords) * rounds
+    m = Mix(n * step + 12)
+    scale = ["F5", "G5", "A5", "C6", "D6", "F6", "G6"]
+    for i in range(n):
+        c = chords[i % len(chords)]
+        m.add(pad(chord(c), step + 5, rng, 5, 7, 1500), i * step, gain=0.9)
+        t = i * step
+        while t < (i + 1) * step:
+            note = scale[int(rng.integers(0, len(scale)))]
+            m.add(celesta(midi(note), rng, 0.25 + 0.35 * rng.random()), t, pan=rng.random() * 1.6 - 0.8)
+            t += rng.choice([0.4, 0.4, 0.8, 1.2, 1.6])
+    x = reverb(m.buf, rng, 5.5, 0.5, 4000)
+    return master(fade(x[: secs(n * step + 9)], 4, 8), -22)
+
+
+def mare():
+    """Maré lenta: pads que respiram como ondas, com um mar distante."""
+    rng = np.random.default_rng(604)
+    x = ambient(604, ["D3 A3 E4 F#4", "G2 D3 A3 B3", "B2 F#3 C#4 D4", "A2 E3 B3 C#4"], 15, 3, "D5 E5 F#5 A5 B5")
+    n = len(x)
+    sea = np.zeros((n, 2))
+    t = tl(n)
+    swell = (0.5 + 0.5 * np.sin(2 * np.pi * t / 9.0)) ** 2
+    for ch in range(2):
+        sea[:, ch] = band(pink(rng, n), 200, 2500, 2) * swell * 0.05
+    return master(x + sea, -22)
+
+
+def fluxo():
+    """Foco: ostinato de piano em colcheias que muda uma nota por vez."""
+    rng = np.random.default_rng(701)
+    e = 60 / 112 / 2
+    base = ["A3", "E4", "A4", "C5", "B4", "E4", "G4", "C5"]
+    alts = ["G3", "D4", "B4", "D5", "A4", "F4", "E4", "B4"]
+    bars = 60
+    m = Mix(bars * 8 * e + 8)
+    pat = list(base)
+    lows = ["A2", "F2", "C3", "G2"]
+    for bar in range(bars):
+        if bar and bar % 4 == 0:
+            i = (bar // 4) % 8
+            pat[i] = alts[i] if pat[i] == base[i] else base[i]
+        t = bar * 8 * e
+        for i, nn in enumerate(pat):
+            m.add(piano(midi(nn), e * 1.5, rng, 0.42 + 0.12 * (i % 4 == 0)), t + i * e, pan=-0.2 + 0.06 * i)
+        if bar % 2 == 0:
+            m.add(piano(midi(lows[(bar // 2) % 4]), 16 * e, rng, 0.5), t, pan=-0.3)
+        if bar >= 16 and bar % 8 == 0:
+            m.add(pad(chord("A2 E3 B3"), 64 * e, rng, 4, 5, 1100), t, gain=0.7)
+    x = reverb(m.buf, rng, 2.4, 0.25, 5000)
+    return master(fade(x[: secs(bars * 8 * e + 4)], 0.5, 4), -21)
+
+
+def engrenagens():
+    """Foco: marimba em 3 contra harpa em 4, sobre um pedal grave."""
+    rng = np.random.default_rng(702)
+    beat = 60 / 96
+    bars = 56
+    m = Mix(bars * 4 * beat + 8)
+    tri = ["E4", "G4", "B4"]
+    quad = ["D5", "B4", "A4", "G4"]
+    for bar in range(bars):
+        t = bar * 4 * beat
+        if bar % 8 == 4:
+            tri = ["E4", "A4", "C5"] if tri[1] == "G4" else ["E4", "G4", "B4"]
+        for k in range(12):
+            m.add(marimba(midi(tri[k % 3]), rng, 0.55 + 0.2 * (k % 3 == 0)), t + k * beat / 3, pan=-0.35)
+        if bar >= 4:
+            for k in range(16):
+                if k % 2 == 0 or bar >= 20:
+                    m.add(pluck(midi(quad[k % 4]), beat / 2, rng, 0.4), t + k * beat / 4, pan=0.35)
+        if bar % 4 == 0:
+            m.add(pad(chord("E2 B2 E3"), 16 * beat, rng, 3, 4, 900), t, gain=0.8)
+    x = reverb(m.buf, rng, 2.2, 0.24, 5000)
+    return master(fade(x[: secs(bars * 4 * beat + 4)], 0.8, 4), -21)
+
+
 # ---------------------------------------------------------------- catálogo
 
 TRACKS = {
@@ -747,6 +1399,26 @@ TRACKS = {
     "ondas-do-mar": (lambda: nature("mar"), "96k"),
     "vento": (lambda: nature("vento"), "96k"),
     "riacho": (lambda: nature("riacho"), "96k"),
+    # Biblioteca ampliada (96 kbps: boa para instrumental, metade do tamanho).
+    "fur-elise": (fur_elise, "96k"),
+    "cancao-de-ninar-brahms": (brahms, "96k"),
+    "ode-a-alegria": (ode, "96k"),
+    "folhas-de-outono": (folhas, "96k"),
+    "carta": (carta, "96k"),
+    "valsa-lenta": (valsa, "96k"),
+    "greensleeves": (greensleeves, "96k"),
+    "cafe-da-tarde": (cafe, "96k"),
+    "caderno-aberto": (caderno, "96k"),
+    "madrugada": (madrugada, "96k"),
+    "horizonte": (horizonte, "96k"),
+    "reinos-distantes": (reinos, "96k"),
+    "primeira-luz": (primeira_luz, "96k"),
+    "aurora": (aurora, "96k"),
+    "profundezas": (profundezas, "96k"),
+    "constelacoes": (constelacoes, "96k"),
+    "mare-lenta": (mare, "96k"),
+    "fluxo": (fluxo, "96k"),
+    "engrenagens": (engrenagens, "96k"),
 }
 
 if __name__ == "__main__":

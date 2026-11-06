@@ -656,6 +656,18 @@ flowchart LR
   (`@page { size: Wmm Hmm; margin: 0 }`).
 - **`ui/Book3D.tsx`**: livro 3D em CSS (`transform-style: preserve-3d`) com as imagens das
   faces; arrastar gira.
+- **`ui/BookScene.tsx`**: o livro da tela inicial. Uma peça 3D só (caixa, página da direita,
+  folha que vira e capa numa dobradiça na lombada). Fechado, gira com o arrasto horizontal; ao
+  abrir, vira de frente e a capa gira 180° na lombada. A folha que vira é feita de três faixas
+  encadeadas (cada uma curva um pouco além da anterior no meio da virada), com luz e sombra
+  animadas só na opacidade. Tudo pela Web Animations API (`transform`/`opacity`, na GPU), sem
+  renderizar o React por quadro; o React só troca quais páginas estão em cada lugar no começo e
+  no fim da virada. Cliques rápidos entram numa fila e aceleram a virada atual.
+- **`book/miniBook.ts`**: o miolo da miniatura, em partes (pré-texto e um capítulo por parte).
+  Como cada capítulo começa numa página nova, cada página desenha só a sua parte. A paginação
+  (`paginate`) é medida uma vez por livro numa caixa fora da vista, depois de a fonte carregar.
+  O miolo fica num cache por projeto e versão e é pré-carregado quando a tela fica ociosa (ou com
+  o mouse sobre o livro); enquanto carrega de verdade, aparece a animação de "abrindo o livro".
 
 ---
 
@@ -822,7 +834,8 @@ Chaves no `localStorage` do WebView (por computador, não vão para o projeto ne
 | Chave                        | Conteúdo                                                                      |
 | ---------------------------- | ----------------------------------------------------------------------------- |
 | `inkflow.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                         |
-| `inkflow.lastVault`          | Raiz do último projeto aberto (reabre ao iniciar)                             |
+| `inkflow.lastVault`          | Raiz do último projeto aberto                                                 |
+| `inkflow.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)        |
 | `inkflow.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `syncEvery` |
 | `inkflow.theme`              | Formato antigo (só o tema), lido na migração                                  |
 | `inkflow.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                       |

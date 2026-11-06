@@ -135,6 +135,12 @@ interface MusicState extends Saved {
   slot: HTMLElement | null;
   /** Cartão do player no espaço de trabalho. */
   floatingOpen: boolean;
+  /**
+   * Playlist aberta na lista do player (só a navegação: não mexe no que está
+   * tocando). Fica aqui, e não no componente, para o player lembrar dela ao
+   * recolher a barra ou trocar de tela. null = lista de playlists.
+   */
+  browsing: string | null;
 
   playPlaylist(playlistId: string, trackIndex?: number): void;
   toggle(): void;
@@ -150,6 +156,7 @@ interface MusicState extends Saved {
   setPanelOpen(open: boolean): void;
   setSlot(el: HTMLElement | null): void;
   setFloatingOpen(open: boolean): void;
+  setBrowsing(playlistId: string | null): void;
 }
 
 const KEY = "inkflow.music";
@@ -214,6 +221,7 @@ export const useMusic = create<MusicState>((set, get) => ({
   duration: 0,
   slot: null,
   floatingOpen: false,
+  browsing: null,
 
   playPlaylist(playlistId, trackIndex) {
     const list = findPlaylist(playlistId);
@@ -291,6 +299,9 @@ export const useMusic = create<MusicState>((set, get) => ({
   },
   setFloatingOpen(floatingOpen) {
     set({ floatingOpen });
+  },
+  setBrowsing(browsing) {
+    set({ browsing: findPlaylist(browsing) ? browsing : null });
   },
 }));
 

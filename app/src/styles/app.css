@@ -2945,6 +2945,8 @@ p {
   --p-bg: #07070f;
   --p-panel: rgba(20, 14, 34, 0.72);
   --p-panel-2: rgba(36, 22, 52, 0.7);
+  --p-solid: #100c1d;
+  --p-solid-2: #1b1229;
   --p-line: rgba(94, 214, 230, 0.16);
   --p-line-hi: rgba(94, 214, 230, 0.5);
   --p-teal: #6fe1ee;
@@ -2957,9 +2959,17 @@ p {
   --nav-w: 232px;
   --nav-rail: 60px;
   --nav-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Largura atual da barra (anima ao recolher; veja @property --nav-now). */
+  --nav-now: var(--nav-w);
+  /* Raio da curva onde o topo encontra a barra lateral. */
+  --frame-r: 20px;
+  /* Topo e barra lateral são uma peça só: mesmo vidro, mesma borda. */
+  --frame-bg: color-mix(in srgb, var(--p-panel) 55%, transparent);
+  --frame-blur: blur(18px) saturate(1.15);
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  transition: --nav-now 0.24s var(--nav-ease);
   color: var(--p-fg);
   background: var(--p-bg);
   background-attachment: fixed;
@@ -2982,7 +2992,8 @@ p {
 .bg-paleta {
   background: var(--p-glow, none), var(--p-bg);
 }
-.bg-imagem {
+.bg-imagem,
+.bg-tema {
   background:
     linear-gradient(
       color-mix(in srgb, var(--p-bg) var(--home-bg-dim, 45%), transparent),
@@ -2999,6 +3010,8 @@ p {
     --p-bg: #f6f2ea;
     --p-panel: rgba(255, 252, 246, 0.85);
     --p-panel-2: rgba(240, 232, 222, 0.85);
+    --p-solid: #fefaf4;
+    --p-solid-2: #f1eae0;
     --p-line: rgba(31, 110, 125, 0.18);
     --p-line-hi: rgba(31, 110, 125, 0.55);
     --p-teal: #1b7f8e;
@@ -3013,6 +3026,8 @@ p {
   --p-bg: #f6f2ea;
   --p-panel: rgba(255, 252, 246, 0.85);
   --p-panel-2: rgba(240, 232, 222, 0.85);
+  --p-solid: #fefaf4;
+  --p-solid-2: #f1eae0;
   --p-line: rgba(31, 110, 125, 0.18);
   --p-line-hi: rgba(31, 110, 125, 0.55);
   --p-teal: #1b7f8e;
@@ -3057,7 +3072,18 @@ p {
   color: var(--danger);
 }
 
-/* Topo do app: logo, nome do escritor e pasta ativa */
+/* Topo do app: logo, nome do escritor e pasta ativa. Com a barra lateral,
+   forma uma moldura em L: a borda corre pelo lado de dentro do L e, no
+   canto de 90°, faz uma curva côncava (um quarto de círculo) que leva da
+   horizontal para a vertical sem quina. */
+@property --nav-now {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 232px;
+}
+.nav-collapsed {
+  --nav-now: var(--nav-rail);
+}
 .appbar {
   position: sticky;
   top: 0;
@@ -3067,11 +3093,59 @@ p {
   gap: 10px;
   height: var(--appbar-h);
   padding: 0 max(14px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px));
-  border-bottom: 1px solid var(--p-line);
-  /* Vidro, como a barra lateral: mostra o fundo desfocado. */
-  background: color-mix(in srgb, var(--p-panel) 45%, transparent);
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  background: var(--frame-bg);
+  backdrop-filter: var(--frame-blur);
+  -webkit-backdrop-filter: var(--frame-blur);
+}
+/* Borda de baixo do topo: começa onde a curva termina. */
+.appbar::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--nav-now) + var(--frame-r));
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--p-line);
+  pointer-events: none;
+}
+/* A curva: um quadrado de lado --frame-r logo abaixo do topo, encostado na
+   barra. Só a parte fora do círculo é pintada (o mesmo vidro da moldura), e
+   o contorno do círculo continua a borda. */
+.appbar::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--nav-now);
+  width: var(--frame-r);
+  height: var(--frame-r);
+  pointer-events: none;
+  --ring: radial-gradient(
+    circle at 100% 100%,
+    transparent calc(var(--frame-r) - 1px),
+    var(--p-line) calc(var(--frame-r) - 0.5px),
+    var(--p-line) var(--frame-r),
+    transparent calc(var(--frame-r) + 0.5px)
+  );
+  background:
+    var(--ring),
+    radial-gradient(
+      circle at 100% 100%,
+      transparent calc(var(--frame-r) - 0.5px),
+      var(--frame-bg) var(--frame-r)
+    );
+  backdrop-filter: var(--frame-blur);
+  -webkit-backdrop-filter: var(--frame-blur);
+  /* O vidro (backdrop) também só aparece fora do círculo. */
+  -webkit-mask: radial-gradient(
+    circle at 100% 100%,
+    transparent calc(var(--frame-r) - 1px),
+    #000 calc(var(--frame-r) - 0.5px)
+  );
+  mask: radial-gradient(
+    circle at 100% 100%,
+    transparent calc(var(--frame-r) - 1px),
+    #000 calc(var(--frame-r) - 0.5px)
+  );
 }
 .appbar-id {
   display: flex;
@@ -3290,11 +3364,7 @@ p {
 .projects-body {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--nav-w) minmax(0, 1fr);
-  transition: grid-template-columns 0.24s var(--nav-ease);
-}
-.nav-collapsed .projects-body {
-  grid-template-columns: var(--nav-rail) minmax(0, 1fr);
+  grid-template-columns: var(--nav-now) minmax(0, 1fr);
 }
 .home-nav {
   position: sticky;
@@ -3307,11 +3377,21 @@ p {
   /* A rolagem fica dentro (.home-nav-scroll): o botão de recolher sai da borda. */
   overflow: visible;
   z-index: 20;
-  border-right: 1px solid var(--p-line);
-  /* Vidro: desfoca o fundo atrás da barra e dá um véu da cor da paleta. */
-  background: color-mix(in srgb, var(--p-panel) 55%, transparent);
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  /* Vidro: o mesmo do topo, sem emenda entre os dois. */
+  background: var(--frame-bg);
+  backdrop-filter: var(--frame-blur);
+  -webkit-backdrop-filter: var(--frame-blur);
+}
+/* Borda do lado de dentro: começa onde a curva do canto termina. */
+.home-nav::after {
+  content: "";
+  position: absolute;
+  top: var(--frame-r);
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--p-line);
+  pointer-events: none;
 }
 .home-nav-scroll {
   flex: 1;
@@ -3497,6 +3577,16 @@ p {
   .nav-collapsed .projects-body {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* Gaveta: a barra fica por cima do conteúdo, então o topo é inteiro. */
+  .appbar::before {
+    display: none;
+  }
+  .appbar::after {
+    left: 0;
+  }
+  .home-nav::after {
+    top: 0;
+  }
   .home-nav {
     position: fixed;
     z-index: 25;
@@ -3553,6 +3643,7 @@ p {
   .modal-backdrop {
     animation: none;
   }
+  .projects,
   .projects-body,
   .home-nav,
   .nav-label,
@@ -3662,12 +3753,21 @@ p {
 }
 
 /* Painéis */
+/* Conteúdo principal: superfícies opacas (sem vidro), para o texto ficar
+   nítido sobre qualquer fundo. A hierarquia vem da cor, da borda e de uma
+   sombra leve. A moldura (topo e barra lateral) continua de vidro. */
+.projects-content {
+  --p-panel: var(--p-solid);
+  --p-panel-2: var(--p-solid-2);
+}
 .panel {
   background: var(--p-panel);
   border: 1px solid var(--p-line);
   border-radius: 12px;
   padding: 16px;
-  backdrop-filter: blur(6px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 8px 24px -16px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3726,56 +3826,6 @@ p {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
   align-items: stretch;
-}
-.home-recent {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.recent-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-.recent-grid > li {
-  display: flex;
-}
-.recent-card {
-  flex: 1;
-  flex-direction: row;
-  align-items: center;
-  gap: 14px;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.recent-card .cover.sm {
-  width: 52px;
-  flex: none;
-}
-.recent-card .cover-title {
-  display: none;
-}
-.recent-card > span {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.recent-card small {
-  color: var(--p-faint);
-}
-.recent-card:hover {
-  border-color: var(--p-line-hi);
-}
-.recent-new {
-  justify-content: center;
-  border-style: dashed;
-  min-height: 100px;
 }
 @media (max-width: 900px) {
   .home-hero {
@@ -3900,42 +3950,346 @@ p {
   font-size: 13px;
 }
 
-/* Livro aberto em miniatura: duas páginas diagramadas, para folhear */
-.book-preview.open {
+/* ---------- O livro em 3D da tela inicial ----------
+   Uma peça só: caixa do livro (capa, contracapa, lombada, cortes), a página
+   da direita, a folha que vira (faixas encadeadas que curvam) e a capa presa
+   numa dobradiça na lombada. O palco tem a largura do livro aberto; fechado,
+   o livro fica no meio dele. */
+.book-preview {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 0;
+  gap: 22px;
+  padding: 8px 0 0;
+  --w: 220px;
+  --h: 330px;
+  --t: 38px;
 }
-.book-preview.open figcaption {
-  width: auto;
+.bk-hit {
+  position: relative;
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+.bk-hit.dragging {
+  cursor: grabbing;
+}
+.phase-open .bk-hit {
+  cursor: pointer;
+}
+.phase-opening .bk-hit,
+.phase-closing .bk-hit {
+  cursor: default;
+}
+.bk-hit:focus-visible {
+  outline: 2px solid var(--p-teal);
+  outline-offset: 10px;
+}
+.bk-stage {
+  position: relative;
+  width: calc(var(--w) * 2);
+  height: var(--h);
+  perspective: 1800px;
+  perspective-origin: 50% 40%;
+}
+.bk {
+  position: absolute;
+  top: 0;
+  left: calc(var(--w) / 2);
+  width: var(--w);
+  height: var(--h);
+  transform-style: preserve-3d;
+  /* --bx/--rx/--ry: a pose atual (o arrasto gira só --ry). */
+  transform: translateX(var(--bx, 0px)) rotateX(var(--rx, 6deg)) rotateY(var(--ry, -32deg));
+  will-change: transform;
+}
+.bk-face {
+  position: absolute;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.bk-back {
+  inset: 0;
+  border-radius: 6px 2px 2px 6px;
+  transform: rotateY(180deg) translateZ(calc(var(--t) / 2));
+  background: linear-gradient(170deg, hsl(var(--hue) 45% 14%), hsl(calc(var(--hue) + 40) 55% 8%));
+}
+.bk-spine {
+  top: 0;
+  left: calc(var(--t) / -2);
+  width: var(--t);
+  height: 100%;
+  transform: rotateY(-90deg);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--hue) 45% 8%),
+    hsl(var(--hue) 45% 16%) 45%,
+    hsl(var(--hue) 45% 9%)
+  );
+}
+.bk-spine span {
+  writing-mode: vertical-rl;
+  font: 600 11px/1 var(--font-brand);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--hue) 40% 85%);
+  max-height: 90%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Cortes do miolo: à direita, em cima e embaixo. */
+.bk-edge {
+  top: 4px;
+  left: calc(var(--w) - var(--t) / 2 - 4px);
+  width: var(--t);
+  height: calc(100% - 8px);
+  transform: rotateY(90deg);
+  background: repeating-linear-gradient(90deg, #f3ecdc 0 1px, #d9cfb9 1px 2px), #efe6d2;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.35);
+}
+.bk-top,
+.bk-bottom {
+  left: 0;
+  width: calc(100% - 4px);
+  height: var(--t);
+  background: repeating-linear-gradient(0deg, #f3ecdc 0 1px, #d9cfb9 1px 2px);
+}
+.bk-top {
+  top: calc(var(--t) / -2 + 4px);
+  transform: rotateX(90deg);
+}
+.bk-bottom {
+  top: calc(var(--h) - var(--t) / 2 - 4px);
+  transform: rotateX(-90deg);
+}
+/* A página da direita, logo abaixo da capa. */
+.bk-base {
+  inset: 0;
+  transform: translateZ(calc(var(--t) / 2 - 1px));
+  border-radius: 0 3px 3px 0;
+}
+.phase-closed .bk-base,
+.phase-loading .bk-base {
+  visibility: hidden;
+}
+/* A folha que vira fica um pouco acima das páginas (não briga com elas). */
+.bk-leaf {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--t) / 2 + 1px));
+  visibility: hidden;
+  pointer-events: none;
+}
+.bk-leaf.on {
+  visibility: visible;
+}
+.bk-strip {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.bk-strip > .bk-face {
+  inset: 0;
+  overflow: hidden;
+}
+.bk-strip > .bk-face.back {
+  transform: rotateY(180deg);
+}
+.bk-clip {
+  position: absolute;
+  top: 0;
+  width: var(--w);
+  height: var(--h);
+}
+/* Dobradiça da capa: gira na lombada (borda esquerda). */
+.bk-hinge {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--t) / 2)) rotateY(var(--hinge, 0deg));
+  will-change: transform;
+}
+.bk-cover-out {
+  inset: 0;
+}
+.bk-cover-out .cover {
+  width: 100%;
+  height: 100%;
+  border-radius: 2px 6px 6px 2px;
+}
+.bk-cover-out .cover::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 12px;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(0, 0, 0, 0.35) 40%,
+    rgba(255, 255, 255, 0.08) 70%,
+    transparent
+  );
+}
+/* Verso da capa: a guarda (papel colorido) ou a página da esquerda. */
+.bk-cover-in {
+  inset: 0;
+  transform: rotateY(180deg);
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(170deg, hsl(var(--hue) 30% 78%), hsl(var(--hue) 25% 68%));
+  box-shadow: inset -6px 0 10px -6px rgba(0, 0, 0, 0.35);
+}
+/* Luz e sombra (animadas só na opacidade). */
+.bk-shade,
+.bk-cast {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.bk-shade {
+  background: linear-gradient(
+    90deg,
+    rgba(20, 12, 4, 0.75),
+    rgba(20, 12, 4, 0.35) 55%,
+    rgba(20, 12, 4, 0.55)
+  );
+}
+.bk-strip > .bk-face > .bk-shade {
+  /* Tom liso: a curva das faixas já faz a luz variar; gradiente por faixa
+     criaria listras. */
+  background: rgba(20, 12, 4, 0.55);
+}
+/* Sombra que a folha (ou a capa) joga, mais forte junto da lombada. */
+.bk-base .bk-cast {
+  background: linear-gradient(
+    90deg,
+    rgba(20, 12, 4, 0.6),
+    rgba(20, 12, 4, 0.18) 45%,
+    transparent 85%
+  );
+}
+.bk-cover-in .bk-cast {
+  background: linear-gradient(
+    270deg,
+    rgba(20, 12, 4, 0.55),
+    rgba(20, 12, 4, 0.15) 45%,
+    transparent 85%
+  );
+}
+/* Sombra no chão: mais larga com o livro aberto. */
+.bk-floor {
+  position: absolute;
+  left: calc(var(--w) * 0.45);
+  width: calc(var(--w) * 1.1);
+  bottom: -26px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), transparent);
+  filter: blur(4px);
+  pointer-events: none;
+  transition: transform 0.8s cubic-bezier(0.3, 0.1, 0.2, 1);
+}
+.phase-opening .bk-floor,
+.phase-open .bk-floor {
+  transform: translateX(4%) scaleX(1.85);
+}
+.book-preview figcaption {
+  width: calc(var(--w) * 2);
+  min-height: 2.8em;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
+  font: italic 13px/1.4 var(--font-text);
+  color: var(--p-gold);
+}
+.bk-open-bar {
   display: flex;
   align-items: center;
   gap: 12px;
   font-style: normal;
-  margin-left: 0;
+  text-align: left;
 }
-.minibook-status {
-  display: grid;
-  place-items: center;
-  width: calc(var(--w) * 2);
-  height: var(--h);
+.bk-hint {
+  font: 12px/1.4 var(--font-ui);
   color: var(--p-muted);
 }
-.minibook {
-  --hue: 200;
+/* Carregando: três folhas virando, enquanto o miolo é lido e diagramado. */
+.bk-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 12px/1 var(--font-ui);
+  font-style: normal;
+  color: var(--p-muted);
+  animation: bk-fade-in 0.2s ease;
+}
+.bk-loader {
   position: relative;
-  /* A capa dura aparece em volta das páginas. */
-  padding: 7px;
-  border-radius: 6px;
-  background: linear-gradient(170deg, hsl(var(--hue) 45% 16%), hsl(calc(var(--hue) + 40) 55% 9%));
-  box-shadow:
-    0 30px 50px -28px rgba(0, 0, 0, 0.8),
-    inset 0 0 0 1px hsl(var(--hue) 60% 70% / 0.25);
-  perspective: 1600px;
+  width: 26px;
+  height: 18px;
+  perspective: 80px;
+  border-bottom: 1.5px solid var(--p-gold);
 }
-.minibook:focus-visible {
-  outline: 2px solid var(--p-teal);
-  outline-offset: 6px;
+.bk-loader i {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  border-radius: 0 2px 2px 0;
+  background: var(--p-gold);
+  opacity: 0.8;
+  transform-origin: left center;
+  animation: bk-flip 1.3s cubic-bezier(0.45, 0, 0.3, 1) infinite;
 }
+.bk-loader i:nth-child(2) {
+  animation-delay: 0.18s;
+  opacity: 0.6;
+}
+.bk-loader i:nth-child(3) {
+  animation-delay: 0.36s;
+  opacity: 0.4;
+}
+@keyframes bk-flip {
+  0%,
+  15% {
+    transform: rotateY(0deg);
+  }
+  70%,
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+@keyframes bk-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-floor {
+    transition: none;
+  }
+  .bk-loader i {
+    animation-duration: 2.6s;
+  }
+}
+
+/* Páginas diagramadas (dentro do livro aberto) */
 .mb-measure {
   position: absolute;
   left: -99999px;
@@ -3946,27 +4300,18 @@ p {
 .mb-flow {
   position: relative;
 }
-.mb-spread {
-  display: flex;
-}
 .mb-page {
-  position: relative;
-  width: var(--mb-w);
-  height: var(--mb-h);
-  padding: 0;
-  border: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
   overflow: hidden;
   background: #fbf8f1;
-  cursor: pointer;
-  font: inherit;
   text-align: initial;
 }
 .mb-page.left {
-  cursor: w-resize;
   border-radius: 3px 0 0 3px;
 }
 .mb-page.right {
-  cursor: e-resize;
   border-radius: 0 3px 3px 0;
 }
 /* Sombra da costura, no meio da abertura. */
@@ -3992,10 +4337,24 @@ p {
     rgba(60, 40, 20, 0.24)
   );
 }
-.mb-page:hover::after {
-  box-shadow: inset 0 0 0 999px rgba(120, 90, 40, 0.04);
+/* As páginas de baixo mostram o bloco de folhas na borda de fora. */
+.bk-base > .mb-page {
+  box-shadow:
+    1px 0 0 #e4dcc8,
+    2px 0 0 #f6f1e4,
+    3px 0 0 #d8cdb5,
+    4px 0 0 #efe8d8;
+}
+.bk-cover-in > .mb-page:not(.mb-endpaper) {
+  box-shadow:
+    -1px 0 0 #e4dcc8,
+    -2px 0 0 #f6f1e4,
+    -3px 0 0 #d8cdb5,
+    -4px 0 0 #efe8d8;
 }
 .mb-endpaper {
+  width: 100%;
+  height: 100%;
   background: linear-gradient(170deg, hsl(var(--hue) 30% 78%), hsl(var(--hue) 25% 68%));
 }
 .mb-sheet {
@@ -4025,176 +4384,6 @@ p {
 }
 .mb-folio.right {
   text-align: right !important;
-}
-.mb-spread.turn-next .mb-page.right,
-.mb-spread.turn-prev .mb-page.left {
-  animation: mb-turn 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.mb-spread.turn-next .mb-page.right {
-  transform-origin: left center;
-}
-.mb-spread.turn-prev .mb-page.left {
-  transform-origin: right center;
-  animation-direction: normal;
-}
-@keyframes mb-turn {
-  from {
-    opacity: 0.4;
-    transform: rotateY(var(--mb-from, -28deg));
-  }
-}
-.mb-spread.turn-prev .mb-page.left {
-  --mb-from: 28deg;
-}
-@media (prefers-reduced-motion: reduce) {
-  .mb-spread .mb-page {
-    animation: none !important;
-  }
-}
-
-/* Livro em destaque: capa dura em 3D, fechada */
-.book-preview {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  /* Livro alinhado à esquerda; a legenda fica centrada embaixo dele. */
-  align-items: flex-start;
-  gap: 18px;
-  /* Espaço para a lombada e a sombra, que saem da caixa ao girar. */
-  padding: 12px 24px 0 28px;
-  --w: 220px;
-  --h: 330px;
-  --t: 38px;
-}
-.book3d {
-  position: relative;
-  width: var(--w);
-  height: var(--h);
-  perspective: 1400px;
-}
-.book3d-body {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  /* --ry é o giro horizontal, controlado pelo arrasto (veja useBookRotation). */
-  transform: rotateX(6deg) rotateY(var(--ry, -32deg));
-  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.book3d {
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: pan-y;
-}
-.book3d.dragging {
-  cursor: grabbing;
-}
-.book3d.dragging .book3d-body {
-  transition: none;
-}
-.book3d:focus-visible {
-  outline-offset: 12px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .book3d-body {
-    transition: none;
-  }
-}
-.book3d-face {
-  position: absolute;
-  backface-visibility: hidden;
-}
-.book3d-front {
-  inset: 0;
-  transform: translateZ(calc(var(--t) / 2));
-}
-.book3d-front .cover {
-  width: 100%;
-  height: 100%;
-  border-radius: 2px 6px 6px 2px;
-}
-.book3d-front .cover::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 12px;
-  z-index: 1;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.12),
-    rgba(0, 0, 0, 0.35) 40%,
-    rgba(255, 255, 255, 0.08) 70%,
-    transparent
-  );
-}
-.book3d-back {
-  inset: 0;
-  border-radius: 6px 2px 2px 6px;
-  transform: rotateY(180deg) translateZ(calc(var(--t) / 2));
-  background: linear-gradient(170deg, hsl(var(--hue) 45% 14%), hsl(calc(var(--hue) + 40) 55% 8%));
-}
-.book3d-spine {
-  top: 0;
-  left: calc(var(--t) / -2);
-  width: var(--t);
-  height: 100%;
-  transform: rotateY(-90deg);
-  display: grid;
-  place-items: center;
-  background: linear-gradient(
-    90deg,
-    hsl(var(--hue) 45% 8%),
-    hsl(var(--hue) 45% 16%) 45%,
-    hsl(var(--hue) 45% 9%)
-  );
-}
-.book3d-spine span {
-  writing-mode: vertical-rl;
-  font: 600 11px/1 var(--font-brand);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: hsl(var(--hue) 40% 85%);
-  max-height: 90%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.book3d-pages {
-  top: 4px;
-  left: calc(var(--w) - var(--t) / 2 - 4px);
-  width: var(--t);
-  height: calc(100% - 8px);
-  transform: rotateY(90deg);
-  background: repeating-linear-gradient(90deg, #f3ecdc 0 1px, #d9cfb9 1px 2px), #efe6d2;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.35);
-}
-.book3d-top {
-  top: calc(var(--t) / -2 + 4px);
-  left: 0;
-  width: calc(100% - 4px);
-  height: var(--t);
-  transform: rotateX(90deg);
-  background: repeating-linear-gradient(0deg, #f3ecdc 0 1px, #d9cfb9 1px 2px);
-}
-.book3d-shadow {
-  position: absolute;
-  left: 0;
-  right: -10%;
-  bottom: -26px;
-  height: 30px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), transparent);
-  filter: blur(4px);
-  transform: translateX(6%);
-  pointer-events: none;
-}
-.book-preview figcaption {
-  width: calc(var(--w) + 40px);
-  margin-left: -20px;
-  text-align: center;
-  font: italic 13px/1.4 var(--font-text);
-  color: var(--p-gold);
 }
 
 .bar {
@@ -4348,7 +4537,6 @@ p {
 /* Telas um pouco mais baixas: livro e cabeçalho menores. */
 @media (min-width: 1100px) and (min-height: 620px) and (max-height: 820px) {
   .book-preview {
-    --w: 190px;
     --h: 285px;
     --t: 32px;
   }
@@ -4372,13 +4560,8 @@ p {
 
 @media (max-width: 720px) {
   .book-preview {
-    --w: 180px;
     --h: 270px;
     --t: 30px;
-    align-items: center;
-  }
-  .book-preview figcaption {
-    margin-left: 0;
   }
   .projects-brand h1 {
     font-size: 30px;
@@ -4498,6 +4681,9 @@ p {
 .bg-swatch.bg-imagem {
   background: var(--panel-2) center / cover no-repeat;
 }
+.bg-swatch.bg-tema {
+  background: var(--p-bg) center / cover no-repeat;
+}
 .bg-swatch[aria-checked="true"],
 .bg-swatch[data-checked="true"] {
   box-shadow: 0 0 0 2px var(--fg);
@@ -4568,6 +4754,8 @@ p {
 }
 :root[data-palette="ambar"] .projects,
 :root[data-palette="ambar"] .bg-swatch {
+  --p-solid: #17120b;
+  --p-solid-2: #251c11;
   --p-bg: #0a0806;
   --p-panel: rgba(26, 20, 12, 0.8);
   --p-panel-2: rgba(44, 34, 20, 0.78);
@@ -4604,6 +4792,8 @@ p {
 }
 :root[data-palette="perola"] .projects,
 :root[data-palette="perola"] .bg-swatch {
+  --p-solid: #f3ede7;
+  --p-solid-2: #e7ded7;
   --p-bg: #f6f2ec;
   --p-panel: rgba(255, 253, 250, 0.84);
   --p-panel-2: rgba(240, 234, 228, 0.88);
@@ -4641,6 +4831,8 @@ p {
 }
 :root[data-palette="esmeralda"] .projects,
 :root[data-palette="esmeralda"] .bg-swatch {
+  --p-solid: #071a13;
+  --p-solid-2: #0c261c;
   --p-bg: #03100c;
   --p-panel: rgba(8, 28, 21, 0.8);
   --p-panel-2: rgba(14, 44, 33, 0.78);
@@ -4677,6 +4869,8 @@ p {
 }
 :root[data-palette="natury"] .projects,
 :root[data-palette="natury"] .bg-swatch {
+  --p-solid: #eef2e3;
+  --p-solid-2: #dde5ce;
   --p-bg: #eef0e4;
   --p-panel: rgba(250, 251, 244, 0.86);
   --p-panel-2: rgba(232, 236, 220, 0.9);
@@ -4722,6 +4916,13 @@ p {
 .music-drawer-inner {
   min-height: 0;
   overflow: hidden;
+}
+/* Aberto, o player cresce para cima até deixar espaço para a navegação; o
+   resto rola dentro dele. */
+.music-drawer.open .music-drawer-inner {
+  max-height: max(220px, calc(100vh - var(--appbar-h) - 300px));
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .music-drawer .mplayer {
   padding: 6px 4px 4px;
@@ -5017,19 +5218,68 @@ p {
     animation: none;
   }
 }
+/* Voltar às playlists: seta e nome, no topo da playlist aberta. */
+.mplayer-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel);
+  color: var(--m-fg);
+  font: 600 12px/1 var(--font-ui);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+.mplayer-back:hover {
+  color: var(--m-accent);
+  border-color: var(--m-accent);
+}
+.mplayer-back:hover svg {
+  transform: translateX(-2px);
+}
+.mplayer-back svg {
+  transition: transform 0.15s ease;
+}
+.mplayer-back:active {
+  transform: scale(0.97);
+}
+.mplayer-back:focus-visible {
+  outline: 2px solid var(--m-accent);
+  outline-offset: 2px;
+}
 .mplayer-tracks-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 2px;
 }
-.mplayer-tracks-head b {
+.mplayer-tracks-title {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mplayer-tracks-title b,
+.mplayer-tracks-title small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.mplayer-tracks-title b {
+  font-size: 13px;
+}
+.mplayer-tracks-title small {
+  font-size: 10.5px;
+  color: var(--m-muted);
 }
 .mplayer .link-btn {
   font-size: 11px;
@@ -5181,44 +5431,35 @@ p {
   stroke: color-mix(in srgb, var(--p-teal) 70%, transparent);
   stroke-width: 1;
 }
-.elo-plane {
+/* Anel do planeta: inclinado; ao passar o mouse, inclina um pouco mais. */
+.elo-ring-tilt {
   transform-origin: 20px 20px;
-  transform: rotate(-22deg);
-  animation: elo-plane 48s linear infinite;
+  transform: rotate(-20deg);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes elo-plane {
-  to {
-    transform: rotate(338deg);
-  }
+.elo-globe:hover:not(:disabled) .elo-ring-tilt {
+  transform: rotate(-30deg);
 }
-.elo-orbit {
+.elo-ring {
   fill: none;
-  stroke: color-mix(in srgb, var(--p-teal) 60%, white);
-  stroke-width: 0.7;
-  opacity: 0.85;
+  stroke: color-mix(in srgb, var(--p-gold) 70%, white);
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
-.elo-planet.rose {
-  fill: var(--p-rose);
+.elo-ring.back {
+  opacity: 0.55;
 }
-.elo-planet.gold {
+.elo-band {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1.2;
+}
+.elo-moon {
   fill: var(--p-gold);
 }
-.elo-planet.teal {
-  fill: #9fd8ff;
-}
-.elo-sun {
-  fill: #fff4cf;
-}
-.elo-sun-glow {
-  fill: color-mix(in srgb, #ffc95a 55%, transparent);
-  filter: blur(1.5px);
-}
-.elo-shine {
-  fill: rgba(255, 255, 255, 0.14);
-}
 @media (prefers-reduced-motion: reduce) {
-  .elo-plane {
-    animation: none;
+  .elo-ring-tilt {
+    transition: none;
   }
 }
 /* Janela do Elo */
@@ -5294,7 +5535,8 @@ p {
 }
 /* Imagem de fundo nas paletas claras: o véu escurece levemente em vez de
    embranquecer, e os textos soltos sobre o fundo ganham um halo. */
-:root[data-theme="light"] .bg-imagem {
+:root[data-theme="light"] .bg-imagem,
+:root[data-theme="light"] .bg-tema {
   background:
     linear-gradient(
       color-mix(in srgb, var(--p-bg) var(--home-bg-dim, 45%), rgba(40, 30, 20, 0.08)),
@@ -5303,13 +5545,260 @@ p {
     var(--home-bg-image, none) center / cover no-repeat,
     var(--p-bg);
 }
-:root[data-theme="light"] .bg-imagem .projects-brand,
-:root[data-theme="light"] .bg-imagem .home-recent > .kicker {
+:root[data-theme="light"] :is(.bg-imagem, .bg-tema) .projects-brand,
+:root[data-theme="light"] :is(.bg-imagem, .bg-tema) .shelf-title {
   text-shadow:
     0 0 12px color-mix(in srgb, var(--p-bg) 90%, transparent),
     0 0 2px color-mix(in srgb, var(--p-bg) 90%, transparent);
 }
-:root[data-theme="light"] .home-nav,
-:root[data-theme="light"] .appbar {
-  background: color-mix(in srgb, var(--p-panel) 72%, transparent);
+:root[data-theme="light"] .projects {
+  --frame-bg: color-mix(in srgb, var(--p-panel) 72%, transparent);
+}
+
+/* Celular: o livro aberto (duas páginas) precisa caber na largura. */
+@media (max-width: 480px) {
+  .book-preview {
+    --h: 210px;
+    --t: 24px;
+  }
+  .book-preview .cover.lg .cover-title {
+    font-size: 15px;
+  }
+}
+.mplayer-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Projeto gráfico: arte pronta (capa, lombada e quarta capa enviadas) */
+.design-art {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+.design-art[open] {
+  gap: 12px;
+}
+.design-art summary {
+  cursor: pointer;
+  font: 600 13px/1.3 var(--font-ui);
+  color: var(--fg);
+}
+.design-art > .hint {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* Livro 3D com as capas desenhadas (arte pronta ou o desenho do app). */
+.bk-back,
+.bk-spine.art {
+  background-size: 100% 100%;
+  background-position: center;
+}
+.bk-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 2px 5px 5px 2px;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.bk-cover-out:has(.bk-art)::after {
+  /* dobra da capa junto da lombada */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(0, 0, 0, 0.32) 40%,
+    rgba(255, 255, 255, 0.06) 70%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ---------- Estante da tela inicial ----------
+   Um livro por projeto, de lombada para fora, numa prateleira de madeira. A
+   lombada é a imagem do projeto gráfico (arte pronta ou o desenho do app). */
+.shelf-panel {
+  gap: 14px;
+  padding: 20px 22px 0;
+  overflow: hidden;
+}
+.shelf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.shelf-title {
+  font: 600 20px/1.2 var(--font-brand);
+  color: var(--p-fg);
+}
+.shelf-hint {
+  font-size: 12.5px;
+  color: var(--p-faint);
+}
+.shelf {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  min-height: 250px;
+  padding: 18px 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.shelf-empty {
+  align-self: center;
+  margin: auto;
+  color: var(--p-faint);
+  font: italic 14px/1.4 var(--font-text);
+}
+.shelf-plank {
+  height: 16px;
+  margin: 0 -22px;
+  background: linear-gradient(180deg, #6a4a2e, #4a3220 60%, #2f1f14);
+  box-shadow:
+    0 6px 14px -6px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 225, 180, 0.22);
+}
+.spine {
+  --hue: 30;
+  position: relative;
+  flex: none;
+  width: var(--sw, 44px);
+  height: var(--sh, 214px);
+  padding: 14px 0;
+  border: 0;
+  border-radius: 3px 3px 1px 1px;
+  /* Sem desenho ainda: couro na cor do projeto, com filetes dourados. */
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.35),
+      transparent 18%,
+      rgba(255, 230, 190, 0.12) 50%,
+      transparent 82%,
+      rgba(0, 0, 0, 0.4)
+    ),
+    hsl(var(--hue) 38% 24%);
+  background-size: 100% 100%;
+  color: #ecd29a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transform-origin: bottom center;
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.22s ease;
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 230, 190, 0.08),
+    0 10px 16px -12px rgba(0, 0, 0, 0.7);
+}
+/* Volume da lombada (luz no meio, sombra nas bordas) por cima da imagem. */
+.spine.art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.32),
+    transparent 20%,
+    rgba(255, 240, 210, 0.1) 50%,
+    transparent 80%,
+    rgba(0, 0, 0, 0.36)
+  );
+  pointer-events: none;
+}
+.spine:not(.art):not(.spine-new)::before,
+.spine:not(.art):not(.spine-new)::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: rgba(236, 210, 154, 0.6);
+}
+.spine:not(.art):not(.spine-new)::before {
+  top: 28px;
+}
+.spine:not(.art):not(.spine-new)::after {
+  bottom: 28px;
+}
+.spine b {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 74%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 13.5px/1 var(--font-brand);
+  letter-spacing: 0.03em;
+}
+.spine-pct {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 600 10px/1 var(--font-ui);
+  color: var(--p-faint);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.spine:hover {
+  transform: translateY(-8px);
+}
+.spine:hover .spine-pct,
+.spine[aria-pressed="true"] .spine-pct {
+  opacity: 1;
+}
+.spine[aria-pressed="true"] {
+  transform: translateY(-14px);
+  box-shadow:
+    0 0 0 2px var(--p-teal),
+    0 16px 24px -12px rgba(0, 0, 0, 0.7);
+}
+.spine:focus-visible {
+  outline: 2px solid var(--p-teal);
+  outline-offset: 3px;
+}
+/* Começar um livro: lombada tracejada, encostada de leve. */
+.spine-new {
+  width: 48px;
+  height: 196px;
+  margin-left: 10px;
+  gap: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--p-line-hi);
+  color: var(--p-muted);
+  box-shadow: none;
+  transform: rotate(-4deg);
+  transform-origin: bottom left;
+}
+.spine-new b {
+  font-size: 13px;
+}
+.spine-new:hover {
+  color: var(--p-teal);
+  border-color: var(--p-teal);
+  transform: rotate(-2deg) translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .spine,
+  .spine-pct {
+    transition: none;
+  }
 }

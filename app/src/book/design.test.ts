@@ -43,6 +43,19 @@ describe("segurança do projeto gráfico", () => {
     expect(d.layout.ornament).toBe("✦");
   });
 
+  it("guarda a arte pronta (capa, lombada, quarta capa) só se for um anexo", async () => {
+    const { sanitizeDesign } = await import("./design");
+    const d = sanitizeDesign({
+      cover: { frontArt: "anexos/capa.png", spineArt: "C:\\x.png", backArt: "anexos/verso.jpg" },
+    });
+    expect(d.cover.frontArt).toBe("anexos/capa.png");
+    expect(d.cover.spineArt).toBe("");
+    expect(d.cover.backArt).toBe("anexos/verso.jpg");
+    // Projeto antigo, sem os campos: usa o desenho do app.
+    const old = sanitizeDesign({ cover: { image: "anexos/fundo.png" } });
+    expect([old.cover.frontArt, old.cover.spineArt, old.cover.backArt]).toEqual(["", "", ""]);
+  });
+
   it("o título não fecha a tag <style> do PDF", async () => {
     const { cssString } = await import("../export/html");
     const s = cssString('Livro</style><img src=x onerror=alert(1)>"\\');

@@ -1,5 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { PALETTES, useSettings, type MinimapPos } from "../state/settings";
+import {
+  PALETTES,
+  THEME_BACKGROUNDS,
+  themeBackgroundUrl,
+  useSettings,
+  type MinimapPos,
+} from "../state/settings";
 import { useSync } from "../state/sync";
 import { SERVICE_LABEL, parseMusicLink, useMusic, type MusicService } from "../state/music";
 import { PLAYLISTS } from "../music/library";
@@ -434,7 +440,7 @@ function HomeBackground() {
     <Section title="Tela de projetos">
       <Field
         label="Fundo"
-        hint="O fundo da paleta ou uma imagem sua. A barra lateral e o topo são transparentes e mostram o fundo."
+        hint="Cada paleta tem um fundo próprio, que troca junto com ela. Se você escolher o fundo liso ou uma imagem sua, ele fica em qualquer paleta. A barra lateral e o topo são de vidro e mostram o fundo."
       >
         <div
           className={"bg-picker" + (over ? " over" : "")}
@@ -455,11 +461,21 @@ function HomeBackground() {
           <button
             type="button"
             role="radio"
+            className="bg-swatch bg-tema"
+            aria-checked={s.homeBg === "tema"}
+            aria-label={`Fundo da paleta: ${THEME_BACKGROUNDS[s.palette].label}`}
+            title={`Fundo da paleta: ${THEME_BACKGROUNDS[s.palette].label} (troca junto com a paleta)`}
+            style={{ backgroundImage: cssUrl(themeBackgroundUrl(s.palette)) }}
+            onClick={() => s.set({ homeBg: "tema" })}
+          />
+          <button
+            type="button"
+            role="radio"
             className="bg-swatch bg-paleta"
-            aria-checked={s.homeBg === "paleta"}
-            aria-label="Fundo da paleta"
-            title="Fundo da paleta"
-            onClick={() => s.set({ homeBg: "paleta" })}
+            aria-checked={s.homeBg === "liso"}
+            aria-label="Fundo liso, só a cor da paleta"
+            title="Fundo liso, só a cor da paleta"
+            onClick={() => s.set({ homeBg: "liso" })}
           />
           <label
             className={"bg-swatch bg-imagem" + (loading ? " loading" : "")}
@@ -550,7 +566,7 @@ function HomeBackground() {
               className="link-btn"
               onClick={() => {
                 s.setHomeBgImage(null);
-                s.set({ homeBg: "paleta" });
+                s.set({ homeBg: "tema" });
               }}
             >
               Remover imagem

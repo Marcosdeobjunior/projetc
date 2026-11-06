@@ -28,6 +28,7 @@ export interface Playlist {
 }
 
 const PD = "Composição em domínio público · gravação sintetizada CC0";
+const TRAD = "Melodia tradicional (domínio público) · arranjo e gravação CC0";
 const CC0 = "Original do InkFlow · CC0";
 
 const file = (id: string) => `${import.meta.env.BASE_URL}music/${id}.mp3`;
@@ -55,6 +56,63 @@ export const PLAYLISTS: Playlist[] = [
     ],
   },
   {
+    id: "piano",
+    name: "Piano",
+    description: "Piano solo: clássicos em domínio público e peças calmas para escrever.",
+    icon: "piano",
+    hue: 40,
+    tracks: [
+      track("fur-elise", "Für Elise", "Ludwig van Beethoven · piano", PD),
+      track(
+        "cancao-de-ninar-brahms",
+        "Canção de ninar (Wiegenlied)",
+        "Johannes Brahms · piano e celesta",
+        PD,
+      ),
+      track("ode-a-alegria", "Ode à Alegria", "Ludwig van Beethoven · piano", PD),
+      track("folhas-de-outono", "Folhas de outono", "InkFlow · piano", CC0),
+      track("carta", "Carta", "InkFlow · piano", CC0),
+      track("valsa-lenta", "Valsa lenta", "InkFlow · piano", CC0),
+    ],
+  },
+  {
+    id: "lofi",
+    name: "Lo-fi",
+    description: "Batidas suaves, teclados com swing e chiado de vinil.",
+    icon: "headphones",
+    hue: 330,
+    tracks: [
+      track("cafe-da-tarde", "Café da tarde", "InkFlow · lo-fi", CC0),
+      track("caderno-aberto", "Caderno aberto", "InkFlow · lo-fi com piano", CC0),
+      track("madrugada", "Madrugada", "InkFlow · lo-fi", CC0),
+    ],
+  },
+  {
+    id: "cinematica",
+    name: "Cinematográfica",
+    description: "Cordas, metais e tímpanos: trilha para cenas grandes.",
+    icon: "film",
+    hue: 12,
+    tracks: [
+      track("horizonte", "Horizonte", "InkFlow · orquestra e piano", CC0),
+      track("reinos-distantes", "Reinos distantes", "InkFlow · orquestra épica", CC0),
+      track("primeira-luz", "Primeira luz", "InkFlow · cordas, harpa e celesta", CC0),
+    ],
+  },
+  {
+    id: "ambiente",
+    name: "Ambiente",
+    description: "Texturas atmosféricas que se movem devagar.",
+    icon: "sparkle",
+    hue: 250,
+    tracks: [
+      track("aurora", "Aurora", "InkFlow · pads e celesta", CC0),
+      track("constelacoes", "Constelações", "InkFlow · celesta e pads", CC0),
+      track("mare-lenta", "Maré lenta", "InkFlow · pads e mar distante", CC0),
+      track("profundezas", "Profundezas", "InkFlow · drone grave", CC0),
+    ],
+  },
+  {
     id: "chill",
     name: "Chill & Relax",
     description: "Piano elétrico, pads e melodias calmas.",
@@ -63,6 +121,7 @@ export const PLAYLISTS: Playlist[] = [
     tracks: [
       track("entardecer", "Entardecer", "InkFlow · piano elétrico", CC0),
       track("brisa", "Brisa", "InkFlow · harpa e pads", CC0),
+      track("greensleeves", "Greensleeves", "Tradicional inglesa · harpa e cordas", TRAD),
     ],
   },
   {
@@ -74,6 +133,8 @@ export const PLAYLISTS: Playlist[] = [
     tracks: [
       track("pulso", "Pulso", "InkFlow · marimba minimalista", CC0),
       track("nevoa", "Névoa", "InkFlow · drone ambiente", CC0),
+      track("fluxo", "Fluxo", "InkFlow · piano minimalista", CC0),
+      track("engrenagens", "Engrenagens", "InkFlow · marimba e harpa", CC0),
     ],
   },
   {
