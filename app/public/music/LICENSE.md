@@ -8,12 +8,12 @@ Todos os arquivos desta pasta foram **gerados por síntese** pelo script
   transcritas para este projeto e tocadas por instrumentos sintetizados (cravo,
   cordas). No Cânone, o baixo e as duas primeiras variações são de Pachelbel;
   as demais variações são do InkFlow, sobre o mesmo baixo.
-- **Piano**: *Für Elise* e o tema da *Ode à Alegria* (Ludwig van Beethoven,
-  1770–1827) e a *Canção de ninar* op. 49 nº 4 (Johannes Brahms, 1833–1897)
+- **Piano**: _Für Elise_ e o tema da _Ode à Alegria_ (Ludwig van Beethoven,
+  1770–1827) e a _Canção de ninar_ op. 49 nº 4 (Johannes Brahms, 1833–1897)
   são composições em domínio público, transcritas e arranjadas para este
-  projeto (a *Für Elise* traz só a seção A e o primeiro episódio; o
-  acompanhamento da *Ode* e da *Canção de ninar* é do InkFlow). *Folhas de
-  outono*, *Carta* e *Valsa lenta* são originais do InkFlow.
+  projeto (a _Für Elise_ traz só a seção A e o primeiro episódio; o
+  acompanhamento da _Ode_ e da _Canção de ninar_ é do InkFlow). _Folhas de
+  outono_, _Carta_ e _Valsa lenta_ são originais do InkFlow.
 - **Greensleeves** (em Chill & Relax): melodia tradicional inglesa do século
   XVI, em domínio público; arranjo do InkFlow.
 - **Chill & Relax**, **Foco**, **Lo-fi**, **Cinematográfica** e **Ambiente**:
