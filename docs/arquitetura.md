@@ -303,14 +303,16 @@ sequenceDiagram
   alt alguma gravação falhou
     S-->>W: preventDefault (janela fica aberta) + aviso
   else ok
+    S->>Q: saveVersion("Ao fechar o projeto", auto)
     S->>Q: runBeforeClose() (sync, até 20 s)
     S-->>W: deixa fechar
   end
 ```
 
-`closeVault` / `switchVault` fazem `flushPending` → `saveVersion("Ao fechar o projeto", auto)` →
-`runBeforeClose` → troca. Fechar a janela **não** salva essa versão (veja
-[Limitações](#19-limitações-conhecidas)).
+Sair do projeto pela interface (`closeVault`, `switchVault` e `openExistingFolder`, tanto para
+outro projeto quanto para uma pasta comum) passa por `leaveSession`: `flushPending` →
+`saveVersion("Ao fechar o projeto", auto)` → `runBeforeClose` → troca. Se a gravação falhar, o
+projeto continua aberto. Escolher a pasta do próprio projeto aberto não faz nada.
 
 ---
 
@@ -798,6 +800,7 @@ Windows; `dmg`/`app` no Mac; `deb`/`AppImage`/`rpm` no Linux — `targets: "all"
 | `sync/mergeProject.test.ts` | Junção de `project.json`                                          |
 | `sync/md5.test.ts`          | MD5 contra vetores conhecidos                                     |
 | `state/writes.test.ts`      | Fila serial, flush e beforeClose                                  |
+| `state/store.test.ts`       | Versão de fechamento ao fechar a janela e ao abrir outra pasta    |
 
 Os testes de domínio rodam sobre `KeyValueFs` + `MemoryStore`, sem Tauri.
 
@@ -856,18 +859,12 @@ Chaves no `localStorage` do WebView (por computador, não vão para o projeto ne
   WebKitGTK).
 - **Prévia da Exportação** não aplica `livro.json`, embora o PDF exportado aplique; o seletor
   "Página" é ignorado no PDF estilo Livro quando há projeto gráfico.
-- **Fechar a janela** sincroniza, mas não grava a versão "Ao fechar o projeto" (só
-  `closeVault`/`switchVault` gravam).
 - **Colisão de títulos** entre cena e nota: o link resolve para a cena (ver
   [Links](#7-links-menções-e-grafo)).
 - **Cópias de segurança** (`backup`) na Lixeira não podem ser restauradas pela interface nem têm
   prévia do conteúdo; é preciso abrir `.inkflow/lixeira/` manualmente.
 - **Quarta capa sem sinopse** imprime o texto de exemplo (com 50% de opacidade) no PDF da capa.
 - **Renomear o projeto** não renomeia a pasta no computador nem a pasta no Drive.
-- **Abrir uma pasta que não é projeto** pelo menu do projeto atual fecha a sessão sem gravar a
-  versão de fechamento nem sincronizar antes.
-- **Abrir anexo** que falha no desktop (`vault_open`, por exemplo um tipo fora da lista
-  permitida) não mostra mensagem ao usuário: a promessa é descartada com `void`.
 - **Credenciais Google em modo "Teste"**: o refresh token expira em 7 dias.
 - **Mesclagem Yjs** de textos editados em dois lados pode intercalar trechos; a rede de segurança
   compara as palavras e guarda o lado afetado na Lixeira, mas não mostra a diferença.

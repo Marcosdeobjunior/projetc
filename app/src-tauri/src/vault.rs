@@ -315,12 +315,20 @@ pub async fn vault_open(app: tauri::AppHandle, root: String, path: String) -> Cm
         );
     }
     let target = safe_path(&root, &path)?;
+    let name = path.rsplit('/').next().unwrap_or(&path);
     if !target.is_file() {
-        return Err(format!("arquivo não encontrado: {path}"));
+        return Err(format!(
+            "O arquivo \"{name}\" não foi encontrado na pasta anexos do projeto."
+        ));
     }
     app.opener()
         .open_path(target.to_string_lossy(), None::<&str>)
-        .map_err(err)
+        .map_err(|e| {
+            format!(
+                "Não foi possível abrir \"{name}\". Verifique se há um programa instalado \
+                 para esse tipo de arquivo. ({e})"
+            )
+        })
 }
 
 #[tauri::command]

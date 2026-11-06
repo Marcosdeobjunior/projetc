@@ -121,7 +121,7 @@ projetos e, com uma conta Google conectada, os projetos que estão no Drive.
 
 Na **estante**, cada projeto aparece como um livro de lombada para fora. A lombada, a capa e a
 quarta capa (no livro 3D) vêm do projeto gráfico de cada livro: se você enviou a **capa pronta**
-(Configurações → Diagramação → Capa → *Já tenho a capa pronta*), aparece a arte enviada; senão,
+(Configurações → Diagramação → Capa → _Já tenho a capa pronta_), aparece a arte enviada; senão,
 o desenho padrão do InkFlow. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
 busca abre o **Elo** do projeto ativo.
 
@@ -424,9 +424,8 @@ notas) para você poder voltar atrás. Abra pelo **relógio** na barra de ferram
 As versões automáticas mais recentes (20) ficam todas; das mais antigas, fica **uma por dia**.
 As versões salvas por você **nunca são apagadas sozinhas**.
 
-> Os **anexos não entram** no histórico (eles ficam só na pasta `anexos/`). Fechar a janela do
-> app direto, sem voltar à lista de projetos, não gera a versão "Ao fechar o projeto" — a próxima
-> versão automática acontece ao abrir.
+> Os **anexos não entram** no histórico (eles ficam só na pasta `anexos/`). A versão "Ao fechar o
+> projeto" é gravada sempre que você sai do projeto, inclusive ao fechar a janela do app direto.
 
 ### 8.2 Comparar e restaurar
 
