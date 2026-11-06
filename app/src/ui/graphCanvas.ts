@@ -11,24 +11,16 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import type { Graph, GraphEdge, GraphNode } from "../links/links";
-import { drawStar } from "./starGlyph";
+import { clockFor, cycleAt, drawStar, isLightTheme, type StarClock } from "./starGlyph";
 
 /*
  * Desenho interativo do grafo num <canvas>, usado pelo grafo completo e pelo
  * minimapa: arrastar pontos, mover a visão, zoom com a roda, destacar os
  * vizinhos ao passar o mouse e clicar para abrir. Cada texto é uma estrela
- * (veja starGlyph.ts) de quatro pontas, na cor do tipo de texto.
+ * (veja starGlyph.ts) de quatro pontas cujo brilho muda de cor no próprio ritmo.
  */
 
 type SimNode = GraphNode & SimulationNodeDatum;
-
-/** Cor de cada tipo de texto: variáveis da paleta ativa. */
-const NODE_COLOR: Record<string, string> = {
-  scene: "--node-scene",
-  personagens: "--node-person",
-  lugares: "--node-place",
-  ideias: "--node-idea",
-};
 
 /** Zoom a partir do qual os nomes aparecem, e a faixa em que surgem aos poucos. */
 export const LABEL_K = 1.05;
@@ -123,6 +115,8 @@ export function mountGraph(
 
   const fresh = nodes.some((n) => n.x === undefined);
   const css = (name: string) => getComputedStyle(box).getPropertyValue(name).trim();
+  const clocks = new Map<string, StarClock>(nodes.map((n) => [n.id, clockFor(n.id)]));
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)");
   // Cores da paleta ativa, resolvidas pelo navegador (as variáveis podem usar
   // color-mix(), que o canvas não entende em todo WebView).
   const probe = document.createElement("span");
@@ -211,14 +205,19 @@ export function mountGraph(
 
     const fg = color("--fg");
     const muted = color("--muted");
-    const tint: Record<string, string> = {};
-    const starColor = (type: string) => (tint[type] ??= color(NODE_COLOR[type] ?? "--node-scene"));
+    const light = isLightTheme();
+    const now = performance.now();
+    // A sombra borrada pesa; em grafos grandes o halo sozinho já dá o brilho.
+    const blur = nodes.length <= 80;
     for (const n of nodes) {
-      const R = radius(n) * 1.45;
+      const R = radius(n) * 2;
       ctx.globalAlpha = lit(n.id) ? 1 : 0.2;
-      drawStar(ctx, n.x!, n.y!, R, starColor(n.type), {
-        lead: n.id === activeId || n === hover,
-        ring: fg,
+      // O texto aberto e a estrela sob o mouse brilham mais.
+      const lead = n.id === activeId || n === hover;
+      drawStar(ctx, n.x!, n.y!, R, cycleAt(clocks.get(n.id)!, now, still.matches), {
+        light,
+        boost: lead ? 1.5 : 1,
+        blur,
       });
     }
 
@@ -242,7 +241,7 @@ export function mountGraph(
       const forced = must(n);
       const alpha = forced ? 1 : zoomAlpha;
       if (alpha <= 0.01) continue;
-      const R = radius(n) * 1.45;
+      const R = radius(n) * 2;
       const w = ctx.measureText(n.title).width;
       const rect = {
         x0: n.x! - w / 2 - pad,
@@ -262,6 +261,18 @@ export function mountGraph(
   const schedule = () => {
     if (!frame) frame = requestAnimationFrame(draw);
   };
+
+  // O brilho das estrelas é animado: redesenha ~30 vezes por segundo enquanto
+  // a página está visível, a menos que o sistema peça menos movimento.
+  let twinkle = 0;
+  let last = 0;
+  const animate = (t: number) => {
+    twinkle = requestAnimationFrame(animate);
+    if (still.matches || document.hidden || t - last < 33) return;
+    last = t;
+    schedule();
+  };
+  twinkle = requestAnimationFrame(animate);
 
   sim.on("tick", () => {
     for (const n of nodes) positions.set(n.id, { x: n.x!, y: n.y! });
@@ -466,6 +477,7 @@ export function mountGraph(
       mq.removeEventListener("change", schedule);
       cancelAnimationFrame(frame);
       probe.remove();
+      cancelAnimationFrame(twinkle);
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);
