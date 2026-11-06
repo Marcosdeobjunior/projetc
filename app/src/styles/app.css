@@ -285,8 +285,7 @@ p {
   padding-block: 56px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background:
-    radial-gradient(900px 500px at 50% -10%, var(--accent-soft), transparent 70%), var(--bg);
+  background: var(--bg);
 }
 .home-inner {
   max-width: 640px;
@@ -1614,13 +1613,7 @@ p {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(
-      70% 60% at 50% 40%,
-      color-mix(in srgb, var(--accent) 10%, transparent),
-      transparent
-    ),
-    var(--page);
+  background: var(--page);
 }
 .design-preview-tabs {
   position: absolute;
@@ -2870,25 +2863,8 @@ p {
   width: 13px;
   height: 13px;
   background: radial-gradient(circle, #cfe0ff 0 10%, #4f8dff 30%, #9b7bff 70%);
-  /* Mesma silhueta da estrela do Elo, em 8 raios. */
-  clip-path: polygon(
-    50% 0%,
-    55% 40%,
-    80% 20%,
-    60% 45%,
-    100% 50%,
-    60% 55%,
-    80% 80%,
-    55% 60%,
-    50% 100%,
-    45% 60%,
-    20% 80%,
-    40% 55%,
-    0% 50%,
-    40% 45%,
-    20% 20%,
-    45% 40%
-  );
+  /* Mesma silhueta da estrela do Elo, de quatro pontas. */
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
 }
 .chip[aria-pressed="false"] {
   opacity: 0.45;
@@ -2988,9 +2964,9 @@ p {
 :root[data-theme="light"] .bg-swatch {
   --p-bg: #f6f2ea;
 }
-/* Fundo da paleta: a cor de fundo com os brilhos de cada paleta (--p-glow). */
+/* Fundo liso: só a cor de fundo da paleta. */
 .bg-paleta {
-  background: var(--p-glow, none), var(--p-bg);
+  background: var(--p-bg);
 }
 .bg-imagem,
 .bg-tema {
@@ -3043,7 +3019,8 @@ p {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  /* Mais folga entre os blocos: o fundo aparece entre eles. */
+  gap: 28px;
 }
 .projects .icon-btn {
   color: var(--p-muted);
@@ -3057,10 +3034,16 @@ p {
 .projects .muted {
   color: var(--p-muted);
 }
+/* Aviso discreto: uma faixa curta, não um bloco da largura toda. */
 .projects .notice {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 8px 14px;
+  border-radius: 999px;
   background: var(--p-panel);
   border: 1px solid var(--p-line);
   color: var(--p-muted);
+  font-size: 12.5px;
 }
 .projects .small {
   font-size: 12px;
@@ -3158,6 +3141,7 @@ p {
   display: grid;
   place-items: center;
   flex: none;
+  color: var(--p-teal);
 }
 .appbar-user {
   flex: 0 1 auto;
@@ -3540,10 +3524,10 @@ p {
   height: 17px;
   flex: none;
   border-radius: 5px;
-  background:
-    radial-gradient(90% 70% at 50% 110%, hsl(var(--hue) 70% 55% / 0.9), transparent 70%),
-    hsl(var(--hue) 35% 22%);
-  box-shadow: inset 0 0 0 1px hsl(var(--hue) 50% 70% / 0.35);
+  /* Lombada mínima, na cor da paleta (sem degradê). */
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--p-teal) 55%, var(--p-solid-2));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--p-bg) 45%, transparent);
 }
 .nav-collapsed .nav-label {
   opacity: 0;
@@ -3568,7 +3552,7 @@ p {
 }
 .projects-content {
   min-width: 0;
-  padding: 24px 0 48px;
+  padding: 36px 0 64px;
 }
 
 /* Em telas estreitas a barra vira gaveta, por cima do conteúdo. */
@@ -3803,12 +3787,29 @@ p {
 }
 
 /* Home: destaque, linha meta/atividade, projetos recentes */
+/* O livro fica direto sobre o fundo (a paisagem aparece em volta dele) e o
+   projeto ativo, num cartão próprio ao lado. */
 .home-hero {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 40px;
-  padding: 32px 40px;
+  gap: 48px;
+  padding: 20px 0 12px 8px;
+}
+.home-hero .selected.panel {
+  padding: 26px 28px;
+}
+.home-hero .book-preview figcaption {
+  justify-self: center;
+}
+/* A legenda do livro, solta sobre o fundo, ganha uma faixa da cor do painel. */
+.home-hero .bk-caption,
+.home-hero .bk-loading,
+.home-hero .bk-open-bar {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--p-solid);
+  border: 1px solid var(--p-line);
 }
 .home-hero .selected {
   display: flex;
@@ -3850,11 +3851,8 @@ p {
   justify-content: center;
   overflow: hidden;
   border-radius: 6px;
-  background:
-    radial-gradient(120% 70% at 50% 110%, hsl(var(--hue) 70% 55% / 0.55), transparent 60%),
-    radial-gradient(60% 40% at 80% 15%, hsl(calc(var(--hue) + 60) 80% 70% / 0.35), transparent 70%),
-    linear-gradient(170deg, hsl(var(--hue) 45% 14%), hsl(calc(var(--hue) + 40) 55% 8%));
-  box-shadow: inset 0 0 0 1px hsl(var(--hue) 60% 70% / 0.25);
+  background: var(--p-solid-2, var(--panel-2));
+  box-shadow: inset 0 0 0 1px var(--p-line-hi, var(--line));
 }
 .cover::after {
   content: "";
@@ -3876,8 +3874,7 @@ p {
   font: 600 16px/1.15 var(--font-brand);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: hsl(var(--hue) 40% 92%);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  color: var(--p-gold, var(--accent));
   overflow-wrap: anywhere;
 }
 .cover.sm {
@@ -3965,6 +3962,8 @@ p {
   --w: 220px;
   --h: 330px;
   --t: 38px;
+  /* Espessura do cartão da capa e da quarta capa. */
+  --b: clamp(2px, calc(var(--t) * 0.1), 4px);
 }
 .bk-hit {
   position: relative;
@@ -4015,7 +4014,7 @@ p {
   inset: 0;
   border-radius: 6px 2px 2px 6px;
   transform: rotateY(180deg) translateZ(calc(var(--t) / 2));
-  background: linear-gradient(170deg, hsl(var(--hue) 45% 14%), hsl(calc(var(--hue) + 40) 55% 8%));
+  background: var(--p-solid-2);
 }
 .bk-spine {
   top: 0;
@@ -4025,29 +4024,26 @@ p {
   transform: rotateY(-90deg);
   display: grid;
   place-items: center;
-  background: linear-gradient(
-    90deg,
-    hsl(var(--hue) 45% 8%),
-    hsl(var(--hue) 45% 16%) 45%,
-    hsl(var(--hue) 45% 9%)
-  );
+  background: color-mix(in srgb, var(--p-solid-2) 80%, var(--p-bg));
 }
 .bk-spine span {
   writing-mode: vertical-rl;
   font: 600 11px/1 var(--font-brand);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: hsl(var(--hue) 40% 85%);
+  color: var(--p-gold);
   max-height: 90%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 /* Cortes do miolo: à direita, em cima e embaixo. */
+/* O miolo fica entre os dois cartões (capa e quarta capa) e um pouco recuado
+   das bordas, como num livro de capa dura. */
 .bk-edge {
   top: 4px;
-  left: calc(var(--w) - var(--t) / 2 - 4px);
-  width: var(--t);
+  left: calc(var(--w) - var(--t) / 2 + var(--b) - 4px);
+  width: calc(var(--t) - 2 * var(--b));
   height: calc(100% - 8px);
   transform: rotateY(90deg);
   background: repeating-linear-gradient(90deg, #f3ecdc 0 1px, #d9cfb9 1px 2px), #efe6d2;
@@ -4057,21 +4053,72 @@ p {
 .bk-bottom {
   left: 0;
   width: calc(100% - 4px);
-  height: var(--t);
+  height: calc(var(--t) - 2 * var(--b));
   background: repeating-linear-gradient(0deg, #f3ecdc 0 1px, #d9cfb9 1px 2px);
 }
 .bk-top {
-  top: calc(var(--t) / -2 + 4px);
+  top: calc(var(--t) / -2 + var(--b) + 4px);
   transform: rotateX(90deg);
 }
 .bk-bottom {
-  top: calc(var(--h) - var(--t) / 2 - 4px);
+  top: calc(var(--h) - var(--t) / 2 + var(--b) - 4px);
   transform: rotateX(-90deg);
+}
+/* Cartões da capa e da quarta capa: quinas com a cor da capa, escurecida. */
+.bk-board {
+  background: var(--edge-color);
+}
+.bk-board.back {
+  --edge-color: var(--edge-back, color-mix(in srgb, var(--p-solid-2) 60%, #000));
+}
+.bk-board.front {
+  --edge-color: var(--edge-front, color-mix(in srgb, var(--p-solid-2) 60%, #000));
+}
+.bk-board.back.inside {
+  inset: 0;
+  transform: translateZ(calc(var(--t) / -2 + var(--b)));
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--edge-color) 70%, #e9dfc8);
+}
+.bk-board.side {
+  top: 0;
+  left: calc(var(--w) - var(--b) / 2);
+  width: var(--b);
+  height: 100%;
+}
+.bk-board.top,
+.bk-board.bottom {
+  left: 0;
+  width: var(--w);
+  height: var(--b);
+}
+.bk-board.back.side {
+  transform: translateZ(calc(var(--t) / -2 + var(--b) / 2)) rotateY(90deg);
+}
+.bk-board.back.top {
+  top: calc(var(--b) / -2);
+  transform: translateZ(calc(var(--t) / -2 + var(--b) / 2)) rotateX(90deg);
+}
+.bk-board.back.bottom {
+  top: calc(var(--h) - var(--b) / 2);
+  transform: translateZ(calc(var(--t) / -2 + var(--b) / 2)) rotateX(-90deg);
+}
+/* Na capa (dentro da dobradiça), o cartão vai do plano da capa para dentro. */
+.bk-board.front.side {
+  transform: translateZ(calc(var(--b) / -2)) rotateY(90deg);
+}
+.bk-board.front.top {
+  top: calc(var(--b) / -2);
+  transform: translateZ(calc(var(--b) / -2)) rotateX(90deg);
+}
+.bk-board.front.bottom {
+  top: calc(var(--h) - var(--b) / 2);
+  transform: translateZ(calc(var(--b) / -2)) rotateX(-90deg);
 }
 /* A página da direita, logo abaixo da capa. */
 .bk-base {
   inset: 0;
-  transform: translateZ(calc(var(--t) / 2 - 1px));
+  transform: translateZ(calc(var(--t) / 2 - var(--b) - 0.5px));
   border-radius: 0 3px 3px 0;
 }
 .phase-closed .bk-base,
@@ -4083,7 +4130,8 @@ p {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: translateZ(calc(var(--t) / 2 + 1px));
+  /* Acima da capa aberta, que fica à esquerda com a espessura do cartão. */
+  transform: translateZ(calc(var(--t) / 2 + var(--b) + 1px));
   visibility: hidden;
   pointer-events: none;
 }
@@ -4145,9 +4193,10 @@ p {
 /* Verso da capa: a guarda (papel colorido) ou a página da esquerda. */
 .bk-cover-in {
   inset: 0;
-  transform: rotateY(180deg);
+  transform: translateZ(calc(var(--b) * -1)) rotateY(180deg);
   border-radius: 3px 0 0 3px;
-  background: linear-gradient(170deg, hsl(var(--hue) 30% 78%), hsl(var(--hue) 25% 68%));
+  /* Guarda: papel tingido com a cor da paleta. */
+  background: color-mix(in srgb, var(--p-teal) 28%, #ece4d2);
   box-shadow: inset -6px 0 10px -6px rgba(0, 0, 0, 0.35);
 }
 /* Luz e sombra (animadas só na opacidade). */
@@ -4355,7 +4404,7 @@ p {
 .mb-endpaper {
   width: 100%;
   height: 100%;
-  background: linear-gradient(170deg, hsl(var(--hue) 30% 78%), hsl(var(--hue) 25% 68%));
+  background: color-mix(in srgb, var(--p-teal) 28%, #ece4d2);
 }
 .mb-sheet {
   position: absolute;
@@ -4397,18 +4446,12 @@ p {
 .bar > span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--p-teal), var(--p-rose));
+  background: var(--p-teal);
 }
 
 /* Coluna lateral */
 .inspiration {
-  background:
-    radial-gradient(
-      120% 120% at 100% 100%,
-      color-mix(in srgb, var(--p-teal) 14%, transparent),
-      transparent 60%
-    ),
-    var(--p-panel);
+  background: var(--p-panel);
   border-color: var(--p-line-hi);
 }
 .inspiration blockquote {
@@ -4735,6 +4778,11 @@ p {
    (.projects e as amostras de fundo). O resto (perigo, sucesso, marca-texto,
    cores das notas) vem do tema claro ou escuro que a paleta escolhe. */
 :root[data-palette="ambar"] {
+  --accent-2: #c97a3a;
+  /* Tipos de texto no Elo: tons da própria paleta, com claridades diferentes. */
+  --node-person: var(--accent-2);
+  --node-place: color-mix(in srgb, var(--accent) 45%, var(--fg));
+  --node-idea: color-mix(in srgb, var(--accent-2) 50%, var(--fg));
   --bg: #0b0906;
   --panel: #13100b;
   --panel-2: #1d1810;
@@ -4767,12 +4815,14 @@ p {
   --p-fg: #f5eddc;
   --p-muted: #bcab8b;
   --p-faint: #80725b;
-  --p-glow:
-    radial-gradient(1000px 650px at 85% -10%, rgba(214, 150, 50, 0.3), transparent 70%),
-    radial-gradient(900px 650px at 0% 110%, rgba(150, 90, 20, 0.28), transparent 70%);
 }
 
 :root[data-palette="perola"] {
+  --accent-2: #a2506f;
+  /* Tipos de texto no Elo: tons da própria paleta, com claridades diferentes. */
+  --node-person: var(--accent-2);
+  --node-place: color-mix(in srgb, var(--accent) 45%, var(--fg));
+  --node-idea: color-mix(in srgb, var(--accent-2) 50%, var(--fg));
   --bg: #f6f2ec;
   --panel: #efe9e2;
   --panel-2: #e6dfd8;
@@ -4805,13 +4855,14 @@ p {
   --p-fg: #2a2530;
   --p-muted: #6b6472;
   --p-faint: #9d96a3;
-  --p-glow:
-    radial-gradient(1000px 650px at 90% -10%, rgba(214, 190, 230, 0.55), transparent 70%),
-    radial-gradient(900px 650px at 0% 110%, rgba(190, 222, 230, 0.5), transparent 70%),
-    radial-gradient(700px 500px at 45% 45%, rgba(245, 215, 220, 0.4), transparent 70%);
 }
 
 :root[data-palette="esmeralda"] {
+  --accent-2: #d9c57c;
+  /* Tipos de texto no Elo: tons da própria paleta, com claridades diferentes. */
+  --node-person: var(--accent-2);
+  --node-place: color-mix(in srgb, var(--accent) 45%, var(--fg));
+  --node-idea: color-mix(in srgb, var(--accent-2) 50%, var(--fg));
   --bg: #04100c;
   --panel: #071712;
   --panel-2: #0d221a;
@@ -4844,12 +4895,14 @@ p {
   --p-fg: #e8f5ef;
   --p-muted: #9cbfb1;
   --p-faint: #5f8577;
-  --p-glow:
-    radial-gradient(1000px 650px at 85% -10%, rgba(20, 170, 110, 0.34), transparent 70%),
-    radial-gradient(900px 650px at 0% 110%, rgba(10, 110, 100, 0.32), transparent 70%);
 }
 
 :root[data-palette="natury"] {
+  --accent-2: #b0573a;
+  /* Tipos de texto no Elo: tons da própria paleta, com claridades diferentes. */
+  --node-person: var(--accent-2);
+  --node-place: color-mix(in srgb, var(--accent) 45%, var(--fg));
+  --node-idea: color-mix(in srgb, var(--accent-2) 50%, var(--fg));
   --bg: #eef0e4;
   --panel: #e5e9d8;
   --panel-2: #dbe1cb;
@@ -4882,9 +4935,6 @@ p {
   --p-fg: #1f2a1c;
   --p-muted: #5b6853;
   --p-faint: #8a9682;
-  --p-glow:
-    radial-gradient(1000px 650px at 90% -10%, rgba(150, 190, 110, 0.4), transparent 70%),
-    radial-gradient(900px 650px at 0% 110%, rgba(196, 160, 100, 0.3), transparent 70%);
 }
 
 /* ---------- Música ---------- */
@@ -4991,11 +5041,9 @@ p {
   place-items: center;
   flex: none;
   border-radius: 8px;
-  color: hsl(var(--hue) 70% 92%);
-  background:
-    radial-gradient(circle at 30% 25%, hsl(calc(var(--hue) + 30) 70% 62% / 0.8), transparent 60%),
-    linear-gradient(150deg, hsl(var(--hue) 55% 38%), hsl(calc(var(--hue) + 25) 60% 18%));
-  box-shadow: inset 0 0 0 1px hsl(var(--hue) 60% 80% / 0.2);
+  color: var(--m-accent);
+  background: var(--m-panel);
+  box-shadow: inset 0 0 0 1px var(--m-line);
 }
 .mplayer-now-text {
   display: flex;
@@ -5304,7 +5352,8 @@ p {
 }
 .music-dock {
   position: fixed;
-  z-index: 40;
+  /* Acima das janelas (o Rádio mostra o player do serviço dentro dele). */
+  z-index: 55;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -5393,9 +5442,6 @@ p {
 
 /* ---------- Ícone do Elo (tela de projetos) ---------- */
 .elo-globe {
-  --elo-glass-hi: color-mix(in srgb, var(--p-teal) 45%, white);
-  --elo-glass: color-mix(in srgb, var(--p-teal) 30%, #0b1220);
-  --elo-glass-lo: #050813;
   display: grid;
   place-items: center;
   width: 40px;
@@ -5406,14 +5452,10 @@ p {
   background: none;
   cursor: pointer;
   flex: none;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--p-teal) 45%, transparent));
-  transition:
-    transform 0.2s ease,
-    filter 0.2s ease;
+  transition: transform 0.2s ease;
 }
 .elo-globe:hover:not(:disabled) {
-  transform: scale(1.08);
-  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--p-teal) 70%, transparent));
+  transform: scale(1.06);
 }
 .elo-globe:disabled {
   opacity: 0.5;
@@ -5427,22 +5469,20 @@ p {
   display: block;
   overflow: visible;
 }
-.elo-globe-rim {
-  stroke: color-mix(in srgb, var(--p-teal) 70%, transparent);
+/* Planeta em cor sólida da paleta, com contorno no destaque. */
+.elo-planet-body {
+  fill: color-mix(in srgb, var(--p-teal) 32%, var(--p-solid));
+  stroke: var(--p-teal);
   stroke-width: 1;
 }
-/* Anel do planeta: inclinado; ao passar o mouse, inclina um pouco mais. */
 .elo-ring-tilt {
   transform-origin: 20px 20px;
   transform: rotate(-20deg);
   transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.elo-globe:hover:not(:disabled) .elo-ring-tilt {
-  transform: rotate(-30deg);
-}
 .elo-ring {
   fill: none;
-  stroke: color-mix(in srgb, var(--p-gold) 70%, white);
+  stroke: var(--p-gold);
   stroke-width: 1.6;
   stroke-linecap: round;
 }
@@ -5451,7 +5491,7 @@ p {
 }
 .elo-band {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.16);
+  stroke: color-mix(in srgb, var(--p-gold) 35%, transparent);
   stroke-width: 1.2;
 }
 .elo-moon {
@@ -5663,13 +5703,16 @@ p {
   color: var(--p-faint);
   font: italic 14px/1.4 var(--font-text);
 }
+/* A prateleira: tábua na cor da paleta (o destaque escurecido), com a quina
+   de cima iluminada e uma faixa de frente mais escura. */
 .shelf-plank {
   height: 16px;
   margin: 0 -22px;
-  background: linear-gradient(180deg, #6a4a2e, #4a3220 60%, #2f1f14);
+  background: color-mix(in srgb, var(--p-teal) 38%, var(--p-solid-2));
   box-shadow:
-    0 6px 14px -6px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 225, 180, 0.22);
+    inset 0 1px 0 color-mix(in srgb, var(--p-gold) 45%, transparent),
+    inset 0 -5px 0 color-mix(in srgb, var(--p-bg) 30%, transparent),
+    0 6px 14px -6px rgba(0, 0, 0, 0.5);
 }
 .spine {
   --hue: 30;
@@ -5681,18 +5724,10 @@ p {
   border: 0;
   border-radius: 3px 3px 1px 1px;
   /* Sem desenho ainda: couro na cor do projeto, com filetes dourados. */
-  background:
-    linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.35),
-      transparent 18%,
-      rgba(255, 230, 190, 0.12) 50%,
-      transparent 82%,
-      rgba(0, 0, 0, 0.4)
-    ),
-    hsl(var(--hue) 38% 24%);
+  /* Sem desenho ainda: cor sólida da paleta; o volume vem só das bordas. */
+  background: var(--p-solid-2);
   background-size: 100% 100%;
-  color: #ecd29a;
+  color: var(--p-gold);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -5703,7 +5738,8 @@ p {
     transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.22s ease;
   box-shadow:
-    inset 0 -1px 0 rgba(255, 230, 190, 0.08),
+    inset 2px 0 0 color-mix(in srgb, var(--p-bg) 35%, transparent),
+    inset -2px 0 0 color-mix(in srgb, var(--p-bg) 35%, transparent),
     0 10px 16px -12px rgba(0, 0, 0, 0.7);
 }
 /* Volume da lombada (luz no meio, sombra nas bordas) por cima da imagem. */
@@ -5729,7 +5765,7 @@ p {
   left: 6px;
   right: 6px;
   height: 2px;
-  background: rgba(236, 210, 154, 0.6);
+  background: color-mix(in srgb, var(--p-gold) 60%, transparent);
 }
 .spine:not(.art):not(.spine-new)::before {
   top: 28px;
@@ -5801,4 +5837,204 @@ p {
   .spine-pct {
     transition: none;
   }
+}
+
+/* ---------- Rádio ----------
+   Ícone ao lado do Elo, janela com as playlists e o player completo. */
+.projects-orbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.radio-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--p-line-hi);
+  background: var(--p-solid);
+  color: var(--p-gold);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+.radio-btn:hover {
+  transform: scale(1.06);
+  border-color: var(--p-teal);
+  color: var(--p-teal);
+}
+.radio-btn:focus-visible {
+  outline: 2px solid var(--p-teal);
+  outline-offset: 3px;
+}
+.radio-live {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--p-teal);
+  box-shadow: 0 0 0 2px var(--p-solid);
+}
+.radio-backdrop {
+  place-items: center;
+  padding: 24px 16px;
+  z-index: 50;
+}
+.radio {
+  --m-fg: var(--p-fg, var(--fg));
+  --m-muted: var(--p-muted, var(--muted));
+  --m-faint: var(--p-faint, var(--faint));
+  --m-line: var(--p-line, var(--line));
+  --m-accent: var(--p-teal, var(--accent));
+  --m-panel: var(--p-solid-2, var(--panel-2));
+  --m-on: var(--p-bg, var(--on-accent));
+  width: min(980px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--m-line);
+  background: var(--p-solid, var(--panel));
+  color: var(--m-fg);
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow);
+  animation: modal-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.radio-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.radio-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--m-line);
+  color: var(--p-gold, var(--accent));
+}
+.radio-title {
+  flex: 1;
+  min-width: 0;
+}
+.radio-title h2 {
+  margin: 0;
+  font: 600 22px/1.15 var(--font-brand);
+}
+.radio-title p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--m-muted);
+}
+.radio-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+.radio-now {
+  flex: 1 1 300px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--m-panel);
+  border: 1px solid var(--m-line);
+}
+.radio-lists {
+  flex: 999 1 420px;
+  min-width: 0;
+}
+.radio-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+.radio-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--m-line);
+  background: transparent;
+  color: var(--m-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.radio-card:hover {
+  border-color: var(--m-accent);
+  background: var(--m-panel);
+}
+.radio-card.on {
+  border-color: var(--m-accent);
+}
+.radio-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--m-faint);
+}
+.mplayer-lib.large .mplayer-now-text b {
+  font: 600 18px/1.25 var(--font-brand);
+  white-space: normal;
+}
+.mplayer-kicker {
+  font: 700 10px/1.2 var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--m-accent);
+}
+.mplayer-lib.large {
+  gap: 14px;
+}
+.mplayer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mplayer-radio-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--m-line);
+  background: var(--m-panel);
+  color: var(--m-fg);
+  font: 600 12px/1 var(--font-ui);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.mplayer-radio-link:hover {
+  border-color: var(--m-accent);
+  color: var(--m-accent);
+}
+
+/* Título da tela sobre a imagem de fundo: um halo discreto mantém a leitura. */
+:root[data-theme="dark"] :is(.bg-imagem, .bg-tema) .projects-brand {
+  text-shadow:
+    0 1px 12px color-mix(in srgb, var(--p-bg) 85%, transparent),
+    0 0 2px color-mix(in srgb, var(--p-bg) 90%, transparent);
 }

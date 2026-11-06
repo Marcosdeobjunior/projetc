@@ -3,7 +3,7 @@ import { useApp } from "./state/store";
 import { Home } from "./ui/Home";
 import { Workspace } from "./ui/Workspace";
 import { Icon } from "./ui/Icon";
-import { MusicDock } from "./ui/Music";
+import { MusicDock, RadioDialog } from "./ui/Music";
 
 const INFO_MS = 5000;
 
@@ -42,6 +42,7 @@ export function App() {
       )}
       {!platform ? null : session ? <Workspace key={session.root} session={session} /> : <Home />}
       {/* Fora das telas: a música continua ao trocar entre projetos e a biblioteca. */}
+      <RadioDialog />
       <MusicDock />
     </>
   );

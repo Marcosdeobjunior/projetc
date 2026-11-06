@@ -519,7 +519,13 @@ export function BookScene(props: {
     "--hue": hue,
     "--w": `${width}px`,
     // Espessura de verdade: a lombada em mm na mesma escala da altura.
-    ...(faces ? { "--t": `${Math.max(10, (faces.spineMm * height) / faces.heightMm)}px` } : {}),
+    ...(faces
+      ? {
+          "--t": `${Math.max(10, (faces.spineMm * height) / faces.heightMm)}px`,
+          "--edge-front": faces.frontEdge,
+          "--edge-back": faces.backEdge,
+        }
+      : {}),
   } as CSSProperties;
   const label = open
     ? `${props.title}, páginas ${Math.max(1, leftIdx + 1)} e ${Math.min(pages, rightIdx + 1)} de ${pages}. Setas para folhear, Esc para fechar.`
@@ -554,6 +560,12 @@ export function BookScene(props: {
               className="bk-face bk-back"
               style={faces ? { backgroundImage: `url("${faces.back}")` } : undefined}
             />
+            {/* Quarta capa é um cartão com espessura: o lado de dentro (visto nas
+                bordas que sobram em volta do miolo) e as quinas de fora. */}
+            <div className="bk-face bk-board back inside" />
+            <div className="bk-face bk-board back side" />
+            <div className="bk-face bk-board back top" />
+            <div className="bk-face bk-board back bottom" />
             <div className="bk-face bk-edge" />
             <div className="bk-face bk-top" />
             <div className="bk-face bk-bottom" />
@@ -604,6 +616,10 @@ export function BookScene(props: {
                 )}
                 <i className="bk-shade" />
               </div>
+              {/* A capa também tem espessura: as quinas giram junto com ela. */}
+              <div className="bk-face bk-board front side" />
+              <div className="bk-face bk-board front top" />
+              <div className="bk-face bk-board front bottom" />
               <div className="bk-face bk-cover-in">
                 {showPages && (
                   <PageView
@@ -638,7 +654,7 @@ export function BookScene(props: {
           error ? (
             <span className="warn">Não foi possível abrir o livro.</span>
           ) : (
-            props.caption
+            <span className="bk-caption">{props.caption}</span>
           )
         ) : (
           <span className="bk-open-bar">

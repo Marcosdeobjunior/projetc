@@ -1,6 +1,5 @@
 /*
- * A estrela do Elo: 16 raios (4 longos nos pontos cardeais, 4 diagonais
- * médios e 8 curtos), corpo em degradê azul → roxo e um halo de luz que passa
+ * A estrela do Elo: quatro pontas finas, corpo em degradê azul → roxo e um halo de luz que passa
  * devagar por azul, branco e roxo. Todas as estrelas têm o mesmo desenho; cada
  * uma tem o próprio ritmo, tirado do id do texto.
  */
@@ -44,19 +43,14 @@ export function cycleAt(clock: StarClock, now: number, still: boolean): number {
 }
 
 export function starPath(ctx: CanvasRenderingContext2D, x: number, y: number, R: number) {
-  const n = 16;
-  const inner = Math.max(R * 0.13, Math.min(2, R * 0.2));
+  // Quatro pontas, com as laterais curvando para dentro (cintura em ~22% do raio).
+  const w = R * 0.22;
   ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-    const len = i % 4 === 0 ? R : i % 2 === 0 ? R * 0.58 : R * 0.34;
-    const b = a + Math.PI / n;
-    const px = x + Math.cos(a) * len;
-    const py = y + Math.sin(a) * len;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-    ctx.lineTo(x + Math.cos(b) * inner, y + Math.sin(b) * inner);
-  }
+  ctx.moveTo(x, y - R);
+  ctx.quadraticCurveTo(x + w, y - w, x + R, y);
+  ctx.quadraticCurveTo(x + w, y + w, x, y + R);
+  ctx.quadraticCurveTo(x - w, y + w, x - R, y);
+  ctx.quadraticCurveTo(x - w, y - w, x, y - R);
   ctx.closePath();
 }
 

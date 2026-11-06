@@ -27,6 +27,20 @@ export interface ShelfCovers {
   spineMm: number;
   /** Lombada real, pela contagem de páginas e pelo papel. */
   realSpineMm: number;
+  /** Cor das quinas da capa e da quarta capa (a cor média de cada uma, escurecida). */
+  frontEdge: string;
+  backEdge: string;
+}
+
+/** A cor média de um desenho, um pouco mais escura: a quina do cartão. */
+function edgeColor(canvas: HTMLCanvasElement): string {
+  const c = document.createElement("canvas");
+  c.width = c.height = 1;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(canvas, 0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  const k = 0.72;
+  return `rgb(${Math.round(r! * k)}, ${Math.round(g! * k)}, ${Math.round(b! * k)})`;
 }
 
 /** Lombada mínima na tela (mm): um livro de 20 páginas ainda mostra o título. */
@@ -104,6 +118,8 @@ export async function getCovers(
       heightMm: trim.h,
       spineMm,
       realSpineMm,
+      frontEdge: edgeColor(front),
+      backEdge: edgeColor(back),
     };
     revoke(ready.get(root));
     ready.set(root, out);

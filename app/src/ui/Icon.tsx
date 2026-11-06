@@ -84,6 +84,9 @@ const PATHS: Record<string, string> = {
   film: "M4 4h16v16H4zM8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4",
   sparkle:
     "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z",
+  /* Rádio antigo: caixa de cantos suaves, antena, alto-falante e dial. */
+  radio:
+    "M4.5 9h15a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-8A1.5 1.5 0 0 1 4.5 9zM7 9l9-5M6.5 14.5a3 3 0 1 0 6 0 3 3 0 1 0-6 0M15.5 13h2.5M15.5 16h2.5",
   home: "M4 10.5 12 4l8 6.5V20h-5.5v-5.5h-5V20H4z",
   star: "M12 2v20M2 12h20M6.5 6.5l11 11M17.5 6.5l-11 11",
   refresh: "M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4",
@@ -109,21 +112,15 @@ export function Icon({ name, size = 18 }: { name: keyof typeof PATHS | string; s
   );
 }
 
+/** A pena do InkFlow, numa cor só: a cor do texto em volta (o destaque da paleta). */
 export function Quill({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <linearGradient id="quillGrad" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#5b8cff" />
-          <stop offset=".55" stopColor="#8b6dff" />
-          <stop offset="1" stopColor="#c79bff" />
-        </linearGradient>
-      </defs>
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="quill">
       <path
-        fill="url(#quillGrad)"
+        fill="currentColor"
         d="M29 2.5c-8.6.6-15.7 5.4-19.3 12.8-1.4 2.9-2.1 5.9-2.3 8.6l2.1-1.9c.9-3.7 2.8-7.4 6.2-10.4-2.6 3.3-4.3 6.5-5.1 9.8 7.4-.9 13.6-5.6 16.6-12.4 1.1-2.4 1.7-4.4 1.8-6.5z"
       />
-      <path d="M8.5 25.5 4 30" stroke="#8b6dff" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M8.5 25.5 4 30" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }

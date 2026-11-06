@@ -9,6 +9,7 @@ import { NewProjectDialog } from "./NewProjectDialog";
 import { BookScene, paginate } from "./BookScene";
 import { Shelf, useCovers } from "./Shelf";
 import { EloGlobe } from "./EloGlobe";
+import { RadioButton } from "./Music";
 import { getMiniBook, peekMiniBook, prepareMiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
@@ -143,7 +144,10 @@ export function Home() {
                 </div>
               </div>
               <div className="projects-actions">
-                <EloGlobe vault={current} />
+                <div className="projects-orbs">
+                  <EloGlobe vault={current} />
+                  <RadioButton />
+                </div>
                 <label className="projects-search">
                   <Icon name="search" size={15} />
                   <span className="sr-only">Buscar projeto</span>
@@ -195,7 +199,7 @@ export function Home() {
             )}
 
             {current ? (
-              <section className="panel home-hero" aria-label="Continuar escrevendo">
+              <section className="home-hero" aria-label="Continuar escrevendo">
                 <BookPreview key={current.root} vault={current} stats={stats[current.root]} />
                 <SelectedCard
                   vault={current}
@@ -347,7 +351,7 @@ function SelectedCard(props: {
   const words = stats?.words ?? 0;
   const pct = goal ? Math.min(100, Math.round((words / goal) * 100)) : 0;
   return (
-    <div className="selected" aria-labelledby="selected-title">
+    <div className="panel selected" aria-labelledby="selected-title">
       <p className="kicker">Continuar escrevendo</p>
       <h2 id="selected-title" className="selected-title">
         {vault.title}
