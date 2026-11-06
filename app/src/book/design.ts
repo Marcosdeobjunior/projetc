@@ -45,6 +45,14 @@ export interface CoverDesign {
   image: string;
   /** Imagem de fundo da quarta capa; vazio = cor. */
   backImage: string;
+  /**
+   * Arte pronta (enviada pelo cliente ou pelo capista): capa, quarta capa e
+   * lombada já com título e textos. Quando existe, a parte é a imagem inteira,
+   * sem nada desenhado por cima. Vazio = o desenho do InkFlow.
+   */
+  frontArt: string;
+  backArt: string;
+  spineArt: string;
   background: string;
   /** Segunda cor: faz um degradê de cima para baixo. Vazio = cor única. */
   background2: string;
@@ -102,6 +110,9 @@ export const DEFAULT_DESIGN: BookDesign = {
   cover: {
     image: "",
     backImage: "",
+    frontArt: "",
+    backArt: "",
+    spineArt: "",
     background: "#1d2a44",
     background2: "#0b1020",
     textColor: "#f5efe3",
@@ -175,6 +186,9 @@ export function sanitizeDesign(raw: unknown): BookDesign {
     cover: pick(DEFAULT_DESIGN.cover, obj(d.cover), {
       image,
       backImage: image,
+      frontArt: image,
+      backArt: image,
+      spineArt: image,
       background: color,
       background2: color,
       textColor: color,

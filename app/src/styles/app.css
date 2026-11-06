@@ -3827,56 +3827,6 @@ p {
   gap: 20px;
   align-items: stretch;
 }
-.home-recent {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.recent-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-.recent-grid > li {
-  display: flex;
-}
-.recent-card {
-  flex: 1;
-  flex-direction: row;
-  align-items: center;
-  gap: 14px;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.recent-card .cover.sm {
-  width: 52px;
-  flex: none;
-}
-.recent-card .cover-title {
-  display: none;
-}
-.recent-card > span {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.recent-card small {
-  color: var(--p-faint);
-}
-.recent-card:hover {
-  border-color: var(--p-line-hi);
-}
-.recent-new {
-  justify-content: center;
-  border-style: dashed;
-  min-height: 100px;
-}
 @media (max-width: 900px) {
   .home-hero {
     grid-template-columns: minmax(0, 1fr);
@@ -5596,7 +5546,7 @@ p {
     var(--p-bg);
 }
 :root[data-theme="light"] :is(.bg-imagem, .bg-tema) .projects-brand,
-:root[data-theme="light"] :is(.bg-imagem, .bg-tema) .home-recent > .kicker {
+:root[data-theme="light"] :is(.bg-imagem, .bg-tema) .shelf-title {
   text-shadow:
     0 0 12px color-mix(in srgb, var(--p-bg) 90%, transparent),
     0 0 2px color-mix(in srgb, var(--p-bg) 90%, transparent);
@@ -5619,4 +5569,236 @@ p {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Projeto gráfico: arte pronta (capa, lombada e quarta capa enviadas) */
+.design-art {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+.design-art[open] {
+  gap: 12px;
+}
+.design-art summary {
+  cursor: pointer;
+  font: 600 13px/1.3 var(--font-ui);
+  color: var(--fg);
+}
+.design-art > .hint {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* Livro 3D com as capas desenhadas (arte pronta ou o desenho do app). */
+.bk-back,
+.bk-spine.art {
+  background-size: 100% 100%;
+  background-position: center;
+}
+.bk-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 2px 5px 5px 2px;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.bk-cover-out:has(.bk-art)::after {
+  /* dobra da capa junto da lombada */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(0, 0, 0, 0.32) 40%,
+    rgba(255, 255, 255, 0.06) 70%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ---------- Estante da tela inicial ----------
+   Um livro por projeto, de lombada para fora, numa prateleira de madeira. A
+   lombada é a imagem do projeto gráfico (arte pronta ou o desenho do app). */
+.shelf-panel {
+  gap: 14px;
+  padding: 20px 22px 0;
+  overflow: hidden;
+}
+.shelf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.shelf-title {
+  font: 600 20px/1.2 var(--font-brand);
+  color: var(--p-fg);
+}
+.shelf-hint {
+  font-size: 12.5px;
+  color: var(--p-faint);
+}
+.shelf {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  min-height: 250px;
+  padding: 18px 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.shelf-empty {
+  align-self: center;
+  margin: auto;
+  color: var(--p-faint);
+  font: italic 14px/1.4 var(--font-text);
+}
+.shelf-plank {
+  height: 16px;
+  margin: 0 -22px;
+  background: linear-gradient(180deg, #6a4a2e, #4a3220 60%, #2f1f14);
+  box-shadow:
+    0 6px 14px -6px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 225, 180, 0.22);
+}
+.spine {
+  --hue: 30;
+  position: relative;
+  flex: none;
+  width: var(--sw, 44px);
+  height: var(--sh, 214px);
+  padding: 14px 0;
+  border: 0;
+  border-radius: 3px 3px 1px 1px;
+  /* Sem desenho ainda: couro na cor do projeto, com filetes dourados. */
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.35),
+      transparent 18%,
+      rgba(255, 230, 190, 0.12) 50%,
+      transparent 82%,
+      rgba(0, 0, 0, 0.4)
+    ),
+    hsl(var(--hue) 38% 24%);
+  background-size: 100% 100%;
+  color: #ecd29a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transform-origin: bottom center;
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.22s ease;
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 230, 190, 0.08),
+    0 10px 16px -12px rgba(0, 0, 0, 0.7);
+}
+/* Volume da lombada (luz no meio, sombra nas bordas) por cima da imagem. */
+.spine.art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.32),
+    transparent 20%,
+    rgba(255, 240, 210, 0.1) 50%,
+    transparent 80%,
+    rgba(0, 0, 0, 0.36)
+  );
+  pointer-events: none;
+}
+.spine:not(.art):not(.spine-new)::before,
+.spine:not(.art):not(.spine-new)::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: rgba(236, 210, 154, 0.6);
+}
+.spine:not(.art):not(.spine-new)::before {
+  top: 28px;
+}
+.spine:not(.art):not(.spine-new)::after {
+  bottom: 28px;
+}
+.spine b {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 74%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 13.5px/1 var(--font-brand);
+  letter-spacing: 0.03em;
+}
+.spine-pct {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 600 10px/1 var(--font-ui);
+  color: var(--p-faint);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.spine:hover {
+  transform: translateY(-8px);
+}
+.spine:hover .spine-pct,
+.spine[aria-pressed="true"] .spine-pct {
+  opacity: 1;
+}
+.spine[aria-pressed="true"] {
+  transform: translateY(-14px);
+  box-shadow:
+    0 0 0 2px var(--p-teal),
+    0 16px 24px -12px rgba(0, 0, 0, 0.7);
+}
+.spine:focus-visible {
+  outline: 2px solid var(--p-teal);
+  outline-offset: 3px;
+}
+/* Começar um livro: lombada tracejada, encostada de leve. */
+.spine-new {
+  width: 48px;
+  height: 196px;
+  margin-left: 10px;
+  gap: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--p-line-hi);
+  color: var(--p-muted);
+  box-shadow: none;
+  transform: rotate(-4deg);
+  transform-origin: bottom left;
+}
+.spine-new b {
+  font-size: 13px;
+}
+.spine-new:hover {
+  color: var(--p-teal);
+  border-color: var(--p-teal);
+  transform: rotate(-2deg) translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .spine,
+  .spine-pct {
+    transition: none;
+  }
 }

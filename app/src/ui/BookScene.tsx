@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { pageBox, type MiniBook } from "../book/miniBook";
+import type { ShelfCovers } from "../book/shelfCovers";
 
 /*
  * O livro da tela inicial, num objeto 3D só: fechado, gira com o mouse; ao
@@ -159,6 +160,11 @@ export function BookScene(props: {
   caption: ReactNode;
   /** Livro já carregado e paginado (pré-carregado), se houver. */
   ready: MiniBook | null;
+  /**
+   * Capa, quarta capa e lombada desenhadas (arte pronta ou o desenho do app),
+   * com as medidas reais. Sem elas, o livro usa a capa simples (`cover`).
+   */
+  faces?: ShelfCovers | null;
   /** Carrega e pagina o miolo (usa o cache se já estiver pronto). */
   load(): Promise<MiniBook>;
   /** Começa a carregar antes do clique (mouse em cima, foco). */
@@ -201,7 +207,12 @@ export function BookScene(props: {
 
   const box = book ? pageBox(book.layout) : null;
   // A largura segue a proporção do formato do livro (14×21, A5…).
-  const width = box ? (height * box.w) / box.h : (height * 2) / 3;
+  const faces = props.faces ?? null;
+  const width = box
+    ? (height * box.w) / box.h
+    : faces
+      ? (height * faces.widthMm) / faces.heightMm
+      : (height * 2) / 3;
   const scale = box ? height / (box.h * PX_PER_MM) : 1;
   const pages = layout?.pages ?? 1;
   const last = Math.ceil(pages / 2);
@@ -504,7 +515,12 @@ export function BookScene(props: {
   }
   const showPages = phase !== "closed" && phase !== "loading" && !!book && !!layout;
   const open = phase === "open";
-  const style = { "--hue": hue, "--w": `${width}px` } as CSSProperties;
+  const style = {
+    "--hue": hue,
+    "--w": `${width}px`,
+    // Espessura de verdade: a lombada em mm na mesma escala da altura.
+    ...(faces ? { "--t": `${Math.max(10, (faces.spineMm * height) / faces.heightMm)}px` } : {}),
+  } as CSSProperties;
   const label = open
     ? `${props.title}, páginas ${Math.max(1, leftIdx + 1)} e ${Math.min(pages, rightIdx + 1)} de ${pages}. Setas para folhear, Esc para fechar.`
     : `Capa de ${props.title}. Clique ou Enter para abrir e folhear; arraste para os lados ou use as setas para girar.`;
@@ -534,12 +550,18 @@ export function BookScene(props: {
       >
         <div className="bk-stage">
           <div className="bk" ref={body}>
-            <div className="bk-face bk-back" />
+            <div
+              className="bk-face bk-back"
+              style={faces ? { backgroundImage: `url("${faces.back}")` } : undefined}
+            />
             <div className="bk-face bk-edge" />
             <div className="bk-face bk-top" />
             <div className="bk-face bk-bottom" />
-            <div className="bk-face bk-spine">
-              <span>{props.title}</span>
+            <div
+              className={"bk-face bk-spine" + (faces ? " art" : "")}
+              style={faces ? { backgroundImage: `url("${faces.spine}")` } : undefined}
+            >
+              {!faces && <span>{props.title}</span>}
             </div>
             {/* Página da direita (fica embaixo da capa e da folha que vira). */}
             <div className="bk-face bk-base">
@@ -575,7 +597,11 @@ export function BookScene(props: {
             {/* Capa, presa na lombada. Por dentro é a guarda ou a página da esquerda. */}
             <div className="bk-hinge" ref={hinge}>
               <div className="bk-face bk-cover-out">
-                {props.cover}
+                {faces ? (
+                  <img className="bk-art" src={faces.front} alt="" draggable={false} />
+                ) : (
+                  props.cover
+                )}
                 <i className="bk-shade" />
               </div>
               <div className="bk-face bk-cover-in">

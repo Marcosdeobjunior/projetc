@@ -116,7 +116,12 @@ Recolha a barra com o botão no topo dela ou com **Ctrl+\\**; recolhida, ela vir
 
 No centro ficam o livro em 3D do projeto ativo (arraste para girar; clique para abrir a capa e
 folhear o miolo diagramado), os números do projeto, o progresso, a atividade recente, os outros
-projetos e, com uma conta Google conectada, os projetos que estão no Drive. O planeta ao lado da
+projetos e, com uma conta Google conectada, os projetos que estão no Drive.
+
+Na **estante**, cada projeto aparece como um livro de lombada para fora. A lombada, a capa e a
+quarta capa (no livro 3D) vêm do projeto gráfico de cada livro: se você enviou a **capa pronta**
+(Configurações → Diagramação → Capa → *Já tenho a capa pronta*), aparece a arte enviada; senão,
+o desenho padrão do InkFlow. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
 busca abre o **Elo** do projeto ativo.
 
 Cada paleta tem um **fundo próprio**, que troca junto com ela. Em **Configurações → Geral → Tela

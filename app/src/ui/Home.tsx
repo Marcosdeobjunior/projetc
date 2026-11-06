@@ -7,6 +7,7 @@ import { Settings, type SettingsTab } from "./Settings";
 import { AppBar, HomeSidebar, folderName, useHomeNav } from "./HomeNav";
 import { NewProjectDialog } from "./NewProjectDialog";
 import { BookScene, paginate } from "./BookScene";
+import { Shelf, useCovers } from "./Shelf";
 import { EloGlobe } from "./EloGlobe";
 import { getMiniBook, peekMiniBook, prepareMiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
@@ -252,47 +253,17 @@ export function Home() {
               </section>
             </div>
 
-            <section className="home-recent" aria-labelledby="recent-title">
-              <h2 id="recent-title" className="kicker">
-                Projetos recentes
-              </h2>
-              <ul className="recent-grid">
-                {filtered
-                  .filter((v) => v.root !== current?.root)
-                  .slice(0, 3)
-                  .map((v) => (
-                    <li key={v.root}>
-                      <button
-                        type="button"
-                        className="panel recent-card"
-                        title="Selecionar (duplo clique abre)"
-                        onClick={() => setSelected(v.root)}
-                        onDoubleClick={() => void openVault(v.root)}
-                      >
-                        <Cover title={v.title} size="sm" />
-                        <span>
-                          <b>{v.title}</b>
-                          <small>
-                            {stats[v.root]?.words === undefined
-                              ? "–"
-                              : formatCount(stats[v.root]!.words)}{" "}
-                            palavras
-                          </small>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                <li>
-                  <button
-                    type="button"
-                    className="panel recent-card recent-new"
-                    onClick={() => setCreating(true)}
-                  >
-                    <Icon name="plus" size={15} /> Começar algo novo
-                  </button>
-                </li>
-              </ul>
-            </section>
+            <Shelf
+              platform={platform}
+              vaults={filtered}
+              stats={stats}
+              goals={goals}
+              activeRoot={current?.root ?? null}
+              query={query}
+              onSelect={setSelected}
+              onOpen={(root) => void openVault(root)}
+              onCreate={() => setCreating(true)}
+            />
 
             <div className="home-row">
               <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
@@ -464,6 +435,8 @@ function BookPreview({
   const platform = useApp((s) => s.platform);
   const hue = coverHue(vault.title);
   const line = stats?.excerpt ? firstSentence(stats.excerpt) : "";
+  // Capa, quarta capa e lombada do projeto gráfico (arte pronta ou o desenho do app).
+  const faces = useCovers(platform, vault, stats);
   // A versão entra na chave: depois de editar o projeto, o miolo é refeito.
   const key = `${vault.root}:${stats?.updatedAt ?? 0}`;
   const [ready, setReady] = useState(() => peekMiniBook(key));
@@ -498,6 +471,7 @@ function BookPreview({
       title={vault.title}
       hue={hue}
       cover={<Cover title={vault.title} size="lg" />}
+      faces={faces}
       caption={line ? `“${line}”` : "Este livro ainda não tem texto."}
       ready={ready}
       load={load}
