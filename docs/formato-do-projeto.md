@@ -1,6 +1,6 @@
 # Formato do projeto (vault)
 
-Referência exata de como um projeto do InkFlow fica no disco. Vale para o app desktop (uma pasta
+Referência exata de como um projeto da Tália fica no disco. Vale para o app desktop (uma pasta
 real) e, com as mesmas chaves, para a prévia no navegador (IndexedDB). As constantes de caminho
 estão em `app/src/vault/paths.ts`; os tipos em `app/src/manuscript/types.ts`,
 `app/src/vault/history.ts`, `app/src/vault/trash.ts`, `app/src/sync/engine.ts` e
@@ -72,7 +72,7 @@ Criado ao criar o projeto, só se ainda não existir:
 ```markdown
 # A Casa das Marés
 
-Este é um projeto do InkFlow.
+Este é um projeto da Tália.
 
 - `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.
 - `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.
@@ -84,7 +84,7 @@ O app não lê esse arquivo.
 
 ## `.inkflow/project.json`
 
-A estrutura do projeto. É o arquivo que identifica a pasta como projeto do InkFlow.
+A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tália.
 
 | Campo               | Tipo    | Descrição                                                                                        |
 | ------------------- | ------- | ------------------------------------------------------------------------------------------------ |
@@ -179,7 +179,7 @@ _Não procure por mim_, dizia a última linha. Ele leu [[Helena]] de novo.
 
 - `id` é o mesmo do `project.json`; `title` é gravado como string JSON (entre aspas, com
   escapes). O app reescreve o cabeçalho ao renomear.
-- **O `.md` é a fonte da verdade para o usuário**: se ele for editado fora do app, o InkFlow
+- **O `.md` é a fonte da verdade para o usuário**: se ele for editado fora do app, a Tália
   percebe (comparando só o corpo, sem o cabeçalho) e usa o texto do arquivo.
 - Arquivo vazio = texto vazio. Um `.md` que sumiu do disco é recriado na próxima gravação.
 
@@ -443,7 +443,7 @@ Exemplo (resumido):
 Tudo da pasta do projeto, **exceto**: `.inkflow/sync.json`, `.inkflow/versoes/indice.json`,
 `.inkflow/lixeira/**`, `*.inkflow-tmp`, `.DS_Store`, `Thumbs.db` e `desktop.ini`.
 
-No Drive, a estrutura é espelhada dentro de `InkFlow/<título do projeto>/`. A pasta `InkFlow` tem
+No Drive, a estrutura é espelhada dentro de `Tália/<título do projeto>/`. A pasta `Tália` tem
 a propriedade de app `inkflowRoot = "1"` e a pasta do projeto `inkflowProject = <project.id>` — é
 por ela (e não pelo nome) que o app encontra o projeto.
 

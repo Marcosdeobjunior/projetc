@@ -25,5 +25,5 @@ pub fn run() {
             vault::vault_remove,
         ])
         .run(tauri::generate_context!())
-        .expect("erro ao iniciar o InkFlow");
+        .expect("erro ao iniciar a Tália");
 }

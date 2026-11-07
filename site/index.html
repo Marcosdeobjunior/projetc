@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>InkFlow</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='219 120 850 1050'%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Ccircle cx='644' cy='544' r='424'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg fill='none' stroke-linecap='round' stroke-width='79'%3E%3Cpath d='M644 300V1130' stroke='%23ECBF1F'/%3E%3Ccircle cx='644' cy='544' r='424' fill='%23ECBF1F' stroke='none'/%3E%3Cpath d='M644 300V1130M482 628l162 162M854 503 644 713' stroke='%23fff' clip-path='url%28%23c%29'/%3E%3C/g%3E%3C/svg%3E">
+<title>Tália</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="InkFlow é um app desktop para escritores: seus textos ficam no seu computador e sincronizam pela sua própria nuvem.">
+<meta name="description" content="Tália é um app desktop para escritores: seus textos ficam no seu computador e sincronizam pela sua própria nuvem.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@500;600&display=swap">
@@ -435,21 +436,20 @@ dialog.demo .app { font-size: 15px; height: 100%; }
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <linearGradient id="quillGrad" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#5b8cff"/>
-      <stop offset=".55" stop-color="#8b6dff"/>
-      <stop offset="1" stop-color="#c79bff"/>
-    </linearGradient>
-    <symbol id="quill" viewBox="0 0 32 32">
-      <path fill="url(#quillGrad)" d="M29 2.5c-8.6.6-15.7 5.4-19.3 12.8-1.4 2.9-2.1 5.9-2.3 8.6l2.1-1.9c.9-3.7 2.8-7.4 6.2-10.4-2.6 3.3-4.3 6.5-5.1 9.8 7.4-.9 13.6-5.6 16.6-12.4 1.1-2.4 1.7-4.4 1.8-6.5z"/>
-      <path d="M8.5 25.5 4 30" stroke="#8b6dff" stroke-width="1.8" stroke-linecap="round"/>
+    <clipPath id="taliaClip"><circle cx="644" cy="544" r="424"/></clipPath>
+    <symbol id="talia" viewBox="219 120 850 1050">
+      <g fill="none" stroke-linecap="round" stroke-width="79">
+        <path d="M644 300V1130" stroke="#ECBF1F"/>
+        <circle cx="644" cy="544" r="424" fill="#ECBF1F" stroke="none"/>
+        <path d="M644 300V1130M482 628l162 162M854 503 644 713" stroke="#fff" clip-path="url(#taliaClip)"/>
+      </g>
     </symbol>
   </defs>
 </svg>
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#inicio" aria-label="InkFlow, início"><svg aria-hidden="true"><use href="#quill"/></svg>InkFlow</a>
+    <a class="brand" href="#inicio" aria-label="Tália, início"><svg aria-hidden="true"><use href="#talia"/></svg>Tália</a>
     <nav class="nav" aria-label="Principal">
       <a href="#recursos">Recursos</a>
       <a href="#privacidade">Privacidade</a>
@@ -470,7 +470,7 @@ dialog.demo .app { font-size: 15px; height: 100%; }
       <div class="hero-copy">
         <span class="eyebrow-pill">O app para quem escreve histórias</span>
         <h1 id="hero-title">Suas ideias merecem um lugar <em class="grad-text">incrível.</em></h1>
-        <p class="hero-lead">O InkFlow organiza capítulos, cenas e personagens num só lugar, acompanha suas metas de escrita e guarda tudo no seu computador. Para escrever em outro dispositivo, ele sincroniza pela sua própria nuvem.</p>
+        <p class="hero-lead">A Tália organiza capítulos, cenas e personagens num só lugar, acompanha suas metas de escrita e guarda tudo no seu computador. Para escrever em outro dispositivo, ela sincroniza pela sua própria nuvem.</p>
         <div class="hero-ctas">
           <a class="btn btn-primary btn-lg" href="#preco">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.2H3zm0 13.8 7.4 1.1v-7.1H3zm8.3 1.2L21 21.5v-8.6h-9.7zm0-16.2v7.3H21V2.5z"/></svg>
@@ -563,7 +563,7 @@ dialog.demo .app { font-size: 15px; height: 100%; }
 
             <div class="laptop">
               <div class="lid">
-                <div class="screen" id="screen" role="button" tabindex="0" aria-label="Abrir a demonstração do InkFlow">
+                <div class="screen" id="screen" role="button" tabindex="0" aria-label="Abrir a demonstração da Tália">
                   <span class="screen-hint">Clique para experimentar</span>
                 </div>
               </div>
@@ -645,12 +645,12 @@ dialog.demo .app { font-size: 15px; height: 100%; }
           <div class="bar"><i></i></div>
           <small>21.540 de 50.000 palavras · 12 de 28 capítulos</small>
         </div>
-        <svg class="feather-big" viewBox="0 0 32 32"><use href="#quill"/></svg>
+        <svg class="feather-big" viewBox="219 120 850 1050"><use href="#talia"/></svg>
       </div>
       <div class="copy">
         <span class="kicker">Feito para escritores</span>
         <h2 id="mais-title">Mais do que um editor. É o seu <span class="grad-text">espaço criativo.</span></h2>
-        <p>Um processador de texto trata o livro como um arquivo gigante. O InkFlow trata como uma história: com partes, cenas, pessoas e um prazo.</p>
+        <p>Um processador de texto trata o livro como um arquivo gigante. A Tália trata como uma história: com partes, cenas, pessoas e um prazo.</p>
         <ul class="checks">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Manuscrito organizado em partes, capítulos e cenas</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Fichas de personagens, lugares e linha do tempo</li>
@@ -671,7 +671,7 @@ dialog.demo .app { font-size: 15px; height: 100%; }
       <div class="copy">
         <span class="kicker">Seus textos são seus</span>
         <h2 id="priv-title">Nada do que você escreve passa por nós.</h2>
-        <p>Cada projeto é uma pasta no seu computador, com os textos em arquivos comuns que qualquer editor abre. Se você ativar a sincronização, o InkFlow conecta direto na sua conta do Google Drive. Nós não temos servidor, não vemos seus textos e não coletamos dados.</p>
+        <p>Cada projeto é uma pasta no seu computador, com os textos em arquivos comuns que qualquer editor abre. Se você ativar a sincronização, a Tália conecta direto na sua conta do Google Drive. Nós não temos servidor, não vemos seus textos e não coletamos dados.</p>
         <ul class="checks">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Funciona sem internet</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Textos em Markdown, legíveis mesmo sem o app</li>
@@ -697,7 +697,7 @@ dialog.demo .app { font-size: 15px; height: 100%; }
         </div>
         <div class="noserver">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M3 3l18 18"/></svg>
-          <span><b>Servidores do InkFlow:</b> nenhum. A conexão é só entre o app e a sua nuvem.</span>
+          <span><b>Servidores da Tália:</b> nenhum. A conexão é só entre o app e a sua nuvem.</span>
         </div>
       </div>
     </div>
@@ -712,7 +712,7 @@ dialog.demo .app { font-size: 15px; height: 100%; }
       </div>
       <div class="price-card">
         <div>
-          <h3>InkFlow 1</h3>
+          <h3>Tália 1</h3>
           <p class="price-tag">Compra única<strong>R$ —</strong></p>
           <div class="store-btns">
             <a class="store" href="#" aria-label="Comprar na Microsoft Store (link em breve)">
@@ -745,15 +745,15 @@ dialog.demo .app { font-size: 15px; height: 100%; }
       <div class="faq">
         <details>
           <summary>Preciso de internet para escrever?</summary>
-          <p>Não. O InkFlow funciona totalmente offline. A internet só é usada se você ativar a sincronização, e ela acontece quando a conexão volta.</p>
+          <p>Não. A Tália funciona totalmente offline. A internet só é usada se você ativar a sincronização, e ela acontece quando a conexão volta.</p>
         </details>
         <details>
           <summary>Onde ficam guardados meus textos?</summary>
-          <p>Numa pasta do seu computador que você escolhe. Os textos ficam em arquivos Markdown, que qualquer editor de texto consegue abrir, mesmo que você deixe de usar o InkFlow.</p>
+          <p>Numa pasta do seu computador que você escolhe. Os textos ficam em arquivos Markdown, que qualquer editor de texto consegue abrir, mesmo que você deixe de usar a Tália.</p>
         </details>
         <details>
           <summary>Como funciona a sincronização?</summary>
-          <p>Você conecta sua conta do Google Drive dentro do app. O InkFlow cria uma pasta só dele no seu Drive e mantém seus dispositivos atualizados. Se você editar o mesmo capítulo em dois lugares, as alterações são combinadas sem perder texto.</p>
+          <p>Você conecta sua conta do Google Drive dentro do app. A Tália cria uma pasta só dela no seu Drive e mantém seus dispositivos atualizados. Se você editar o mesmo capítulo em dois lugares, as alterações são combinadas sem perder texto.</p>
         </details>
         <details>
           <summary>É assinatura?</summary>
@@ -761,7 +761,7 @@ dialog.demo .app { font-size: 15px; height: 100%; }
         </details>
         <details>
           <summary>Vocês têm acesso ao que eu escrevo?</summary>
-          <p>Não. Não existe servidor do InkFlow no caminho. Seus textos ficam no seu computador e, se você quiser, na sua própria conta de nuvem.</p>
+          <p>Não. Não existe servidor da Tália no caminho. Seus textos ficam no seu computador e, se você quiser, na sua própria conta de nuvem.</p>
         </details>
       </div>
     </div>
@@ -778,23 +778,23 @@ dialog.demo .app { font-size: 15px; height: 100%; }
   </svg>
   <div class="wrap">
     <p>Grandes histórias começam com uma boa ferramenta.</p>
-    <a class="brand" href="#inicio"><svg aria-hidden="true"><use href="#quill"/></svg>InkFlow</a>
+    <a class="brand" href="#inicio"><svg aria-hidden="true"><use href="#talia"/></svg>Tália</a>
     <nav aria-label="Rodapé">
       <a href="#privacidade">Privacidade</a>
       <a href="#">Política de privacidade</a>
       <a href="#">Termos de uso</a>
       <a href="#duvidas">Suporte</a>
     </nav>
-    <p>© 2026 InkFlow</p>
+    <p>© 2026 Tália</p>
   </div>
 </footer>
 
-<dialog class="demo" id="demo" aria-label="Demonstração do InkFlow"></dialog>
+<dialog class="demo" id="demo" aria-label="Demonstração da Tália"></dialog>
 
 <template id="appTpl">
   <div class="app">
     <div class="app-bar">
-      <span class="app-logo"><svg aria-hidden="true"><use href="#quill"/></svg>InkFlow</span>
+      <span class="app-logo"><svg aria-hidden="true"><use href="#talia"/></svg>Tália</span>
       <span class="app-title">Meu Romance</span>
       <span class="spacer"></span>
       <span class="demo-slot"></span>

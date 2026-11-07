@@ -172,10 +172,10 @@ export function Home() {
             {folderToConvert && (
               <div className="panel convert" role="alertdialog" aria-labelledby="convert-title">
                 <p id="convert-title">
-                  A pasta <b>{folderToConvert.name}</b> ainda não é um projeto do InkFlow.
+                  A pasta <b>{folderToConvert.name}</b> ainda não é um projeto da Tália.
                 </p>
                 <p className="muted">
-                  Você pode transformá-la em um projeto: o InkFlow cria dentro dela as pastas{" "}
+                  Você pode transformá-la em um projeto: a Tália cria dentro dela as pastas{" "}
                   <code>manuscrito</code> e <code>.inkflow</code> e o arquivo{" "}
                   <code>LEIA-ME.md</code>. Os arquivos que já estão lá não são alterados.
                 </p>

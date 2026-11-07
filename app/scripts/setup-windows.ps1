@@ -1,4 +1,4 @@
-﻿# InkFlow: verifica e instala o que falta para desenvolver o app no Windows.
+﻿# Tália: verifica e instala o que falta para desenvolver o app no Windows.
 # Rode no PowerShell:  powershell -ExecutionPolicy Bypass -File .\setup-windows.ps1
 # Usa o winget (já vem no Windows 10/11). Algumas instalações pedem permissão de administrador.
 

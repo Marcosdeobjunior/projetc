@@ -29,7 +29,7 @@ export interface Playlist {
 
 const PD = "Composição em domínio público · gravação sintetizada CC0";
 const TRAD = "Melodia tradicional (domínio público) · arranjo e gravação CC0";
-const CC0 = "Original do InkFlow · CC0";
+const CC0 = "Original da Tália · CC0";
 
 const file = (id: string) => `${import.meta.env.BASE_URL}music/${id}.mp3`;
 
@@ -70,9 +70,9 @@ export const PLAYLISTS: Playlist[] = [
         PD,
       ),
       track("ode-a-alegria", "Ode à Alegria", "Ludwig van Beethoven · piano", PD),
-      track("folhas-de-outono", "Folhas de outono", "InkFlow · piano", CC0),
-      track("carta", "Carta", "InkFlow · piano", CC0),
-      track("valsa-lenta", "Valsa lenta", "InkFlow · piano", CC0),
+      track("folhas-de-outono", "Folhas de outono", "Tália · piano", CC0),
+      track("carta", "Carta", "Tália · piano", CC0),
+      track("valsa-lenta", "Valsa lenta", "Tália · piano", CC0),
     ],
   },
   {
@@ -82,9 +82,9 @@ export const PLAYLISTS: Playlist[] = [
     icon: "headphones",
     hue: 330,
     tracks: [
-      track("cafe-da-tarde", "Café da tarde", "InkFlow · lo-fi", CC0),
-      track("caderno-aberto", "Caderno aberto", "InkFlow · lo-fi com piano", CC0),
-      track("madrugada", "Madrugada", "InkFlow · lo-fi", CC0),
+      track("cafe-da-tarde", "Café da tarde", "Tália · lo-fi", CC0),
+      track("caderno-aberto", "Caderno aberto", "Tália · lo-fi com piano", CC0),
+      track("madrugada", "Madrugada", "Tália · lo-fi", CC0),
     ],
   },
   {
@@ -94,9 +94,9 @@ export const PLAYLISTS: Playlist[] = [
     icon: "film",
     hue: 12,
     tracks: [
-      track("horizonte", "Horizonte", "InkFlow · orquestra e piano", CC0),
-      track("reinos-distantes", "Reinos distantes", "InkFlow · orquestra épica", CC0),
-      track("primeira-luz", "Primeira luz", "InkFlow · cordas, harpa e celesta", CC0),
+      track("horizonte", "Horizonte", "Tália · orquestra e piano", CC0),
+      track("reinos-distantes", "Reinos distantes", "Tália · orquestra épica", CC0),
+      track("primeira-luz", "Primeira luz", "Tália · cordas, harpa e celesta", CC0),
     ],
   },
   {
@@ -106,10 +106,10 @@ export const PLAYLISTS: Playlist[] = [
     icon: "sparkle",
     hue: 250,
     tracks: [
-      track("aurora", "Aurora", "InkFlow · pads e celesta", CC0),
-      track("constelacoes", "Constelações", "InkFlow · celesta e pads", CC0),
-      track("mare-lenta", "Maré lenta", "InkFlow · pads e mar distante", CC0),
-      track("profundezas", "Profundezas", "InkFlow · drone grave", CC0),
+      track("aurora", "Aurora", "Tália · pads e celesta", CC0),
+      track("constelacoes", "Constelações", "Tália · celesta e pads", CC0),
+      track("mare-lenta", "Maré lenta", "Tália · pads e mar distante", CC0),
+      track("profundezas", "Profundezas", "Tália · drone grave", CC0),
     ],
   },
   {
@@ -119,8 +119,8 @@ export const PLAYLISTS: Playlist[] = [
     icon: "moon",
     hue: 280,
     tracks: [
-      track("entardecer", "Entardecer", "InkFlow · piano elétrico", CC0),
-      track("brisa", "Brisa", "InkFlow · harpa e pads", CC0),
+      track("entardecer", "Entardecer", "Tália · piano elétrico", CC0),
+      track("brisa", "Brisa", "Tália · harpa e pads", CC0),
       track("greensleeves", "Greensleeves", "Tradicional inglesa · harpa e cordas", TRAD),
     ],
   },
@@ -131,10 +131,10 @@ export const PLAYLISTS: Playlist[] = [
     icon: "target",
     hue: 190,
     tracks: [
-      track("pulso", "Pulso", "InkFlow · marimba minimalista", CC0),
-      track("nevoa", "Névoa", "InkFlow · drone ambiente", CC0),
-      track("fluxo", "Fluxo", "InkFlow · piano minimalista", CC0),
-      track("engrenagens", "Engrenagens", "InkFlow · marimba e harpa", CC0),
+      track("pulso", "Pulso", "Tália · marimba minimalista", CC0),
+      track("nevoa", "Névoa", "Tália · drone ambiente", CC0),
+      track("fluxo", "Fluxo", "Tália · piano minimalista", CC0),
+      track("engrenagens", "Engrenagens", "Tália · marimba e harpa", CC0),
     ],
   },
   {
@@ -144,8 +144,8 @@ export const PLAYLISTS: Playlist[] = [
     icon: "wave",
     hue: 22,
     tracks: [
-      track("ruido-marrom", "Ruído marrom", "InkFlow · ruído", CC0, true),
-      track("ruido-marrom-suave", "Ruído marrom suave", "InkFlow · ruído", CC0, true),
+      track("ruido-marrom", "Ruído marrom", "Tália · ruído", CC0, true),
+      track("ruido-marrom-suave", "Ruído marrom suave", "Tália · ruído", CC0, true),
     ],
   },
   {
@@ -155,10 +155,10 @@ export const PLAYLISTS: Playlist[] = [
     icon: "rain",
     hue: 215,
     tracks: [
-      track("chuva-leve", "Chuva leve", "InkFlow · ambiente", CC0, true),
-      track("chuva-forte", "Chuva forte", "InkFlow · ambiente", CC0, true),
-      track("chuva-na-janela", "Chuva na janela", "InkFlow · ambiente", CC0, true),
-      track("tempestade", "Tempestade", "InkFlow · ambiente", CC0, true),
+      track("chuva-leve", "Chuva leve", "Tália · ambiente", CC0, true),
+      track("chuva-forte", "Chuva forte", "Tália · ambiente", CC0, true),
+      track("chuva-na-janela", "Chuva na janela", "Tália · ambiente", CC0, true),
+      track("tempestade", "Tempestade", "Tália · ambiente", CC0, true),
     ],
   },
   {
@@ -168,10 +168,10 @@ export const PLAYLISTS: Playlist[] = [
     icon: "leaf",
     hue: 120,
     tracks: [
-      track("floresta", "Floresta", "InkFlow · ambiente", CC0, true),
-      track("ondas-do-mar", "Ondas do mar", "InkFlow · ambiente", CC0, true),
-      track("vento", "Vento", "InkFlow · ambiente", CC0, true),
-      track("riacho", "Riacho", "InkFlow · ambiente", CC0, true),
+      track("floresta", "Floresta", "Tália · ambiente", CC0, true),
+      track("ondas-do-mar", "Ondas do mar", "Tália · ambiente", CC0, true),
+      track("vento", "Vento", "Tália · ambiente", CC0, true),
+      track("riacho", "Riacho", "Tália · ambiente", CC0, true),
     ],
   },
 ];

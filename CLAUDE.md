@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## O projeto
 
-InkFlow: app desktop para escritores (Tauri 2 + React 19 + TypeScript). Cada projeto é uma pasta
+Tália: app desktop para escritores (Tauri 2 + React 19 + TypeScript). Cada projeto é uma pasta
 local (o _vault_) com textos em Markdown; sincronização opcional com o Google Drive do próprio
 usuário. Venda única via Microsoft Store / Mac App Store.
 

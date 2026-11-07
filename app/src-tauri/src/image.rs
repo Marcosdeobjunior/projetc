@@ -27,7 +27,7 @@ pub async fn fetch_image(url: String) -> CmdResult<Response> {
     let url = parse_url(&url)?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
-        .user_agent("InkFlow")
+        .user_agent("Talia")
         .build()
         .map_err(|e| e.to_string())?;
     let mut res = client.get(url).send().await.map_err(|_| {

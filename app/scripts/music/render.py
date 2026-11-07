@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Gera a biblioteca de música embutida do InkFlow (public/music/*.mp3).
+Gera a biblioteca de música embutida da Tália (public/music/*.mp3).
 
 Tudo é sintetizado aqui, sem amostras de terceiros:
   - Barroco: peças de domínio público (Bach, Petzold, Pachelbel), transcritas
     para este projeto e tocadas por síntese de cravo e cordas.
-  - Chill, Foco: composições originais feitas para o InkFlow.
+  - Chill, Foco: composições originais feitas para a Tália.
   - Ruído marrom, chuva e natureza: sons sintetizados (ruído filtrado,
     gotas, trovões, ondas, vento, pássaros, riacho).
 Os arquivos gerados são dedicados ao domínio público (CC0 1.0), assim como

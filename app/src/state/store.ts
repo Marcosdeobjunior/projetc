@@ -150,6 +150,8 @@ function describe(err: unknown): string {
   return "Algo deu errado ao acessar os arquivos do projeto. Tente de novo.";
 }
 
+const CLOSE_LABEL = "Ao fechar o projeto";
+
 function firstScene(p: Project) {
   return p.chapters.find((c) => c.scenes.length)?.scenes[0]?.id ?? null;
 }
@@ -221,9 +223,11 @@ export const useApp = create<AppState>((set, get) => {
   async function initialize() {
     const platform = await createPlatform();
     set({ platform });
-    // Ao fechar o app, grava o que estiver pendente. Se falhar, a janela não fecha.
+    // Ao fechar o app, grava o que estiver pendente, guarda a versão de
+    // fechamento e sincroniza. Se a gravação falhar, a janela não fecha.
     platform.onClose?.(async () => {
       if (await flushAll()) {
+        await get().saveVersion(CLOSE_LABEL, true);
         await runBeforeClose();
         return true;
       }
@@ -282,6 +286,20 @@ export const useApp = create<AppState>((set, get) => {
         "Não foi possível salvar as últimas alterações. Verifique se a pasta do projeto está acessível e tente de novo.",
     });
     return false;
+  }
+
+  /**
+   * Sai do projeto aberto do jeito certo: grava o pendente, guarda a versão de
+   * fechamento e roda as tarefas de fechamento (sync). Devolve false se a
+   * gravação falhou; aí o projeto continua aberto.
+   */
+  async function leaveSession() {
+    if (!(await flushPending())) return false;
+    if (get().session) {
+      await get().saveVersion(CLOSE_LABEL, true);
+      await runBeforeClose();
+    }
+    return true;
   }
 
   async function guarded(task: () => Promise<void>) {
@@ -377,14 +395,15 @@ export const useApp = create<AppState>((set, get) => {
         set({ folderToConvert: null });
         const folder = await get().platform?.chooseFolder?.();
         if (!folder) return;
-        if (!(await flushPending())) return;
+        if (folder.isProject && folder.root === get().session?.root) return;
+        if (!(await leaveSession())) return;
         if (folder.isProject) {
           await open(folder.root);
           await get().refreshVaults();
         } else {
           // Pasta comum: a tela inicial oferece transformá-la em projeto.
           storageSet(LAST_KEY, null);
-          set({ session: null, folderToConvert: folder });
+          set({ session: null, saveState: "idle", folderToConvert: folder });
         }
       }),
 
@@ -567,9 +586,7 @@ export const useApp = create<AppState>((set, get) => {
       }),
 
     async closeVault() {
-      if (!(await flushPending())) return;
-      await get().saveVersion("Ao fechar o projeto", true);
-      await runBeforeClose();
+      if (!(await leaveSession())) return;
       storageSet(LAST_KEY, null);
       set({ session: null, saveState: "idle" });
       await get().refreshVaults();
@@ -578,9 +595,7 @@ export const useApp = create<AppState>((set, get) => {
     switchVault: (root) =>
       guarded(async () => {
         if (root === get().session?.root) return;
-        if (!(await flushPending())) return;
-        await get().saveVersion("Ao fechar o projeto", true);
-        await runBeforeClose();
+        if (!(await leaveSession())) return;
         await open(root);
         await get().refreshVaults();
       }),
@@ -686,7 +701,7 @@ export const useApp = create<AppState>((set, get) => {
       );
       if (!ok) return false;
       set({
-        message: `O texto “${doc.title}” foi alterado fora do InkFlow enquanto estava aberto. Para não perder nada, a versão de fora foi guardada como “${title}”.`,
+        message: `O texto “${doc.title}” foi alterado fora da Tália enquanto estava aberto. Para não perder nada, a versão de fora foi guardada como “${title}”.`,
         messageTone: "info",
       });
       return true;

@@ -482,7 +482,7 @@ const engine = (() => {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title,
       artist: t.by,
-      album: list ? `InkFlow · ${list.name}` : "InkFlow",
+      album: list ? `Tália · ${list.name}` : "Tália",
     });
     const s = useMusic.getState();
     navigator.mediaSession.setActionHandler("play", () => engine.resume());

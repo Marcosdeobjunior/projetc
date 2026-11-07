@@ -33,7 +33,7 @@ export interface Platform {
   chooseNewVaultRoot(folderName: string): Promise<string | null>;
   /**
    * Escolhe uma pasta no computador. Só existe no desktop. `isProject` diz se
-   * ela já é um projeto do InkFlow (tem `.inkflow/project.json`).
+   * ela já é um projeto da Tália (tem `.inkflow/project.json`).
    */
   chooseFolder?(): Promise<ChosenFolder | null>;
   knownVaults(): Promise<VaultRef[]>;

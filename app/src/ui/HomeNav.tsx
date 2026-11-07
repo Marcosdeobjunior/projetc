@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type CSSProperties } from "react";
 import type { VaultRef } from "../platform";
 import { useSettings } from "../state/settings";
 import type { SyncStatus } from "../state/syncStatus";
-import { Icon, Quill } from "./Icon";
+import { Icon, TaliaMark } from "./Icon";
 import { MusicPlayer } from "./Music";
 import { useMusic } from "../state/music";
 import { coverHue } from "./library";
@@ -84,8 +84,8 @@ export function AppBar(props: {
         <Icon name="sidebar" size={17} />
       </button>
       <div className="appbar-id">
-        <span className="appbar-logo" role="img" aria-label="InkFlow">
-          <Quill size={22} />
+        <span className="appbar-logo" role="img" aria-label="Tália">
+          <TaliaMark size={24} />
         </span>
         {userName ? (
           <span className="appbar-user" title={userName}>

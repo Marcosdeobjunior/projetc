@@ -1,4 +1,4 @@
-# InkFlow — app
+# Tália — app
 
 App desktop para escritores, feito com **Tauri 2** (Rust) + **React** + **TypeScript**.
 O editor de texto é o **TipTap**, e o texto de cada cena também é guardado em **Yjs**,
@@ -75,7 +75,7 @@ começar na página da direita, e o cabeçalho aparece também na página de abe
 
 ## Sincronização com o Google Drive
 
-Cada projeto pode ser ligado a uma pasta `InkFlow/<nome do projeto>` no Google Drive
+Cada projeto pode ser ligado a uma pasta `Tália/<nome do projeto>` no Google Drive
 (Configurações → Sincronização). O app sincroniza ao abrir e ao fechar o projeto, de tempos em
 tempos (5, 15 ou 30 minutos) e quando você pede. Em outro computador, conecte a mesma conta e
 use **Baixar** em "No Google Drive", na tela inicial.
@@ -91,17 +91,17 @@ use **Baixar** em "No Google Drive", na tela inicial.
 
 ### Credenciais do Google (uma vez só)
 
-O InkFlow usa o acesso `drive.file`: só enxerga as pastas e arquivos que ele mesmo criou no
+A Tália usa o acesso `drive.file`: só enxerga as pastas e arquivos que ela mesma criou no
 seu Drive. Para isso o app precisa de um "ID do cliente OAuth":
 
-1. Em https://console.cloud.google.com crie um projeto (ex.: "InkFlow").
+1. Em https://console.cloud.google.com crie um projeto (ex.: "Tália").
 2. Em **APIs e serviços → Biblioteca**, ative a **Google Drive API**.
 3. Em **APIs e serviços → Tela de consentimento OAuth** (ou "Google Auth Platform"), escolha
    "Externo", preencha o nome do app e o seu e-mail, e em **Público-alvo / Usuários de teste**
    adicione as contas Google que vão usar o app.
 4. Em **Credenciais → Criar credenciais → ID do cliente OAuth**, escolha o tipo
    **App para computador**. Copie o **ID do cliente** e a **Chave secreta do cliente**.
-5. No InkFlow: Configurações → Sincronização → cole os dois e clique em **Conectar conta Google**.
+5. Na Tália: Configurações → Sincronização → cole os dois e clique em **Conectar conta Google**.
 
 Enquanto o app estiver em modo "Teste" no Google Cloud, o Google pede para entrar de novo a
 cada 7 dias. Para quem vai distribuir o app, as credenciais também podem vir na compilação, em
@@ -179,7 +179,7 @@ O vento soprava frio naquela manhã…
 Regras:
 
 - **O `.md` é a fonte da verdade para o usuário.** Se ele for editado fora do app, o
-  InkFlow percebe ao abrir a cena e usa o texto do `.md`.
+  Tália percebe ao abrir a cena e usa o texto do `.md`.
 - **A ordem** de capítulos e cenas fica no `project.json`, não no nome dos arquivos.
   Assim, reordenar não renomeia arquivos (melhor para o sync).
 - **Renomear** uma cena ou capítulo renomeia o arquivo ou a pasta junto.

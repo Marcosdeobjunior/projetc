@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp, type Session } from "../state/store";
-import { Icon, Quill } from "./Icon";
+import { Icon, TaliaMark } from "./Icon";
 
 /**
  * Nome do projeto no topo da barra lateral. Ao clicar, abre um menu para
@@ -61,7 +61,7 @@ export function VaultSwitcher({ session, onRename }: { session: Session; onRenam
         title="Trocar de projeto"
         onClick={() => setOpen((o) => !o)}
       >
-        <Quill size={22} />
+        <TaliaMark size={24} />
         <span className="switch-title">{session.project.title}</span>
         <Icon name="chevronDown" size={16} />
       </button>
