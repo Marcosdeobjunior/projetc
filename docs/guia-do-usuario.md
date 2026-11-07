@@ -469,8 +469,8 @@ Cada item mostra o nome, o tipo (por exemplo "Cena de "Capítulo 2"", "Capítulo
 ### Cópias de segurança na Lixeira
 
 Além do que você excluiu, a Lixeira guarda **cópias de segurança** feitas pelo app. Elas aparecem
-com o ícone de relógio e o texto "Cópia guardada ao restaurar uma versão", e **não têm botão
-Restaurar** (só "Apagar de vez"). Podem ser:
+com o ícone de relógio e o texto "Cópia de segurança", com o começo do texto (ou, numa pasta, quantos
+textos e anexos ela tem). Podem ser:
 
 | Nome na Lixeira                                                                  | De onde veio                                                                                                    |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -481,10 +481,24 @@ Restaurar** (só "Apagar de vez"). Podem ser:
 | `"Título" — editado fora do app antes de sincronizar`                            | Você editou o arquivo `.md` em outro programa e, na mesma sincronização, chegou uma versão nova daquele texto   |
 | `project.json do Drive (com problema)`                                           | A estrutura do projeto que estava no Drive veio corrompida; ficou a deste computador                            |
 
-Para recuperar algo de uma cópia de segurança, abra a pasta `.inkflow/lixeira/` do projeto no
-gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.inkflow`): os arquivos têm
-a data e a hora no começo do nome, e os textos são `.md` que abrem em qualquer editor. Copie o
-trecho que você quer de volta para o texto na Tália. Veja também
+**Restaurar** uma cópia de segurança **não substitui nada** do projeto: tudo volta como coisa nova,
+para você comparar e ficar com o que quiser.
+
+- O texto de uma cena que ainda existe volta como uma cena nova **logo abaixo dela**, com
+  "(cópia de segurança)" no nome. O de uma nota volta como nota nova do mesmo tipo.
+- Um texto que não existe mais no projeto vai para o capítulo **Recuperados da Lixeira**, no fim do
+  manuscrito.
+- A pasta `manuscrito/` de antes de voltar para uma versão vira um capítulo novo para cada capítulo
+  que havia nela, com "(recuperado)" no nome. As cenas entram em ordem alfabética, porque a ordem
+  antiga não fica guardada na cópia: para ter o projeto exatamente como era, use o
+  [Histórico](#8-histórico-de-versões), que guarda uma versão antes de cada volta.
+- A pasta `notas/` devolve as notas, cada uma no seu tipo.
+- Imagens, áudios, vídeos e documentos voltam para os anexos.
+
+Arquivos técnicos do app (como `project.json` ou o estado do editor) não voltam pela Lixeira: uma
+cópia só com eles não tem o botão Restaurar, e numa pasta eles ficam na Lixeira depois de
+restaurar o resto. Se precisar de um deles, abra a pasta `.inkflow/lixeira/` do projeto no
+gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.inkflow`). Veja também
 [Conflitos de sincronização](#a-sincronização-avisou-que-um-arquivo-foi-alterado-aqui-e-em-outro-computador).
 
 > A Lixeira fica só neste computador: ela **não é sincronizada** com o Drive.
@@ -848,8 +862,9 @@ também serve **Microsoft Print to PDF**) e salve. Para o PDF da gráfica, use a
 
 Isso acontece quando o mesmo arquivo mudou nos dois computadores entre uma sincronização e outra.
 Nada foi perdido: a Tália manteve (ou mesclou) a versão deste computador e guardou a outra na
-**Lixeira**, como [cópia de segurança](#cópias-de-segurança-na-lixeira). Compare as duas e, se
-precisar, copie o trecho que faltou. Para evitar conflitos, deixe o app sincronizar antes de
+**Lixeira**, como [cópia de segurança](#cópias-de-segurança-na-lixeira). Clique em **Restaurar**
+nela: a outra versão aparece como uma cena nova logo abaixo do texto, para você comparar e copiar o
+trecho que faltou. Para evitar conflitos, deixe o app sincronizar antes de
 trocar de computador (fechar o projeto ou a janela já sincroniza).
 
 ### O Google pede para entrar de novo / "A autorização do Google expirou"

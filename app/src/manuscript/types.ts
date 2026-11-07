@@ -56,7 +56,10 @@ export type TrashItem =
   | { kind: "chapter"; chapter: Chapter; index: number }
   | { kind: "note"; note: Note }
   | { kind: "attachment"; name: string }
-  /** Pastas guardadas antes de restaurar uma versão (só dá para apagar). */
+  /**
+   * Cópia de segurança (pastas guardadas antes de voltar para uma versão, cópias do
+   * sync). Restaurar devolve os textos e anexos como itens novos (vault/backup.ts).
+   */
   | { kind: "backup"; label: string };
 
 /** Operação de arquivo que precisa acompanhar uma mudança na estrutura. */

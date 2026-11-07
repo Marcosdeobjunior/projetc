@@ -3,6 +3,8 @@ import { KeyValueFs, MemoryStore } from "../platform/kvFs";
 import type { ChosenFolder, Platform } from "../platform/types";
 import { createVault } from "../vault/vault";
 import { listVersions } from "../vault/history";
+import { listTrash, moveToTrash, saveToTrash } from "../vault/trash";
+import { RECOVERED_CHAPTER } from "../vault/backup";
 
 const CLOSE = "Ao fechar o projeto";
 
@@ -89,5 +91,43 @@ describe("sair do projeto", () => {
     await useApp.getState().openExistingFolder();
     expect(useApp.getState().session?.root).toBe(root);
     expect(await labels(root)).not.toContain(CLOSE);
+  });
+});
+
+describe("restaurar cópia de segurança", () => {
+  beforeEach(() => {
+    store = new MemoryStore();
+    onClose = null;
+    chosen = null;
+    roots = 0;
+  });
+
+  it("põe o texto de volta como cena nova e tira a entrada da Lixeira", async () => {
+    const useApp = await freshStore();
+    const root = await openEdited(useApp);
+    const fs = platform.fs(root);
+    await saveToTrash(fs, "x.md", new TextEncoder().encode("Texto salvo.\n"), "“Perdido” — cópia");
+    const [entry] = await listTrash(fs);
+    await useApp.getState().restoreFromTrash(entry!);
+    const project = useApp.getState().session!.project;
+    const recovered = project.chapters.find((c) => c.title === RECOVERED_CHAPTER);
+    expect(recovered?.scenes.map((s) => s.title)).toEqual(["Perdido (cópia de segurança)"]);
+    expect(useApp.getState().session!.texts[recovered!.scenes[0]!.id]).toContain("Texto salvo.");
+    expect(await listTrash(fs)).toEqual([]);
+  });
+
+  it("deixa na Lixeira o que é arquivo técnico", async () => {
+    const useApp = await freshStore();
+    const root = await openEdited(useApp);
+    const fs = platform.fs(root);
+    await fs.writeText("pasta/a.md", "Um texto.\n");
+    await fs.writeText("pasta/estado.yjs", "x");
+    await moveToTrash(fs, "pasta", { kind: "backup", label: "Pasta" });
+    const [entry] = await listTrash(fs);
+    await useApp.getState().restoreFromTrash(entry!);
+    const left = await listTrash(fs);
+    expect(left.map((e) => e.id)).toEqual([entry!.id]);
+    const files = (await fs.walk()).map((f) => f.path).filter((p) => p.startsWith(entry!.path));
+    expect(files).toEqual([`${entry!.path}/estado.yjs`]);
   });
 });

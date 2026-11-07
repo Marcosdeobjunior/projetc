@@ -305,13 +305,13 @@ Array de entradas (`TrashEntry`), da mais recente para a mais antiga:
 
 `item` é um destes:
 
-| `kind`         | Campos                                                                      | Restaurável |
-| -------------- | --------------------------------------------------------------------------- | ----------- |
-| `"scene"`      | `scene` (Scene), `chapter` (`{ id, title }` de origem), `index` (posição)   | Sim         |
-| `"chapter"`    | `chapter` (Chapter completo, com as cenas), `index`                         | Sim         |
-| `"note"`       | `note` (Note)                                                               | Sim         |
-| `"attachment"` | `name` (nome do arquivo em `anexos/`)                                       | Sim         |
-| `"backup"`     | `label` — cópia de segurança (restaurar versão, conflito ou mescla do sync) | Não         |
+| `kind`         | Campos                                                                      | Restaurável                                                    |
+| -------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `"scene"`      | `scene` (Scene), `chapter` (`{ id, title }` de origem), `index` (posição)   | Sim                                                            |
+| `"chapter"`    | `chapter` (Chapter completo, com as cenas), `index`                         | Sim                                                            |
+| `"note"`       | `note` (Note)                                                               | Sim                                                            |
+| `"attachment"` | `name` (nome do arquivo em `anexos/`)                                       | Sim                                                            |
+| `"backup"`     | `label` — cópia de segurança (restaurar versão, conflito ou mescla do sync) | Sim, como cópia (textos novos e anexos; arquivos técnicos não) |
 
 Exemplo:
 
