@@ -48,7 +48,7 @@ export interface CoverDesign {
   /**
    * Arte pronta (enviada pelo cliente ou pelo capista): capa, quarta capa e
    * lombada já com título e textos. Quando existe, a parte é a imagem inteira,
-   * sem nada desenhado por cima. Vazio = o desenho do InkFlow.
+   * sem nada desenhado por cima. Vazio = o desenho da Tália.
    */
   frontArt: string;
   backArt: string;

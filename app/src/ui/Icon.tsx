@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 const PATHS: Record<string, string> = {
   bold: "M7 5h6a3.5 3.5 0 0 1 0 7H7zm0 7h7a3.5 3.5 0 0 1 0 7H7z",
   italic: "M10 5h8M6 19h8M14 5l-4 14",
@@ -112,15 +114,34 @@ export function Icon({ name, size = 18 }: { name: keyof typeof PATHS | string; s
   );
 }
 
-/** A pena do InkFlow, numa cor só: a cor do texto em volta (o destaque da paleta). */
-export function Quill({ size = 28 }: { size?: number }) {
+/**
+ * O símbolo da Tália: a árvore branca no círculo amarelo, com as cores da marca
+ * (não muda com a paleta). Mesmo desenho de `src-tauri/icons/source/talia-mark.svg`.
+ */
+export function TaliaMark({ size = 28 }: { size?: number }) {
+  const id = useId();
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="quill">
-      <path
-        fill="currentColor"
-        d="M29 2.5c-8.6.6-15.7 5.4-19.3 12.8-1.4 2.9-2.1 5.9-2.3 8.6l2.1-1.9c.9-3.7 2.8-7.4 6.2-10.4-2.6 3.3-4.3 6.5-5.1 9.8 7.4-.9 13.6-5.6 16.6-12.4 1.1-2.4 1.7-4.4 1.8-6.5z"
-      />
-      <path d="M8.5 25.5 4 30" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <svg
+      height={size}
+      width={(size * 850) / 1050}
+      viewBox="219 120 850 1050"
+      aria-hidden="true"
+      className="talia-mark"
+    >
+      <defs>
+        <clipPath id={id}>
+          <circle cx="644" cy="544" r="424" />
+        </clipPath>
+      </defs>
+      <g fill="none" strokeLinecap="round" strokeWidth="79">
+        <path d="M644 300V1130" stroke="#ECBF1F" />
+        <circle cx="644" cy="544" r="424" fill="#ECBF1F" stroke="none" />
+        <path
+          d="M644 300V1130M482 628l162 162M854 503 644 713"
+          stroke="#fff"
+          clipPath={`url(#${id})`}
+        />
+      </g>
     </svg>
   );
 }

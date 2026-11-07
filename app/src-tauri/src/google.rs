@@ -21,7 +21,7 @@ type CmdResult<T> = Result<T, String>;
 
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-/// Só os arquivos e pastas que o próprio InkFlow criou no Drive.
+/// Só os arquivos e pastas que a própria Tália criou no Drive.
 const SCOPE: &str = "https://www.googleapis.com/auth/drive.file";
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
 
@@ -103,16 +103,16 @@ fn respond(mut stream: &TcpStream, ok: bool) {
     let (title, text) = if ok {
         (
             "Pronto!",
-            "Sua conta Google foi conectada ao InkFlow. Pode fechar esta aba e voltar ao app.",
+            "Sua conta Google foi conectada à Tália. Pode fechar esta aba e voltar ao app.",
         )
     } else {
         (
             "Não foi possível conectar",
-            "O login foi cancelado ou deu errado. Volte ao InkFlow e tente de novo.",
+            "O login foi cancelado ou deu errado. Volte à Tália e tente de novo.",
         )
     };
     let body = format!(
-        "<!doctype html><html lang=pt-BR><meta charset=utf-8><title>InkFlow</title>\
+        "<!doctype html><html lang=pt-BR><meta charset=utf-8><title>Tália</title>\
          <body style=\"font-family:system-ui;background:#0b0b0d;color:#ececf0;display:grid;place-items:center;height:100vh;margin:0\">\
          <div style=\"text-align:center\"><h1 style=\"color:#c4b5fd\">{title}</h1><p>{text}</p></div>"
     );

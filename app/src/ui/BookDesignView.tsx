@@ -266,7 +266,7 @@ export function BookDesignView({ session }: { session: Session }) {
                 <p className="hint">
                   Se a capa foi feita por um capista (ou enviada pelo cliente), use as imagens
                   prontas: elas aparecem como estão na estante, no livro 3D, na impressão e no
-                  e-book, sem textos do InkFlow por cima. O que ficar vazio usa o desenho abaixo.
+                  e-book, sem textos da Tália por cima. O que ficar vazio usa o desenho abaixo.
                 </p>
                 {(
                   [

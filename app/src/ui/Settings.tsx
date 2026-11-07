@@ -125,10 +125,7 @@ function MusicSettings() {
             onChange={(showInSidebar) => setPrefs({ showInSidebar })}
           />
         </Field>
-        <Field
-          label="Volume"
-          hint="Da biblioteca do InkFlow. Spotify e YouTube têm o volume deles."
-        >
+        <Field label="Volume" hint="Da biblioteca da Tália. Spotify e YouTube têm o volume deles.">
           <div className="bg-dim">
             <input
               type="range"
@@ -197,7 +194,7 @@ function MusicSettings() {
 
       <Section title="Contas vinculadas">
         <p className="setting hint music-accounts-hint">
-          A biblioteca do InkFlow toca sem conta nenhuma. Para ouvir as suas playlists, cole aqui o
+          A biblioteca da Tália toca sem conta nenhuma. Para ouvir as suas playlists, cole aqui o
           link de uma playlist, álbum ou música; o player toca com a conta que estiver logada nele
           (no Spotify sem login, só trechos de 30 segundos).
         </p>
@@ -205,12 +202,12 @@ function MusicSettings() {
         <LinkField service="youtube" placeholder="https://music.youtube.com/playlist?list=…" />
       </Section>
 
-      <Section title="Biblioteca do InkFlow">
+      <Section title="Biblioteca da Tália">
         <p className="setting hint music-accounts-hint">
           {PLAYLISTS.length} playlists ({PLAYLISTS.reduce((n, p) => n + p.tracks.length, 0)} faixas)
           que vêm com o app e funcionam sem internet: Barroco (Bach, Petzold, Pachelbel, obras em
           domínio público), Chill & Relax, Foco, Ruído marrom, Chuva e Natureza. Todo o áudio foi
-          gerado por síntese para o InkFlow e é de uso livre (CC0).
+          gerado por síntese para a Tália e é de uso livre (CC0).
         </p>
       </Section>
     </>
@@ -668,7 +665,7 @@ function SyncSection() {
       ) : !sync.account ? (
         <Field
           label="Conta Google"
-          hint="Os projetos ficam numa pasta “InkFlow” do seu Google Drive. O InkFlow só enxerga os arquivos que ele mesmo criou lá."
+          hint="Os projetos ficam numa pasta “Tália” do seu Google Drive. A Tália só enxerga os arquivos que ela mesma criou lá."
         >
           <div className="setting-actions">
             <button type="button" className="link-btn" onClick={() => setEditingClient(true)}>
@@ -697,7 +694,7 @@ function SyncSection() {
                 label="Sincronizar este projeto"
                 hint={
                   sync.enabled
-                    ? `Pasta no Drive: dentro de “InkFlow” (com o nome que o projeto tinha quando a sincronização foi ligada).`
+                    ? `Pasta no Drive: dentro de “Tália” (com o nome que o projeto tinha quando a sincronização foi ligada).`
                     : "Liga este projeto a uma pasta no seu Google Drive. Em outro computador, conecte a mesma conta e, na tela inicial, use “Ver projetos no Drive” e depois “Baixar”."
                 }
               >
@@ -786,7 +783,7 @@ function ClientForm({
       <div className="setting-text">
         <span className="setting-label">Credenciais do Google</span>
         <span className="hint">
-          Para conectar ao Drive, o InkFlow precisa de um “ID do cliente OAuth” do tipo “App para
+          Para conectar ao Drive, a Tália precisa de um “ID do cliente OAuth” do tipo “App para
           computador”, criado no Google Cloud Console. O passo a passo está no Guia do usuário
           (pasta docs do projeto), em “Sincronização com o Google Drive”.
         </span>

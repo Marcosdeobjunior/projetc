@@ -234,7 +234,7 @@ export async function docx(
     .filter(Boolean)
     .join(" / ");
   const doc = new Document({
-    creator: book.author || "InkFlow",
+    creator: book.author || "Tália",
     title: book.title,
     features: opts.toc ? { updateFields: true } : undefined,
     styles: {

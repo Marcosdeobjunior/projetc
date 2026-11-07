@@ -1,4 +1,4 @@
-# Biblioteca de música do InkFlow
+# Biblioteca de música da Tália
 
 Todos os arquivos desta pasta foram **gerados por síntese** pelo script
 `scripts/music/render.py`, sem amostras, gravações ou trechos de terceiros.
@@ -7,17 +7,17 @@ Todos os arquivos desta pasta foram **gerados por síntese** pelo script
   Christian Petzold, 1677–1733; Johann Pachelbel, 1653–1706). As notas foram
   transcritas para este projeto e tocadas por instrumentos sintetizados (cravo,
   cordas). No Cânone, o baixo e as duas primeiras variações são de Pachelbel;
-  as demais variações são do InkFlow, sobre o mesmo baixo.
+  as demais variações são da Tália, sobre o mesmo baixo.
 - **Piano**: _Für Elise_ e o tema da _Ode à Alegria_ (Ludwig van Beethoven,
   1770–1827) e a _Canção de ninar_ op. 49 nº 4 (Johannes Brahms, 1833–1897)
   são composições em domínio público, transcritas e arranjadas para este
   projeto (a _Für Elise_ traz só a seção A e o primeiro episódio; o
-  acompanhamento da _Ode_ e da _Canção de ninar_ é do InkFlow). _Folhas de
-  outono_, _Carta_ e _Valsa lenta_ são originais do InkFlow.
+  acompanhamento da _Ode_ e da _Canção de ninar_ é da Tália). _Folhas de
+  outono_, _Carta_ e _Valsa lenta_ são originais da Tália.
 - **Greensleeves** (em Chill & Relax): melodia tradicional inglesa do século
-  XVI, em domínio público; arranjo do InkFlow.
+  XVI, em domínio público; arranjo da Tália.
 - **Chill & Relax**, **Foco**, **Lo-fi**, **Cinematográfica** e **Ambiente**:
-  composições originais do InkFlow (as melodias e progressões são geradas pelo
+  composições originais da Tália (as melodias e progressões são geradas pelo
   script com sementes fixas).
 - **Ruído marrom, Chuva, Natureza**: sons sintetizados (ruído filtrado,
   gotas, trovões, ondas, vento, pássaros e riacho).

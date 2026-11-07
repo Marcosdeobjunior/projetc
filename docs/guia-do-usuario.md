@@ -1,6 +1,6 @@
-# Guia do usuário do InkFlow
+# Guia do usuário da Tália
 
-Este guia mostra tudo o que o InkFlow faz, na ordem em que você vai encontrar cada coisa: da
+Este guia mostra tudo o que a Tália faz, na ordem em que você vai encontrar cada coisa: da
 instalação até gerar o PDF para a gráfica. Não é preciso saber programar.
 
 > No Mac, onde o guia diz **Ctrl**, use **⌘ (Command)**.
@@ -26,8 +26,8 @@ instalação até gerar o PDF para a gráfica. Não é preciso saber programar.
 
 ### 1.1 Com o instalador
 
-Se você recebeu um instalador do InkFlow (no Windows, um arquivo `.exe` ou `.msi`), basta abrir
-e seguir as telas. O InkFlow aparece no menu Iniciar.
+Se você recebeu um instalador da Tália (no Windows, um arquivo `.exe` ou `.msi`), basta abrir
+e seguir as telas. A Tália aparece no menu Iniciar.
 
 > Por enquanto o app ainda não está nas lojas (Microsoft Store / Mac App Store). O instalador do
 > Windows é gerado automaticamente a cada mudança no código (veja
@@ -101,7 +101,7 @@ formato exato está em [Formato do projeto](formato-do-projeto.md).
 
 ### 2.1 A tela inicial (Início)
 
-O InkFlow **sempre abre no Início**. A pasta (projeto) que estava ativa da última vez continua
+A Tália **sempre abre no Início**. A pasta (projeto) que estava ativa da última vez continua
 selecionada: clique em **Continuar** para voltar a escrever nela. Nada precisa ser escolhido de novo.
 
 O topo e a barra lateral formam uma moldura só. No topo ficam o seu nome (vem das Configurações),
@@ -122,7 +122,7 @@ projetos e, com uma conta Google conectada, os projetos que estão no Drive.
 Na **estante**, cada projeto aparece como um livro de lombada para fora. A lombada, a capa e a
 quarta capa (no livro 3D) vêm do projeto gráfico de cada livro: se você enviou a **capa pronta**
 (Configurações → Diagramação → Capa → _Já tenho a capa pronta_), aparece a arte enviada; senão,
-o desenho padrão do InkFlow. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
+o desenho padrão da Tália. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
 busca abre o **Elo** do projeto ativo.
 
 Cada paleta tem um **fundo próprio**, que troca junto com ela. Em **Configurações → Geral → Tela
@@ -133,7 +133,7 @@ paleta até você voltar para o fundo do tema.
 
 1. Digite o nome do livro (por exemplo, "A Casa das Marés") e clique em **Criar projeto**.
 2. Escolha **onde** a pasta do projeto vai ser criada (por exemplo, "Documentos").
-3. O InkFlow cria uma pasta com o nome do livro (mantendo acentos e espaços) e abre o projeto
+3. A Tália cria uma pasta com o nome do livro (mantendo acentos e espaços) e abre o projeto
    com um "Capítulo 1" e uma "Cena 1".
 
 Se já existir uma pasta com esse nome no local escolhido, o app avisa e não cria nada.
@@ -142,7 +142,7 @@ Se já existir uma pasta com esse nome no local escolhido, o app avisa e não cr
 
 **Abrir projeto existente** pede uma pasta:
 
-- se ela já é um projeto do InkFlow (tem `.inkflow/project.json`), ele abre;
+- se ela já é um projeto da Tália (tem `.inkflow/project.json`), ele abre;
 - se é uma pasta comum, o app pergunta se você quer **Criar projeto nesta pasta**. Ele cria
   `manuscrito/`, `.inkflow/` e um arquivo `LEIA-ME.md` (se ainda não existir), com o nome da
   pasta como título. **Os arquivos que já estavam lá não são alterados.**
@@ -160,7 +160,7 @@ Clique no **nome do projeto**, no alto da barra lateral. O menu tem:
 - **Novo projeto…** e **Ver todos os projetos** — os dois fecham o projeto atual e voltam para a
   tela inicial.
 
-Antes de trocar ou fechar, o InkFlow grava o que estiver pendente, guarda uma versão automática
+Antes de trocar ou fechar, a Tália grava o que estiver pendente, guarda uma versão automática
 no histórico (se algo mudou) e, se a sincronização estiver ligada, sincroniza com o Drive.
 
 ---
@@ -228,7 +228,7 @@ O texto aberto ocupa o centro da tela. No alto ficam o nome do capítulo e o nom
 (**Salvando…** / **Salvo**). Embaixo, a contagem de palavras da **cena**, do **capítulo** e do
 **livro**.
 
-**Não existe botão de salvar:** o InkFlow grava sozinho menos de um segundo depois que você
+**Não existe botão de salvar:** a Tália grava sozinho menos de um segundo depois que você
 para de digitar, e também ao trocar de texto, de janela ou fechar o app. Se a gravação falhar
 (por exemplo, a pasta ficou inacessível), aparece **Não foi possível salvar** e o app não fecha
 até conseguir gravar.
@@ -301,10 +301,10 @@ outra palavra no lugar do nome, use uma barra: `[[Helena|a amiga]]`.
 
 ### 4.4 Quando o arquivo muda fora do app
 
-Os textos são arquivos `.md` comuns, que você pode abrir em outro programa. O InkFlow percebe a
-mudança quando você volta para a janela dele ou reabre o texto:
+Os textos são arquivos `.md` comuns, que você pode abrir em outro programa. A Tália percebe a
+mudança quando você volta para a janela dela ou reabre o texto:
 
-- se você não estava editando aquele texto no InkFlow, ele simplesmente passa a mostrar o texto
+- se você não estava editando aquele texto na Tália, ela simplesmente passa a mostrar o texto
   novo (e dá para desfazer com Ctrl+Z);
 - se os dois lados mudaram ao mesmo tempo, **nada se perde**: a versão de fora é guardada como
   um texto novo chamado **"Nome (versão externa)"**, logo abaixo do original, e o app avisa.
@@ -343,7 +343,7 @@ arquivo também pode ser anexado, mas aparece só como cartão.
 Por segurança, o app desktop só **abre no programa padrão** imagens, áudios, vídeos, PDF, textos
 (`.txt`, `.md`, `.rtf`), documentos de escritório (Word, Excel, PowerPoint e os equivalentes do
 LibreOffice), CSV e EPUB. Outros tipos (um `.zip`, um programa) continuam guardados na pasta
-`anexos/`, mas o InkFlow não os abre: abra pela pasta do projeto, no gerenciador de arquivos.
+`anexos/`, mas a Tália não os abre: abra pela pasta do projeto, no gerenciador de arquivos.
 
 Na exportação, só as **imagens** PNG, JPG, GIF, WebP e SVG entram no livro (e só se "Imagens"
 estiver marcado). Vídeos, áudios e outros arquivos ficam de fora.
@@ -453,7 +453,7 @@ Clique num texto para ver como ele estava. Então:
 
 ## 9. Lixeira
 
-No InkFlow **nada é apagado de verdade** quando você exclui: cenas, capítulos, notas e anexos vão
+Na Tália **nada é apagado de verdade** quando você exclui: cenas, capítulos, notas e anexos vão
 para a **Lixeira**, que fica dentro da pasta do projeto (`.inkflow/lixeira/`). Abra pelo rodapé
 da barra lateral.
 
@@ -484,7 +484,7 @@ Restaurar** (só "Apagar de vez"). Podem ser:
 Para recuperar algo de uma cópia de segurança, abra a pasta `.inkflow/lixeira/` do projeto no
 gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.inkflow`): os arquivos têm
 a data e a hora no começo do nome, e os textos são `.md` que abrem em qualquer editor. Copie o
-trecho que você quer de volta para o texto no InkFlow. Veja também
+trecho que você quer de volta para o texto na Tália. Veja também
 [Conflitos de sincronização](#a-sincronização-avisou-que-um-arquivo-foi-alterado-aqui-e-em-outro-computador).
 
 > A Lixeira fica só neste computador: ela **não é sincronizada** com o Drive.
@@ -563,8 +563,8 @@ Drive. Ela só existe no app desktop.
 
 **Como funciona, em resumo:**
 
-- cada projeto sincronizado vira uma pasta `InkFlow/<nome do projeto>` no seu Drive;
-- o InkFlow usa a permissão `drive.file`: **só enxerga as pastas e arquivos que ele mesmo
+- cada projeto sincronizado vira uma pasta `Tália/<nome do projeto>` no seu Drive;
+- a Tália usa a permissão `drive.file`: **só enxerga as pastas e arquivos que ela mesma
   criou** no seu Drive, nada mais;
 - o app sincroniza **ao abrir** o projeto, **ao fechar** (ou trocar de projeto, ou fechar a
   janela), **de tempos em tempos** (a cada 5, 15 ou 30 minutos, ou "Só quando eu pedir") e quando
@@ -574,23 +574,23 @@ Drive. Ela só existe no app desktop.
 
 #### Passo 1 — Credenciais do Google (uma vez só)
 
-O InkFlow ainda não vem com credenciais próprias, então você precisa criar um "ID do cliente
+A Tália ainda não vem com credenciais próprias, então você precisa criar um "ID do cliente
 OAuth" grátis no Google Cloud. Faça isso uma vez; depois serve para todos os seus computadores.
 
 1. Entre em <https://console.cloud.google.com> com sua conta Google e **crie um projeto** (por
-   exemplo, "InkFlow").
+   exemplo, "Tália").
 2. Vá em **APIs e serviços → Biblioteca**, procure **Google Drive API** e clique em **Ativar**.
 3. Vá em **APIs e serviços → Tela de consentimento OAuth** (em algumas contas aparece como
    **Google Auth Platform**):
    - tipo de usuário **Externo**;
-   - preencha o nome do app (por exemplo, "InkFlow") e o seu e-mail;
+   - preencha o nome do app (por exemplo, "Tália") e o seu e-mail;
    - em **Público-alvo** / **Usuários de teste**, adicione as contas Google que vão usar o app
      (a sua, pelo menos).
 4. Vá em **Credenciais → Criar credenciais → ID do cliente OAuth**:
    - tipo de aplicativo: **App para computador** (em inglês, "Desktop app");
    - copie o **ID do cliente** (termina em `.apps.googleusercontent.com`) e a **Chave secreta do
      cliente**.
-5. No InkFlow: **Configurações → Sincronização**, cole os dois campos e clique em **Salvar**.
+5. Na Tália: **Configurações → Sincronização**, cole os dois campos e clique em **Salvar**.
 
 > Enquanto o app estiver no modo "Teste" no Google Cloud, o Google pede para você entrar de novo
 > **a cada 7 dias**. Isso é normal; basta conectar a conta outra vez. Para trocar as credenciais
@@ -599,7 +599,7 @@ OAuth" grátis no Google Cloud. Faça isso uma vez; depois serve para todos os s
 #### Passo 2 — Conectar a conta
 
 Clique em **Conectar conta Google**. O navegador abre a página de login do Google; escolha a
-conta, autorize e volte ao InkFlow quando a página disser "Pronto!". (Se o Google avisar que o
+conta, autorize e volte à Tália quando a página disser "Pronto!". (Se o Google avisar que o
 app não foi verificado, é porque as credenciais são suas e estão em modo de teste: clique em
 "Continuar".) O login espera até 5 minutos.
 
@@ -618,7 +618,7 @@ Desligar a chave para de sincronizar este projeto (nada é apagado nem aqui nem 
 
 #### Baixar um projeto do Drive em outro computador
 
-1. Instale o InkFlow no outro computador, faça o [Passo 1](#passo-1--credenciais-do-google-uma-vez-só)
+1. Instale a Tália no outro computador, faça o [Passo 1](#passo-1--credenciais-do-google-uma-vez-só)
    (cole as mesmas credenciais) e o [Passo 2](#passo-2--conectar-a-conta) com a mesma conta.
 2. Na **tela inicial**, em **No Google Drive**, clique em **Ver projetos no Drive**.
 3. Clique em **Baixar** ao lado do projeto e escolha onde criar a pasta. O projeto é baixado,
@@ -847,7 +847,7 @@ também serve **Microsoft Print to PDF**) e salve. Para o PDF da gráfica, use a
 ### A sincronização avisou que um arquivo foi alterado "aqui e em outro computador"
 
 Isso acontece quando o mesmo arquivo mudou nos dois computadores entre uma sincronização e outra.
-Nada foi perdido: o InkFlow manteve (ou mesclou) a versão deste computador e guardou a outra na
+Nada foi perdido: a Tália manteve (ou mesclou) a versão deste computador e guardou a outra na
 **Lixeira**, como [cópia de segurança](#cópias-de-segurança-na-lixeira). Compare as duas e, se
 precisar, copie o trecho que faltou. Para evitar conflitos, deixe o app sincronizar antes de
 trocar de computador (fechar o projeto ou a janela já sincroniza).
@@ -866,7 +866,7 @@ O ID do cliente ou a chave secreta estão errados, ou a sua conta não está na 
 ### Apareceu uma cena "(versão externa)"
 
 O arquivo daquele texto foi alterado por outro programa enquanto ele estava aberto e com edições
-no InkFlow. Para não perder nada, o app guardou a versão de fora como um texto novo, logo abaixo.
+na Tália. Para não perder nada, o app guardou a versão de fora como um texto novo, logo abaixo.
 Compare, junte o que quiser e exclua a cópia.
 
 ### Excluí um capítulo sem querer

@@ -6,7 +6,7 @@ import { DESIGN_FILE, TRIM, loadDesign, pageCount, spineWidth } from "./design";
 /*
  * Capa, quarta capa e lombada de cada projeto, para a estante e o livro 3D da
  * tela inicial. Usa o projeto gráfico do livro: a arte pronta enviada, se
- * houver, ou o desenho do InkFlow (o padrão do app, para quem nunca mexeu na
+ * houver, ou o desenho da Tália (o padrão do app, para quem nunca mexeu na
  * capa). Cada livro é desenhado uma vez por versão e fica guardado.
  */
 

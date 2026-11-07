@@ -1,6 +1,6 @@
-# Documentação do InkFlow
+# Documentação da Tália
 
-O InkFlow é um app de escrita para quem escreve livros: cada projeto é uma pasta no seu
+A Tália é um app de escrita para quem escreve livros: cada projeto é uma pasta no seu
 computador, com os textos guardados em arquivos legíveis (Markdown), e a sincronização com o
 Google Drive é opcional, feita na sua própria conta.
 

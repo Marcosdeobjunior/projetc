@@ -25,7 +25,7 @@ export class VaultError extends Error {}
  * nada que já existe é sobrescrito.
  */
 export async function createVault(fs: VaultFs, title: string): Promise<Project> {
-  if (await fs.exists(PROJECT_FILE)) throw new VaultError("Essa pasta já é um projeto do InkFlow.");
+  if (await fs.exists(PROJECT_FILE)) throw new VaultError("Essa pasta já é um projeto da Tália.");
   const project = createProject(title);
   const writeNew = async (path: string, text: string) => {
     if (!(await fs.exists(path))) await fs.writeText(path, text);
@@ -37,7 +37,7 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
   }
   await writeNew(
     "LEIA-ME.md",
-    `# ${project.title}\n\nEste é um projeto do InkFlow.\n\n` +
+    `# ${project.title}\n\nEste é um projeto da Tália.\n\n` +
       "- `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.\n" +
       "- `notas/` guarda os personagens, lugares e ideias.\n" +
       "- `anexos/` guarda as imagens, vídeos, áudios e outros arquivos usados nos textos.\n" +
@@ -49,7 +49,7 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
 
 export async function loadProject(fs: VaultFs): Promise<Project> {
   const raw = await fs.readText(PROJECT_FILE);
-  if (raw === null) throw new VaultError("Essa pasta não é um projeto do InkFlow.");
+  if (raw === null) throw new VaultError("Essa pasta não é um projeto da Tália.");
   let data: Project;
   try {
     data = JSON.parse(raw) as Project;
@@ -57,7 +57,7 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
     throw new VaultError("O arquivo .inkflow/project.json está corrompido.");
   }
   if (data.format !== 1) {
-    throw new VaultError("Este projeto foi criado por uma versão mais nova do InkFlow.");
+    throw new VaultError("Este projeto foi criado por uma versão mais nova da Tália.");
   }
   // Projetos criados antes das notas existirem.
   const project = { ...data, notes: data.notes ?? [] };
@@ -168,7 +168,7 @@ export async function writeSceneMarkdown(
 /** O .md da cena mudou no disco desde a última vez que o app leu ou gravou. */
 export class ExternalChangeError extends Error {
   constructor(readonly diskText: string) {
-    super("A cena foi alterada fora do InkFlow.");
+    super("A cena foi alterada fora da Tália.");
   }
 }
 

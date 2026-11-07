@@ -309,7 +309,7 @@ fn openable(path: &str) -> bool {
 pub async fn vault_open(app: tauri::AppHandle, root: String, path: String) -> CmdResult<()> {
     if !openable(&path) {
         return Err(
-            "Por segurança, o InkFlow só abre imagens, áudios, vídeos e documentos da pasta anexos. \
+            "Por segurança, a Tália só abre imagens, áudios, vídeos e documentos da pasta anexos. \
              Este arquivo continua na pasta anexos do projeto."
                 .into(),
         );

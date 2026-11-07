@@ -701,7 +701,7 @@ export const useApp = create<AppState>((set, get) => {
       );
       if (!ok) return false;
       set({
-        message: `O texto “${doc.title}” foi alterado fora do InkFlow enquanto estava aberto. Para não perder nada, a versão de fora foi guardada como “${title}”.`,
+        message: `O texto “${doc.title}” foi alterado fora da Tália enquanto estava aberto. Para não perder nada, a versão de fora foi guardada como “${title}”.`,
         messageTone: "info",
       });
       return true;

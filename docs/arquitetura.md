@@ -1,4 +1,4 @@
-# Arquitetura do InkFlow
+# Arquitetura da Tália
 
 Documento técnico para quem vai manter ou estender o app. Descreve o código como ele está; quando
 algo é uma limitação conhecida, isso é dito. O formato exato dos arquivos em disco está em
@@ -494,7 +494,8 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 `src/sync/drive.ts` (`GoogleDrive`, REST v3 via `fetch`):
 
-- Pasta raiz `InkFlow` marcada com `appProperties.inkflowRoot = "1"`.
+- Pasta raiz `Tália` marcada com `appProperties.inkflowRoot = "1"` (é a marcação que identifica a pasta,
+  não o nome: quem já sincronizava quando o app se chamava InkFlow continua com a pasta "InkFlow").
 - Cada projeto: pasta com o **título no momento em que a sync foi ligada**, marcada com
   `appProperties.inkflowProject = <project.id>` (é o id que identifica, não o nome). As subpastas
   espelham o caminho dos arquivos.
@@ -727,7 +728,7 @@ Windows; `dmg`/`app` no Mac; `deb`/`AppImage`/`rpm` no Linux — `targets: "all"
   `app/src-tauri/Cargo.toml`; atualize as três juntas.
 - **Identificador**: `app.inkflow.desktop`. Ícones em `src-tauri/icons/`.
 - **CI**: o job "Instalador do Windows" (`.github/workflows/app.yml`) gera o `.exe` e o `.msi` em
-  cada push que mexe em `app/` e publica o artefato **InkFlow-Windows** (guardado por 30 dias).
+  cada push que mexe em `app/` e publica o artefato **Talia-Windows** (guardado por 30 dias).
 - Ainda **não há** assinatura de código, atualização automática nem empacotamento para as lojas
   (Microsoft Store / Mac App Store), citadas como objetivo no README da raiz.
 

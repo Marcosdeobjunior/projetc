@@ -1,6 +1,6 @@
 /*
  * Acesso ao Google Drive (API v3) com o token de acesso da conta conectada.
- * Cada projeto fica numa pasta "InkFlow/<título>" marcada com o id do
+ * Cada projeto fica numa pasta "Tália/<título>" marcada com o id do
  * projeto; as subpastas espelham as pastas do vault.
  */
 
@@ -44,7 +44,7 @@ export class DriveError extends Error {
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 const FOLDER = "application/vnd.google-apps.folder";
-const ROOT_NAME = "InkFlow";
+const ROOT_NAME = "Tália";
 /** Acima disso o envio é feito em partes (upload "resumable"). */
 const SIMPLE_LIMIT = 5 * 1024 * 1024;
 
