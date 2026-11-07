@@ -6,7 +6,29 @@ import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toPlainText } from "../markdown/serialize";
 import { KIND_LABEL } from "../links/context";
 import { attachmentKind, KIND_ICON as ATTACHMENT_ICON } from "../editor/attachments";
+import { readBackup, restorable, type BackupContents } from "../vault/backup";
 import { Icon } from "./Icon";
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** O que há numa cópia de segurança, numa linha: o começo do texto ou a lista do que tem. */
+function backupSummary(c: BackupContents): string {
+  if (c.texts.length === 1 && c.attachments.length === 0) return excerpt(c.texts[0]!.body);
+  const parts = [
+    c.texts.length ? plural(c.texts.length, "texto", "textos") : "",
+    c.attachments.length ? plural(c.attachments.length, "anexo", "anexos") : "",
+    c.other.length ? plural(c.other.length, "arquivo técnico", "arquivos técnicos") : "",
+  ].filter(Boolean);
+  const names = c.texts
+    .slice(0, 4)
+    .map((t) => t.title)
+    .join(", ");
+  return parts.length
+    ? `${parts.join(", ")}${names ? `: ${names}${c.texts.length > 4 ? "…" : ""}` : ""}`
+    : "Vazia";
+}
+
+const excerpt = (md: string) => toPlainText(parseMarkdown(md)).slice(0, 220);
 
 const when = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" });
 
@@ -37,6 +59,8 @@ export function TrashView({ session }: { session: Session }) {
   const busy = useApp((s) => s.busy);
   const [entries, setEntries] = useState<TrashEntry[] | null>(null);
   const [excerpts, setExcerpts] = useState<Record<string, string>>({});
+  /** Cópias de segurança que têm algo para pôr de volta no projeto. */
+  const [canRestore, setCanRestore] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const { fs } = session;
@@ -47,16 +71,25 @@ export function TrashView({ session }: { session: Session }) {
       const list = await listTrash(fs);
       // Começo do texto de cenas e notas, para lembrar o que era.
       const texts: Record<string, string> = {};
+      const restore = new Set<string>();
+      const files = list.some((e) => e.item.kind === "backup") ? await fs.walk() : [];
       for (const e of list) {
+        if (e.item.kind === "backup") {
+          const contents = await readBackup(fs, e, files);
+          texts[e.id] = backupSummary(contents);
+          if (restorable(contents)) restore.add(e.id);
+          continue;
+        }
         if (e.item.kind !== "scene" && e.item.kind !== "note") continue;
         const md = await fs.readText(e.path);
-        if (md) texts[e.id] = toPlainText(parseMarkdown(splitFrontmatter(md).body)).slice(0, 220);
+        if (md) texts[e.id] = excerpt(splitFrontmatter(md).body);
       }
-      return { list, texts };
-    }).then(({ list, texts }) => {
+      return { list, texts, restore };
+    }).then(({ list, texts, restore }) => {
       if (cancelled) return;
       setEntries(list);
       setExcerpts(texts);
+      setCanRestore(restore);
     });
     return () => {
       cancelled = true;
@@ -75,7 +108,8 @@ export function TrashView({ session }: { session: Session }) {
         <header className="trash-head">
           <p className="muted">
             Cenas, capítulos, notas e anexos excluídos ficam aqui, dentro da pasta do projeto, até
-            você apagar de vez.
+            você apagar de vez. As cópias de segurança voltam como textos novos, sem substituir
+            nada.
           </p>
           {entries &&
             entries.length > 0 &&
@@ -142,11 +176,16 @@ export function TrashView({ session }: { session: Session }) {
                     </div>
                   ) : (
                     <div className="trash-actions">
-                      {e.item.kind !== "backup" && (
+                      {(e.item.kind !== "backup" || canRestore.has(e.id)) && (
                         <button
                           type="button"
                           className="btn ghost sm"
                           disabled={busy}
+                          title={
+                            e.item.kind === "backup"
+                              ? "Volta como textos novos e anexos, sem substituir nada do projeto"
+                              : undefined
+                          }
                           onClick={async () => {
                             await restoreFromTrash(e);
                             setReload((n) => n + 1);

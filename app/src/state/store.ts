@@ -34,7 +34,14 @@ import {
   importFiles,
   setAttachmentSource,
 } from "../editor/attachments";
-import { dropTrashEntry, moveToTrash, restorePlan, type TrashEntry } from "../vault/trash";
+import {
+  deleteFromTrash,
+  dropTrashEntry,
+  moveToTrash,
+  restorePlan,
+  type TrashEntry,
+} from "../vault/trash";
+import { backupRestorePlan, insideTrash, readBackup, restorable } from "../vault/backup";
 import { restoreProjectFiles, saveVersion, type Version } from "../vault/history";
 import { renameLinksInOpenEditors } from "./openEditors";
 
@@ -302,6 +309,60 @@ export const useApp = create<AppState>((set, get) => {
     return true;
   }
 
+  /**
+   * Põe de volta uma cópia de segurança da Lixeira sem substituir nada: os textos
+   * voltam como textos novos e os anexos para anexos/ (veja vault/backup.ts).
+   * Arquivos técnicos ficam na Lixeira.
+   */
+  async function restoreBackup(entry: TrashEntry) {
+    const session = get().session!;
+    const contents = await serial(() => readBackup(session.fs, entry));
+    if (!restorable(contents)) {
+      set({
+        message:
+          "Esta cópia de segurança só tem arquivos técnicos do app, que não dá para restaurar por aqui. Ela continua na Lixeira, dentro da pasta .inkflow/lixeira do projeto.",
+        messageTone: "info",
+      });
+      return;
+    }
+    const plan = backupRestorePlan(session.project, contents, session.attachments);
+    const moves = plan.moves.filter((m) => insideTrash(m.from));
+    const ok = await get().change(
+      () => ({ project: plan.project, ops: moves.map((m) => ({ kind: "move", ...m })) }),
+      async (next) => {
+        for (const t of plan.texts) await writeSceneMarkdown(session.fs, next, t.id, t.body);
+      },
+    );
+    if (!ok) return;
+    const now = get().session!;
+    const [{ words, texts }, attachments] = await serial(async () => {
+      if (contents.other.length === 0) {
+        await deleteFromTrash(now.fs, entry.id);
+      } else {
+        // Sobram arquivos técnicos: a entrada fica, só com eles.
+        for (const path of plan.restored) {
+          if (insideTrash(path) && (await now.fs.exists(path))) await now.fs.remove(path);
+        }
+      }
+      return [await readProjectTexts(now.fs, now.project), await now.fs.list(ATTACHMENTS_DIR)];
+    });
+    set({ session: { ...get().session!, words, texts, attachments } });
+    if (plan.openId) get().openDoc(plan.openId);
+    const n = plan.texts.length;
+    const a = plan.moves.length;
+    const what = [
+      n ? `${n} ${n === 1 ? "texto" : "textos"}` : "",
+      a ? `${a} ${a === 1 ? "anexo" : "anexos"}` : "",
+    ]
+      .filter(Boolean)
+      .join(" e ");
+    const verb = n + a === 1 ? "voltou como item novo" : "voltaram como itens novos";
+    set({
+      message: `Cópia de segurança restaurada: ${what} ${verb}, sem substituir nada do projeto.`,
+      messageTone: "info",
+    });
+  }
+
   async function guarded(task: () => Promise<void>) {
     set({ busy: true });
     try {
@@ -566,6 +627,7 @@ export const useApp = create<AppState>((set, get) => {
       guarded(async () => {
         const session = get().session;
         if (!session) return;
+        if (entry.item.kind === "backup") return restoreBackup(entry);
         const plan = restorePlan(session.project, entry, session.attachments);
         if (!plan) return;
         if (plan.project === session.project) {

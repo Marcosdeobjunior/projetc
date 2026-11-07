@@ -462,7 +462,16 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
   sincronização) como item `backup`.
 - `restorePlan` calcula o projeto novo e os `move` de volta: ids já usados ganham id novo; nomes
   ganham sufixo; cena sem capítulo volta num capítulo novo com o mesmo título; anexos voltam para
-  `anexos/` com nome único. `backup` não tem restauração (devolve `null`).
+  `anexos/` com nome único. Para `backup` devolve `null`: quem restaura é `vault/backup.ts`.
+- `vault/backup.ts`: `readBackup` lê a cópia (um arquivo ou uma pasta, usando `fs.walk()`) e
+  separa textos `.md` (título e id do cabeçalho, capítulo ou tipo de nota pela pasta), anexos
+  (extensões de `attachmentKind`) e arquivos técnicos. `backupRestorePlan` nunca substitui nada:
+  texto de uma cena que existe (pelo id, senão pelo título) vira cena nova logo abaixo, de uma nota
+  vira nota nova; pasta `manuscrito/` vira um capítulo "(recuperado)" por capítulo; pasta
+  `notas/` devolve as notas; o resto vai para o capítulo "Recuperados da Lixeira"; anexos voltam
+  com nome único. O `restoreBackup` do store aplica o plano com `change`, grava os textos com
+  `writeSceneMarkdown` e tira a entrada da lixeira; se sobraram arquivos técnicos, a entrada fica
+  só com eles.
 - `emptyTrash` remove a pasta inteira (inclusive restos sem índice).
 
 `TrashItem`: `scene` (com capítulo e índice de origem), `chapter` (com cenas e índice), `note`,
@@ -801,7 +810,8 @@ Windows; `dmg`/`app` no Mac; `deb`/`AppImage`/`rpm` no Linux — `targets: "all"
 | `sync/mergeProject.test.ts` | Junção de `project.json`                                          |
 | `sync/md5.test.ts`          | MD5 contra vetores conhecidos                                     |
 | `state/writes.test.ts`      | Fila serial, flush e beforeClose                                  |
-| `state/store.test.ts`       | Versão de fechamento ao fechar a janela e ao abrir outra pasta    |
+| `state/store.test.ts`       | Versão de fechamento ao sair; restaurar cópia de segurança        |
+| `vault/backup.test.ts`      | Onde cada tipo de cópia de segurança volta no projeto             |
 
 Os testes de domínio rodam sobre `KeyValueFs` + `MemoryStore`, sem Tauri.
 
@@ -862,8 +872,9 @@ Chaves no `localStorage` do WebView (por computador, não vão para o projeto ne
   "Página" é ignorado no PDF estilo Livro quando há projeto gráfico.
 - **Colisão de títulos** entre cena e nota: o link resolve para a cena (ver
   [Links](#7-links-menções-e-grafo)).
-- **Cópias de segurança** (`backup`) na Lixeira não podem ser restauradas pela interface nem têm
-  prévia do conteúdo; é preciso abrir `.inkflow/lixeira/` manualmente.
+- **Cópias de segurança** (`backup`): a pasta `manuscrito/` guardada antes de voltar para uma
+  versão não tem a ordem das cenas (não há `project.json` nela), então elas voltam em ordem
+  alfabética; arquivos técnicos (`.yjs`, `.json`) só saem da lixeira à mão.
 - **Quarta capa sem sinopse** imprime o texto de exemplo (com 50% de opacidade) no PDF da capa.
 - **Renomear o projeto** não renomeia a pasta no computador nem a pasta no Drive.
 - **Credenciais Google em modo "Teste"**: o refresh token expira em 7 dias.
