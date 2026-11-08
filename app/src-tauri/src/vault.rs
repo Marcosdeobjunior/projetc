@@ -128,6 +128,53 @@ fn rename(root: &str, from: &str, to: &str) -> CmdResult<()> {
     fs::rename(src, dst).map_err(err)
 }
 
+/// Renomeia a pasta do próprio projeto, no mesmo lugar. Devolve o caminho novo.
+/// Só aceita pastas que são projetos (têm `.inkflow/project.json`) e um nome
+/// simples, sem separadores; nunca substitui uma pasta que já existe.
+fn rename_root(root: &str, name: &str) -> CmdResult<String> {
+    let name = name.trim();
+    if name.is_empty() || name == "." || name == ".." || name.contains('/') || bad_part(name) {
+        return Err(format!("nome de pasta inválido: {name}"));
+    }
+    let src = PathBuf::from(root);
+    if !src.is_absolute() {
+        return Err("a raiz do vault precisa ser um caminho absoluto".into());
+    }
+    if !fs::metadata(&src).map(|m| m.is_dir()).unwrap_or(false) {
+        return Err("a pasta do projeto não foi encontrada".into());
+    }
+    if !src.join(".inkflow").join("project.json").is_file() {
+        return Err("essa pasta não é um projeto da Tália".into());
+    }
+    let parent = src
+        .parent()
+        .ok_or("a pasta do projeto não tem pasta acima")?;
+    let dst = parent.join(name);
+    if dst == src {
+        return Ok(root.to_string());
+    }
+    let taken = fs::symlink_metadata(&dst).is_ok();
+    // No Windows e no macOS, "livro" e "Livro" são a mesma pasta.
+    let same_folder = taken && fs::canonicalize(&dst).ok() == fs::canonicalize(&src).ok();
+    if taken && !same_folder {
+        return Err(format!(
+            "já existe uma pasta chamada \"{name}\" nesse local"
+        ));
+    }
+    if same_folder {
+        // Só muda maiúsculas e minúsculas: passa por um nome temporário.
+        let tmp = parent.join(format!(".{name}.renomeando-{}", std::process::id()));
+        fs::rename(&src, &tmp).map_err(err)?;
+        if let Err(e) = fs::rename(&tmp, &dst) {
+            let _ = fs::rename(&tmp, &src);
+            return Err(err(e));
+        }
+    } else {
+        fs::rename(&src, &dst).map_err(err)?;
+    }
+    Ok(dst.to_string_lossy().into_owned())
+}
+
 fn remove(root: &str, path: &str) -> CmdResult<()> {
     let target = safe_path(root, path)?;
     if target == Path::new(root) {
@@ -332,6 +379,11 @@ pub async fn vault_open(app: tauri::AppHandle, root: String, path: String) -> Cm
 }
 
 #[tauri::command]
+pub async fn vault_rename_root(root: String, name: String) -> CmdResult<String> {
+    rename_root(&root, &name)
+}
+
+#[tauri::command]
 pub async fn vault_walk(root: String) -> CmdResult<Vec<FileInfo>> {
     walk(&root)
 }
@@ -354,6 +406,41 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let s = dir.path().to_string_lossy().into_owned();
         (dir, s)
+    }
+
+    fn project(parent: &Path, name: &str) -> String {
+        let dir = parent.join(name);
+        fs::create_dir_all(dir.join(".inkflow")).unwrap();
+        fs::write(dir.join(".inkflow/project.json"), "{}").unwrap();
+        dir.to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn renomeia_a_pasta_do_projeto() {
+        let (d, _) = root();
+        let old = project(d.path(), "Livro");
+        let new = rename_root(&old, "Livro novo").unwrap();
+        assert_eq!(Path::new(&new), d.path().join("Livro novo"));
+        assert!(Path::new(&new).join(".inkflow/project.json").is_file());
+        assert!(!Path::new(&old).exists());
+        // Mesmo nome: nada muda.
+        assert_eq!(rename_root(&new, "Livro novo").unwrap(), new);
+    }
+
+    #[test]
+    fn nao_renomeia_por_cima_nem_com_nome_estranho() {
+        let (d, _) = root();
+        let livro = project(d.path(), "Livro");
+        fs::create_dir(d.path().join("Outro")).unwrap();
+        assert!(rename_root(&livro, "Outro").is_err());
+        for bad in ["", " ", "..", "a/b", "a\\b", "C:x"] {
+            assert!(rename_root(&livro, bad).is_err(), "{bad:?}");
+        }
+        // Pasta comum (não é projeto) não é renomeada.
+        let comum = d.path().join("Comum");
+        fs::create_dir(&comum).unwrap();
+        assert!(rename_root(&comum.to_string_lossy(), "Nova").is_err());
+        assert!(Path::new(&livro).exists());
     }
 
     #[test]

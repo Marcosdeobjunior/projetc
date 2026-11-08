@@ -8,7 +8,15 @@ import {
   type VaultRef,
 } from "../platform";
 import type { NoteKind, Project, TreeChange } from "../manuscript/types";
-import { addChapter, addNote, addScene, findDoc, findScene, moveScene } from "../manuscript/tree";
+import {
+  addChapter,
+  addNote,
+  addScene,
+  findDoc,
+  findScene,
+  moveScene,
+  renameProject as withTitle,
+} from "../manuscript/tree";
 import { countWords } from "../manuscript/wordCount";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toPlainText } from "../markdown/serialize";
@@ -125,6 +133,11 @@ interface AppState {
   reloadFromDisk(openId?: string | null): Promise<void>;
   /** Põe de volta no projeto um item da lixeira. */
   restoreFromTrash(entry: TrashEntry): Promise<void>;
+  /**
+   * Muda o nome do projeto. Se a pasta no computador tinha o nome do projeto,
+   * ela é renomeada junto (pastas com outro nome ficam como estão).
+   */
+  renameProject(title: string): Promise<void>;
   setSaveState(state: SaveState): void;
   showMessage(message: string | null, tone?: "info" | "error"): void;
 }
@@ -361,6 +374,36 @@ export const useApp = create<AppState>((set, get) => {
       message: `Cópia de segurança restaurada: ${what} ${verb}, sem substituir nada do projeto.`,
       messageTone: "info",
     });
+  }
+
+  /** Último pedaço de um caminho (Windows ou não). */
+  const lastPart = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? "";
+
+  /** Renomeia a pasta do projeto aberto e reabre o projeto no caminho novo. */
+  async function renameFolder(name: string) {
+    const { platform, session } = get();
+    if (!platform?.renameVaultFolder || !session) return;
+    const { root, activeDocId, view } = session;
+    // Como ao fechar o projeto: grava o pendente, fecha o editor e sincroniza,
+    // para nada ser gravado no caminho antigo depois de renomear.
+    if (!(await closeEditor())) return;
+    await runBeforeClose();
+    let next: string;
+    try {
+      next = await serial(() => platform.renameVaultFolder!(root, name));
+    } catch (err) {
+      set({
+        session: { ...get().session!, activeDocId },
+        message: `O nome do projeto mudou, mas a pasta no computador continua com o nome antigo: não foi possível renomeá-la (${typeof err === "string" ? err : describe(err)}). Ela pode estar aberta em outro programa, como o Explorador de Arquivos.`,
+        messageTone: "error",
+      });
+      return;
+    }
+    await platform.forgetVault(root);
+    await open(next, { version: false });
+    set({ session: { ...get().session!, activeDocId, view } });
+    await get().refreshVaults();
+    set({ message: `A pasta do projeto agora se chama “${name}”.`, messageTone: "info" });
   }
 
   async function guarded(task: () => Promise<void>) {
@@ -621,6 +664,19 @@ export const useApp = create<AppState>((set, get) => {
           activeDocId: wanted && findDoc(project, wanted) ? wanted : firstScene(project),
         },
       });
+    },
+
+    async renameProject(title) {
+      const session = get().session;
+      const clean = title.trim();
+      if (!session || !clean || clean === session.project.title) return;
+      const before = session.project.title;
+      if (!(await get().change((p) => ({ project: withTitle(p, clean), ops: [] })))) return;
+      const current = lastPart(session.root);
+      const wanted = folderName(clean);
+      // Só a pasta que tinha o nome do projeto acompanha a mudança.
+      if (current !== folderName(before) || current === wanted) return;
+      await guarded(() => renameFolder(wanted));
     },
 
     restoreFromTrash: (entry) =>

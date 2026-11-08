@@ -20,6 +20,7 @@ import type { Drive, RemoteFile, RemoteProject } from "./drive";
 import {
   applySync,
   decide,
+  ensureFolderTitle,
   planSync,
   readSyncState,
   writeSyncState,
@@ -55,6 +56,10 @@ class FakeDrive implements Drive {
   }
   async remove(id: string) {
     this.files.delete(id);
+  }
+  renamed: [string, string][] = [];
+  async renameFolder(id: string, name: string) {
+    this.renamed.push([id, name]);
   }
 }
 
@@ -285,5 +290,33 @@ describe("sincronização", () => {
     expect(kinds(null, "2", "1")).toEqual(["download"]);
     expect(kinds("2", null, "1")).toEqual(["upload"]);
     expect(kinds("1", null, null)).toEqual(["upload"]);
+  });
+});
+
+describe("nome da pasta no Drive", () => {
+  const state: SyncState = {
+    folderId: "pasta",
+    base: {},
+    cache: {},
+    projectBase: null,
+    lastSync: null,
+    folderTitle: "Livro",
+  };
+
+  it("renomeia a pasta quando o projeto mudou de nome, e só uma vez", async () => {
+    const drive = new FakeDrive();
+    const next = await ensureFolderTitle(drive, state, "Livro novo");
+    expect(drive.renamed).toEqual([["pasta", "Livro novo"]]);
+    expect(next.folderTitle).toBe("Livro novo");
+    expect(await ensureFolderTitle(drive, next, "Livro novo")).toBe(next);
+    expect(drive.renamed).toHaveLength(1);
+  });
+
+  it("estado antigo, sem nome guardado, recebe o nome atual", async () => {
+    const drive = new FakeDrive();
+    const old: SyncState = { ...state, folderTitle: undefined };
+    const next = await ensureFolderTitle(drive, old, "Livro");
+    expect(drive.renamed).toEqual([["pasta", "Livro"]]);
+    expect(next.folderTitle).toBe("Livro");
   });
 });

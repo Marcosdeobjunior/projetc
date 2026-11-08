@@ -22,6 +22,7 @@ pub fn run() {
             google::google_revoke,
             image::fetch_image,
             vault::vault_rename,
+            vault::vault_rename_root,
             vault::vault_remove,
         ])
         .run(tauri::generate_context!())

@@ -694,7 +694,7 @@ function SyncSection() {
                 label="Sincronizar este projeto"
                 hint={
                   sync.enabled
-                    ? `Pasta no Drive: dentro de “Tália” (com o nome que o projeto tinha quando a sincronização foi ligada).`
+                    ? `Pasta no Drive: dentro de “Tália”, com o nome do projeto (se você renomear o projeto, ela muda na próxima sincronização).`
                     : "Liga este projeto a uma pasta no seu Google Drive. Em outro computador, conecte a mesma conta e, na tela inicial, use “Ver projetos no Drive” e depois “Baixar”."
                 }
               >

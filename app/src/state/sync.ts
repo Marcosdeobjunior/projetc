@@ -3,7 +3,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { useApp } from "./store";
 import { flushAll, registerBeforeClose, serial } from "./writes";
 import { DriveError, GoogleDrive, type Drive, type RemoteProject } from "../sync/drive";
-import { applySync, planSync, readSyncState, writeSyncState, type SyncState } from "../sync/engine";
+import {
+  applySync,
+  ensureFolderTitle,
+  planSync,
+  readSyncState,
+  writeSyncState,
+  type SyncState,
+} from "../sync/engine";
 import { folderName } from "../vault/paths";
 
 /*
@@ -117,7 +124,10 @@ export const useSync = create<SyncStore>((set, get) => {
     onTouch?: (ids: Set<string>) => Promise<void>,
   ) {
     const d = drive();
-    const project = useApp.getState().session?.project;
+    const session = useApp.getState().session;
+    const project = session?.project;
+    // O projeto mudou de nome: a pasta no Drive acompanha.
+    if (project && session.fs === fs) state = await ensureFolderTitle(d, state, project.title);
     const plan = await planSync(
       fs,
       d,
@@ -210,6 +220,7 @@ export const useSync = create<SyncStore>((set, get) => {
             cache: {},
             projectBase: null,
             lastSync: null,
+            folderTitle: session.project.title,
           }),
         );
         set({ enabled: true, status: "idle" });
@@ -284,6 +295,7 @@ export const useSync = create<SyncStore>((set, get) => {
           cache: {},
           projectBase: null,
           lastSync: null,
+          folderTitle: remote.title,
         };
         await run(fs, state);
         await app.openVault(root);
