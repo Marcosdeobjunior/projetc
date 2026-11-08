@@ -155,7 +155,10 @@ caminho antigo.
 Clique no **nome do projeto**, no alto da barra lateral. O menu tem:
 
 - **Trocar para** — os outros projetos recentes;
-- **Renomear este projeto** — muda o título (o nome da pasta no computador continua o mesmo);
+- **Renomear este projeto** — muda o título. No app desktop, se a pasta no computador tinha o
+  nome do projeto, ela é renomeada junto (uma pasta com outro nome fica como está). Se não der
+  para renomear a pasta (por exemplo, porque ela está aberta no Explorador de Arquivos ou já
+  existe outra pasta com o nome novo), o título muda mesmo assim e o app avisa;
 - **Abrir projeto existente…** (só no app desktop);
 - **Novo projeto…** e **Ver todos os projetos** — os dois fecham o projeto atual e voltam para a
   tela inicial.
@@ -786,7 +789,8 @@ pedir"), o horário da última sincronização e o botão **Sincronizar agora**.
 
 Desligar a chave para de sincronizar este projeto (nada é apagado nem aqui nem no Drive).
 
-> Renomear o projeto **não renomeia** a pasta no Drive; o app continua usando a mesma pasta.
+> Renomear o projeto renomeia também a pasta no Drive, na sincronização seguinte. O app continua
+> usando a mesma pasta (ela é reconhecida pelo projeto, não pelo nome).
 
 #### Baixar um projeto do Drive em outro computador
 

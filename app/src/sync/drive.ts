@@ -30,6 +30,8 @@ export interface Drive {
   upload(folderId: string, path: string, data: Uint8Array, id?: string): Promise<RemoteFile>;
   /** Manda para a lixeira do Drive (dá para recuperar por 30 dias). */
   remove(id: string): Promise<void>;
+  /** Muda o nome da pasta do projeto (o id, que é o que identifica, não muda). */
+  renameFolder(id: string, name: string): Promise<void>;
 }
 
 export class DriveError extends Error {
@@ -277,6 +279,14 @@ export class GoogleDrive implements Drive {
       });
     }
     return { id: f.id, path, md5: f.md5Checksum ?? "" };
+  }
+
+  async renameFolder(id: string, name: string) {
+    await this.request(`${API}/files/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ name }),
+    });
   }
 
   async remove(id: string) {

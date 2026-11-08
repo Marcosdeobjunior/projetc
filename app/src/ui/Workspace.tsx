@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { renameDocAndLinks, useApp, type Session } from "../state/store";
-import { findDoc, findScene, renameDoc, renameProject } from "../manuscript/tree";
+import { findDoc, findScene, renameDoc } from "../manuscript/tree";
 import { formatCount } from "../manuscript/wordCount";
 import { KIND_LABEL } from "../links/context";
 import { DocEditor } from "../editor/DocEditor";
@@ -35,7 +35,7 @@ function readCollapsed() {
 }
 
 export function Workspace({ session }: { session: Session }) {
-  const change = useApp((s) => s.change);
+  const renameProject = useApp((s) => s.renameProject);
   const saveState = useApp((s) => s.saveState);
   const setView = useApp((s) => s.setView);
   /** Aba pedida ao abrir as Configurações por um atalho (o player abre em Música). */
@@ -171,7 +171,7 @@ export function Workspace({ session }: { session: Session }) {
                 className="big"
                 onCommit={(t) => {
                   setEditingProject(false);
-                  void change((p) => ({ project: renameProject(p, t), ops: [] }));
+                  void renameProject(t);
                 }}
                 onCancel={() => setEditingProject(false)}
               />

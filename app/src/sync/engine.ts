@@ -50,6 +50,11 @@ export interface SyncState {
   /** project.json na última sincronização, para juntar mudanças na estrutura. */
   projectBase: string | null;
   lastSync: number | null;
+  /**
+   * Nome da pasta no Drive na última vez que o app o definiu. Quando o projeto
+   * muda de nome, a pasta é renomeada na sincronização seguinte.
+   */
+  folderTitle?: string;
 }
 
 export interface LocalFile {
@@ -68,6 +73,20 @@ export function excluded(path: string): boolean {
     path.endsWith(".talia-tmp") ||
     /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini)$/i.test(path)
   );
+}
+
+/**
+ * Põe na pasta do Drive o nome atual do projeto, se ele mudou desde a última
+ * vez. Devolve o estado com o nome novo (gravado junto com o resto no fim da sync).
+ */
+export async function ensureFolderTitle(
+  drive: Drive,
+  state: SyncState,
+  title: string,
+): Promise<SyncState> {
+  if (state.folderTitle === title) return state;
+  await drive.renameFolder(state.folderId, title);
+  return { ...state, folderTitle: title };
 }
 
 export async function readSyncState(fs: VaultFs): Promise<SyncState | null> {

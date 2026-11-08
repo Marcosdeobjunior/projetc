@@ -521,6 +521,7 @@ de novo, sem base).
 | `cache`       | `Record<caminho, { size, mtime, md5 }>` | MD5 local já calculado, reaproveitado enquanto tamanho e data não mudam       |
 | `projectBase` | string \| null                          | Texto do `project.json` na última sincronização (base da junção da estrutura) |
 | `lastSync`    | number \| null                          | Fim da última sincronização, em ms                                            |
+| `folderTitle` | string (opcional)                       | Nome dado à pasta no Drive; se o projeto mudar de nome, a pasta é renomeada   |
 
 Exemplo (resumido):
 
