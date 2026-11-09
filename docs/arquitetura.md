@@ -400,6 +400,8 @@ a lista. Os índices são cacheados por objeto `Project` (`WeakMap`).
 `ui/graphCanvas.ts` (`mountGraph`) é compartilhado entre o grafo completo e o minimapa
 (`compact`): simulação `d3-force` (link, charge, collide, x/y), arrastar nós (fixa `fx/fy`),
 arrastar o fundo (pan), roda = zoom (0,2× a 4×), hover destaca vizinhos, clique sem arrastar abre.
+Visual de grafo de notas: pontos lisos em `--muted` (raio pelo grau), linhas finas em `--edge`;
+hover pinta o ponto e as ligações dele em `--accent` e esmaece o resto; o texto aberto ganha anel.
 As posições e a visão são guardadas em `ref`s para o grafo não "pular" entre renderizações. O
 minimapa só remonta quando os nós/arestas mudam de fato (`graphKey`) e espera 600 ms de pausa
 na digitação.

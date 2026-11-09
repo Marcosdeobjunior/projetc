@@ -13,7 +13,7 @@ const TYPES: { type: NodeType; label: string }[] = [
   { type: "ideias", label: KIND_LABEL.ideias.many },
 ];
 
-/** Elo: constelação de conexões entre cenas e notas, cada texto é uma estrela. */
+/** Elo: grafo de conexões entre cenas e notas, cada texto é um ponto. */
 export function GraphView({ session }: { session: Session }) {
   const openDoc = useApp((s) => s.openDoc);
   return (
@@ -119,8 +119,8 @@ export function Elo({
       </div>
 
       <p className="graph-hint">
-        Clique em uma estrela para abrir · arraste para mover · role para dar zoom · linhas
-        tracejadas são menções automáticas
+        Clique em um ponto para abrir · arraste para mover · role para dar zoom · linhas tracejadas
+        são menções automáticas
       </p>
 
       {/* Alternativa em texto para leitores de tela. */}

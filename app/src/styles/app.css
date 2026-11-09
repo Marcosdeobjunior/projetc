@@ -2860,11 +2860,11 @@ p {
   cursor: pointer;
 }
 .chip i {
-  width: 13px;
-  height: 13px;
-  background: radial-gradient(circle, #cfe0ff 0 10%, #4f8dff 30%, #9b7bff 70%);
-  /* Mesma silhueta da estrela do Elo, de quatro pontas. */
-  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  /* Mesmo ponto liso do Elo. */
+  background: var(--muted);
 }
 .chip[aria-pressed="false"] {
   opacity: 0.45;
