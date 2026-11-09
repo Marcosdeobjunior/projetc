@@ -134,7 +134,7 @@ function MusicSettings() {
           </div>
         </Field>
         <Field label="Ordem das faixas">
-          <div className="segmented" role="radiogroup" aria-label="Ordem das faixas">
+          <div className="segmented wide" role="radiogroup" aria-label="Ordem das faixas">
             {(
               [
                 [false, "Em sequência"],
@@ -154,7 +154,7 @@ function MusicSettings() {
           </div>
         </Field>
         <Field label="Ao terminar">
-          <div className="segmented" role="radiogroup" aria-label="Ao terminar">
+          <div className="segmented wide" role="radiogroup" aria-label="Ao terminar">
             {(
               [
                 ["off", "Parar"],

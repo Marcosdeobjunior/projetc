@@ -228,7 +228,15 @@ p {
   color: var(--muted);
   cursor: pointer;
 }
+/* Opções com texto: cabem na largura disponível e, se faltar espaço, quebram
+   em mais de uma linha em vez de vazar. */
+.segmented.wide {
+  flex-wrap: wrap;
+  max-width: 100%;
+  border-radius: 18px;
+}
 .segmented.wide button {
+  white-space: nowrap;
   width: auto;
   height: 30px;
   gap: 6px;
