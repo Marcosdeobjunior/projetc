@@ -208,6 +208,16 @@ function MusicSettings() {
   );
 }
 
+/** Explica por que o link colado não serve, com a dica certa para cada caso. */
+function linkError(value: string, service: MusicService): string {
+  const v = value.trim().toLowerCase();
+  if (/(^|\/\/)(spotify\.link|spoti\.fi)\//.test(v))
+    return "Links curtos do Spotify não funcionam aqui. Abra o link e copie o endereço completo (open.spotify.com/…).";
+  if (service === "youtube" && /music\.youtube\.com\/browse\//.test(v))
+    return "Esse é o link da página do álbum. Use Compartilhar → Copiar link no álbum ou na playlist.";
+  return "Esse link não é de uma playlist, álbum ou música.";
+}
+
 function LinkField({ service, placeholder }: { service: MusicService; placeholder: string }) {
   const source = useMusic((m) => m.links[service]);
   const link = useMusic((m) => m.link);
@@ -215,20 +225,20 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const label = SERVICE_LABEL[service];
+  // Sem <form>: em páginas com sandbox (a prévia publicada) o envio de
+  // formulário é bloqueado pelo navegador antes de chegar ao onSubmit.
+  const submit = () => {
+    if (!value.trim()) return;
+    const parsed = parseMusicLink(value);
+    if (!parsed) return setError(linkError(value, service));
+    if (parsed.service !== service)
+      return setError(`Esse link é do ${SERVICE_LABEL[parsed.service]}.`);
+    link(parsed);
+    setValue("");
+    setError(null);
+  };
   return (
-    <form
-      className="setting bg-url"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const parsed = parseMusicLink(value);
-        if (!parsed) return setError("Esse link não é de uma playlist, álbum ou música.");
-        if (parsed.service !== service)
-          return setError(`Esse link é do ${SERVICE_LABEL[parsed.service]}.`);
-        link(parsed);
-        setValue("");
-        setError(null);
-      }}
-    >
+    <div className="setting bg-url">
       <div className="setting-text">
         <span className="setting-label">
           <span className={"music-dot " + service} aria-hidden="true" /> {label}
@@ -245,10 +255,13 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
         )}
       </div>
       <div className="bg-url-row">
+        {/* type="text": o "url" do navegador recusa links colados sem https://. */}
         <input
           className="text-input"
-          type="url"
+          type="text"
           inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
           value={value}
           placeholder={placeholder}
           aria-label={`Link do ${label}`}
@@ -257,8 +270,14 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
             setValue(e.target.value);
             setError(null);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
         />
-        <button type="submit" className="btn ghost sm" disabled={!value.trim()}>
+        <button type="button" className="btn ghost sm" disabled={!value.trim()} onClick={submit}>
           {source ? "Trocar" : "Vincular"}
         </button>
         {source && (
@@ -267,7 +286,7 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
           </button>
         )}
       </div>
-    </form>
+    </div>
   );
 }
 

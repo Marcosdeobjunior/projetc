@@ -44,7 +44,8 @@ const ID = /^[A-Za-z0-9_-]+$/;
 /** Entende um link (ou URI) do Spotify, do YouTube Music ou do YouTube. */
 export function parseMusicLink(input: string): MusicSource | null {
   const text = input.trim();
-  const uri = /^spotify:([a-z]+):([A-Za-z0-9]+)$/.exec(text);
+  // spotify:playlist:ID e o formato antigo spotify:user:NOME:playlist:ID
+  const uri = /^spotify:(?:user:[^:]+:)?([a-z]+):([A-Za-z0-9]+)$/.exec(text);
   if (uri && SPOTIFY_KINDS[uri[1]!]) return spotify(text, uri[1]!, uri[2]!);
 
   let url: URL;
@@ -55,18 +56,24 @@ export function parseMusicLink(input: string): MusicSource | null {
   }
   const host = url.hostname.replace(/^www\.|^m\./, "");
   if (host === "open.spotify.com") {
-    // /intl-pt/playlist/ID, /playlist/ID, /embed/playlist/ID
-    const parts = url.pathname
-      .split("/")
-      .filter((p) => p && !p.startsWith("intl-") && p !== "embed");
-    const [kind, id] = parts;
-    if (kind && id && SPOTIFY_KINDS[kind] && ID.test(id)) return spotify(text, kind, id);
+    // /intl-pt/playlist/ID, /playlist/ID, /embed/playlist/ID, /user/NOME/playlist/ID
+    const parts = url.pathname.split("/").filter(Boolean);
+    const at = parts.findIndex((p) => SPOTIFY_KINDS[p] !== undefined);
+    const kind = parts[at];
+    const id = parts[at + 1];
+    if (at >= 0 && kind && id && ID.test(id)) return spotify(text, kind, id);
     return null;
   }
   if (host === "music.youtube.com" || host === "youtube.com" || host === "youtu.be") {
-    const list = url.searchParams.get("list");
+    // Mixes automáticos (RD…) não podem ser incorporados: fica só a música.
+    const rawList = url.searchParams.get("list");
+    const list = rawList && !rawList.startsWith("RD") ? rawList : null;
+    // youtu.be/ID, /watch?v=ID, /shorts/ID, /live/ID, /embed/ID
+    const path = /^\/(?:shorts|live|embed)\/([^/]+)/.exec(url.pathname)?.[1];
     const video =
-      host === "youtu.be" ? url.pathname.slice(1) : (url.searchParams.get("v") ?? undefined);
+      host === "youtu.be"
+        ? url.pathname.slice(1).split("/")[0]
+        : (url.searchParams.get("v") ?? (path !== "videoseries" ? path : undefined));
     if (video && ID.test(video)) {
       const q = list && ID.test(list) ? `?list=${list}` : "";
       return youtube(

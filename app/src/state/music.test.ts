@@ -18,16 +18,34 @@ describe("parseMusicLink", () => {
       "https://open.spotify.com/embed/playlist/37i9dQZF1DX8NTLI2TtZa6?utm_source=generator&theme=0",
     );
     expect(parseMusicLink("spotify:album:1A2GTWGtFfWp7KSQTwWOyo")?.kind).toBe("Álbum");
+    // Links sem https:// e formatos antigos com /user/NOME/.
+    expect(parseMusicLink("open.spotify.com/album/1A2GTWGtFfWp7KSQTwWOyo")?.kind).toBe("Álbum");
+    expect(
+      parseMusicLink("https://open.spotify.com/user/fulano/playlist/37i9dQZF1DX8NTLI2TtZa6")?.embed,
+    ).toContain("/embed/playlist/37i9dQZF1DX8NTLI2TtZa6");
+    expect(parseMusicLink("spotify:user:fulano:playlist:37i9dQZF1DX8NTLI2TtZa6")?.kind).toBe(
+      "Playlist",
+    );
   });
 
   it("entende YouTube Music e YouTube", () => {
     expect(parseMusicLink("https://music.youtube.com/playlist?list=PLabc_123")?.embed).toBe(
       "https://www.youtube.com/embed/videoseries?list=PLabc_123",
     );
-    const v = parseMusicLink("music.youtube.com/watch?v=dQw4w9WgXcQ&list=RDAMVM1");
+    const v = parseMusicLink("music.youtube.com/watch?v=dQw4w9WgXcQ&list=PLabc_123");
     expect(v?.service).toBe("youtube");
-    expect(v?.embed).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ?list=RDAMVM1");
+    expect(v?.embed).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ?list=PLabc_123");
     expect(parseMusicLink("https://youtu.be/dQw4w9WgXcQ")?.kind).toBe("Faixa");
+    // Mix automático (RD…) não incorpora: toca só a música.
+    expect(
+      parseMusicLink("https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=RDAMVMx")?.embed,
+    ).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ");
+    expect(parseMusicLink("https://www.youtube.com/shorts/dQw4w9WgXcQ")?.embed).toBe(
+      "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    );
+    expect(
+      parseMusicLink("https://music.youtube.com/playlist?list=OLAK5uy_abc&si=xyz")?.embed,
+    ).toBe("https://www.youtube.com/embed/videoseries?list=OLAK5uy_abc");
   });
 
   it("recusa o que não é desses serviços", () => {
