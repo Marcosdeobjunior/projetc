@@ -282,12 +282,16 @@ calcula intervalos.
 }
 ```
 
-| Campo            | Tipo           | Descrição                                                                     |
-| ---------------- | -------------- | ----------------------------------------------------------------------------- |
-| `scenes`         | objeto         | Por id de cena: `day` (dia da história, inteiro) e `days` (duração, ≥ 1)      |
-| `events[]`       | array          | Acontecimentos que não são cenas: `id`, `title`, `day`, `days`, `notes` (ids) |
-| `calendars`      | objeto         | Por id de nota de calendário: definição do calendário do mundo (abaixo)       |
-| `activeCalendar` | string ou null | Calendário usado para mostrar as datas (precisa existir em `calendars`)       |
+| Campo               | Tipo           | Descrição                                                                                        |
+| ------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `scenes`            | objeto         | Por id de cena: `day` (dia da história, inteiro) e `days` (duração, ≥ 1)                         |
+| `events[]`          | array          | Acontecimentos que não são cenas: `id`, `title`, `day`, `days`, `notes` (ids)                    |
+| `calendars`         | objeto         | Por id de nota de calendário: definição do calendário do mundo (abaixo)                          |
+| `activeCalendar`    | string ou null | Calendário usado para mostrar as datas (precisa existir em `calendars`)                          |
+| `scenes[id].place`  | string         | Opcional. Id do lugar onde a cena se passa                                                       |
+| `scenes[id].ignore` | boolean        | Opcional. `true` = ignorar os avisos de viagem desta cena                                        |
+| `births`            | objeto         | Por id de personagem: dia da história em que nasceu (inteiro; negativo = antes do dia 1)         |
+| `travel[]`          | array          | Tempos de viagem: `from`, `to` (ids de lugares), `days` (≥ 0). Vale nos dois sentidos; um par só |
 
 Definição de um calendário (`timeline/calendar.ts`, lida com `sanitizeCalendar`):
 `months[]` (`name`, `days` 1–1000), `weekdays[]` (nomes; vazio = sem semana), `yearSuffix`,

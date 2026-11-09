@@ -384,7 +384,11 @@ Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/Timel
 dentro da aba Calendários do Mundo (sub-seção "Linha do tempo"). `timeline/calendar.ts` converte
 dia da história ↔ data do calendário do mundo (`dayToDate`, `dateToDay`, `formatDate`,
 `holidaysOn`, `seasonOf`); a definição é editada em `ui/CalendarEditor.tsx` (ficha de uma nota de
-calendário). Idades e avisos de viagem ficam para a fase 3.
+calendário). Continuidade: `continuity()` (pura) calcula as idades (`ageOn`, anos do calendário
+ativo ou 365), o local de cada cena (escolhido ou o único lugar ligado) e os avisos de viagem,
+só quando a chegada é mais cedo que `travelDays`; nunca adivinha distâncias nem reclama de
+viagens lentas. Nascimento e tempos de viagem são editados em `ui/ContinuityEditors.tsx` (fichas
+de personagem e lugar).
 
 ### 6.1 Comentários
 
