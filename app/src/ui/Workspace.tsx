@@ -168,6 +168,19 @@ export function Workspace({ session }: { session: Session }) {
             >
               <Icon name="search" size={16} />
             </button>
+            <button
+              type="button"
+              className={"icon-btn sm" + (view === "graph" ? " on" : "")}
+              aria-pressed={view === "graph"}
+              title="Elo: grafo de conexões entre os textos"
+              aria-label="Elo"
+              onClick={() => {
+                setView(view === "graph" ? "editor" : "graph");
+                closeNav();
+              }}
+            >
+              <Icon name="planet" size={16} />
+            </button>
           </div>
           <nav className="rail-nav" aria-label="Seções do projeto">
             <button
@@ -188,7 +201,6 @@ export function Workspace({ session }: { session: Session }) {
               [
                 ["attachments", "image", "Anexos", "Galeria de imagens, vídeos e arquivos"],
                 ["world", "globe", "Mundo", "Personagens, lugares e ideias do projeto"],
-                ["graph", "planet", "Elo", "Grafo de conexões entre os textos"],
               ] as const
             ).map(([v, icon, label, title]) => (
               <button

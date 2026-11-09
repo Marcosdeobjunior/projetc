@@ -170,14 +170,14 @@ no histórico (se algo mudou) e, se a sincronização estiver ligada, sincroniza
 A barra é um **trilho estreito** com as seções do projeto. Do alto para baixo:
 
 1. **Nome do projeto** (o menu de projetos, acima).
-2. **Total de palavras** do livro (só as cenas do manuscrito; notas não contam) e o botão de
-   **busca** (lupa).
+2. **Total de palavras** do livro (só as cenas do manuscrito; notas não contam), o botão de
+   **busca** (lupa) e, ao lado dela, o ícone do **Elo** (planeta), que abre o
+   [grafo](#7-grafo-e-minimapa) de conexões.
 3. **Manuscrito** — abre (ou fecha) um **painel ao lado** do trilho com os capítulos e as cenas.
    O app lembra se ele ficou aberto.
 4. **Anexos** — abre a [galeria](#33-anexos) com os arquivos do projeto.
 5. **Mundo** — personagens, lugares e ideias (as notas) em cartões.
-6. **Elo** — o [grafo](#7-grafo-e-minimapa) de conexões.
-7. No rodapé, **Configurações**, **Lixeira** e o player de música.
+6. No rodapé, **Configurações**, **Lixeira** e o player de música.
 
 No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
 

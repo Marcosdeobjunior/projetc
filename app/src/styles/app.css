@@ -722,6 +722,10 @@ p {
   padding: 0 12px 12px 48px;
   border-bottom: 1px solid var(--line);
 }
+/* O número de palavras empurra a busca e o Elo para a direita, lado a lado. */
+.side-meta .project-total {
+  margin-right: auto;
+}
 .project-total {
   flex: 1;
   min-width: 0;
