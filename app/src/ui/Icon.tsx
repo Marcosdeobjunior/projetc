@@ -10,6 +10,8 @@ const PATHS: Record<string, string> = {
   redo: "m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3",
   plus: "M12 5v14M5 12h14",
   chevron: "m9 6 6 6-6 6",
+  "collapse-all": "m7 11 5-5 5 5M7 18l5-5 5 5",
+  "expand-all": "m7 6 5 5 5-5M7 13l5 5 5-5",
   "chevron-left": "m15 6-6 6 6 6",
   play: "M7 5v14l11-7z",
   pause: "M8 5v14M16 5v14",

@@ -37,6 +37,9 @@ export function ManuscriptTree({
   const { project, words, activeDocId } = session;
   const sectionOpen = !useSettings((s) => s.collapsed.includes("manuscrito"));
 
+  const allCollapsed =
+    project.chapters.length > 0 && project.chapters.every((c) => collapsed.has(c.id));
+
   const chapterWords = (c: Chapter) => c.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0);
 
   const newScene = (chapterId: string) => {
@@ -147,15 +150,26 @@ export function ManuscriptTree({
     <nav className="tree" aria-label="Manuscrito" onDragEnd={finishDrag}>
       <div className="tree-head">
         <SectionToggle id="manuscrito" label="Manuscrito" />
-        <button
-          type="button"
-          className="icon-btn"
-          title="Novo capítulo"
-          aria-label="Novo capítulo"
-          onClick={newChapter}
-        >
-          <Icon name="plus" />
-        </button>
+        <div className="tree-actions">
+          {sectionOpen && project.chapters.length > 0 && (
+            <CollapseAllButton
+              collapsed={allCollapsed}
+              what="os capítulos"
+              onClick={() =>
+                setCollapsed(allCollapsed ? new Set() : new Set(project.chapters.map((c) => c.id)))
+              }
+            />
+          )}
+          <button
+            type="button"
+            className="icon-btn"
+            title="Novo capítulo"
+            aria-label="Novo capítulo"
+            onClick={newChapter}
+          >
+            <Icon name="plus" />
+          </button>
+        </div>
       </div>
 
       {sectionOpen && (
@@ -419,6 +433,26 @@ export function ConfirmRow({
 }
 
 /** Título de uma seção da barra lateral que recolhe e expande o conteúdo. */
+/** Recolhe (ou expande) de uma vez todos os grupos de uma seção da barra lateral. */
+export function CollapseAllButton({
+  collapsed,
+  what,
+  onClick,
+}: {
+  /** Todos os grupos já estão recolhidos: o botão expande. */
+  collapsed: boolean;
+  /** Complemento do rótulo, ex.: "os capítulos". */
+  what: string;
+  onClick(): void;
+}) {
+  const label = collapsed ? `Expandir todos ${what}` : `Recolher todos ${what}`;
+  return (
+    <button type="button" className="icon-btn" title={label} aria-label={label} onClick={onClick}>
+      <Icon name={collapsed ? "expand-all" : "collapse-all"} size={15} />
+    </button>
+  );
+}
+
 export function SectionToggle({ id, label }: { id: SectionId; label: string }) {
   const open = !useSettings((s) => s.collapsed.includes(id));
   const toggle = useSettings((s) => s.toggleSection);

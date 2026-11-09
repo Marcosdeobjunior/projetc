@@ -651,6 +651,11 @@ p {
   justify-content: space-between;
   padding: 0 4px 6px 10px;
 }
+.tree-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
 .section-toggle {
   display: inline-flex;
   align-items: center;

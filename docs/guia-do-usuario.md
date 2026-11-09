@@ -213,6 +213,9 @@ Lista os arquivos da pasta `anexos/` do projeto. Veja [Anexos](#5-anexos-imagens
 
 - Clique no título de uma seção (**Manuscrito**, **Notas**, **Anexos**) ou de um grupo de notas
   para recolher ou mostrar o conteúdo. O app lembra o que ficou recolhido.
+- O botão de **setas duplas** ao lado de **Manuscrito** recolhe todos os capítulos de uma vez (ou
+  expande todos, se já estiverem recolhidos). Em **Notas**, o mesmo botão faz isso com Personagens,
+  Lugares e Ideias. **Anexos** é uma lista simples, sem grupos, e recolhe pelo próprio título.
 - **Ctrl + \\** esconde ou mostra a **barra lateral inteira**, para escrever com a tela livre.
   O mesmo vale para o botão de painel no alto da barra (e no alto do texto, quando ela está
   escondida). O app lembra a escolha.

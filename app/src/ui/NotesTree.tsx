@@ -5,8 +5,8 @@ import { NOTE_KINDS, type Note, type NoteKind } from "../manuscript/types";
 import { KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
 import { InlineEdit } from "./InlineEdit";
-import { ConfirmRow, RowActions, SectionToggle } from "./ManuscriptTree";
-import { useSettings } from "../state/settings";
+import { CollapseAllButton, ConfirmRow, RowActions, SectionToggle } from "./ManuscriptTree";
+import { useSettings, type SectionId } from "../state/settings";
 
 const KIND_ICON: Record<NoteKind, string> = {
   personagens: "person",
@@ -25,6 +25,8 @@ export function NotesTree({ session, onOpen }: { session: Session; onOpen: () =>
   const collapsed = useSettings((s) => s.collapsed);
   const toggleSection = useSettings((s) => s.toggleSection);
   const { project, activeDocId } = session;
+  const allKindsCollapsed = NOTE_KINDS.every((k) => collapsed.includes(k));
+  const setCollapsedSections = (ids: SectionId[]) => useSettings.getState().set({ collapsed: ids });
 
   const newNote = (kind: NoteKind) => {
     let id: string | null = null;
@@ -49,6 +51,21 @@ export function NotesTree({ session, onOpen }: { session: Session; onOpen: () =>
     <nav className="tree" aria-label="Notas">
       <div className="tree-head">
         <SectionToggle id="notas" label="Notas" />
+        {!collapsed.includes("notas") && (
+          <div className="tree-actions">
+            <CollapseAllButton
+              collapsed={allKindsCollapsed}
+              what="os grupos de notas"
+              onClick={() =>
+                setCollapsedSections(
+                  allKindsCollapsed
+                    ? collapsed.filter((id) => !(NOTE_KINDS as readonly string[]).includes(id))
+                    : [...new Set([...collapsed, ...NOTE_KINDS])],
+                )
+              }
+            />
+          </div>
+        )}
       </div>
       {!collapsed.includes("notas") && (
         <ol className="chapters">
