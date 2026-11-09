@@ -6,6 +6,9 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
 import { CalendarEditor } from "./CalendarEditor";
+import { BirthEditor, TravelEditor, useYearLength } from "./ContinuityEditors";
+import { useTimeline } from "../state/timeline";
+import { ageOn } from "../timeline/timeline";
 
 const KIND_ICON = DOC_ICON;
 
@@ -66,6 +69,17 @@ export function NoteProfile({
     .split(/\n+/)
     .map((p) => p.trim())
     .filter(Boolean);
+
+  const timeline = useTimeline((t) => t.data);
+  const { yearLen } = useYearLength();
+  /** "Dia 12 · 17 anos" ao lado de cada cena (quando há data e nascimento). */
+  const sceneInfo = (sceneId: string) => {
+    const d = timeline.scenes[sceneId];
+    if (!d) return "";
+    const birth = note.kind === "personagens" ? timeline.births[note.id] : undefined;
+    const age = birth === undefined ? null : ageOn(birth, d.day, yearLen);
+    return `Dia ${d.day}` + (age !== null ? ` · ${age} ${age === 1 ? "ano" : "anos"}` : "");
+  };
 
   const pickImage = async (files: File[]) => {
     const file = files.find((f) => f.type.startsWith("image/"));
@@ -166,6 +180,10 @@ export function NoteProfile({
       </div>
 
       {note.kind === "calendarios" && <CalendarEditor noteId={note.id} />}
+      {note.kind === "personagens" && <BirthEditor note={note} />}
+      {note.kind === "lugares" && (
+        <TravelEditor note={note} places={project.notes.filter((n) => n.kind === "lugares")} />
+      )}
 
       <div className="profile-lists">
         <section>
@@ -180,6 +198,9 @@ export function NoteProfile({
                 <li key={s.id}>
                   <button type="button" className="profile-link" onClick={() => openDoc(s.id)}>
                     <Icon name="file" size={14} /> {s.title}
+                    {sceneInfo(s.id) && (
+                      <small className="profile-link-meta">{sceneInfo(s.id)}</small>
+                    )}
                   </button>
                 </li>
               ))}

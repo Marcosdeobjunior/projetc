@@ -7077,3 +7077,57 @@ div.row-title {
   border-top: 1px solid var(--line);
   padding-top: 10px;
 }
+.profile-link-meta {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 12px;
+}
+.travel-to {
+  flex: 1 1 120px;
+  color: var(--fg);
+}
+.tl-scene-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.tl-place {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.tl-place select {
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--fg);
+  font-size: 12px;
+  padding: 1px 6px;
+}
+.tl-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #e5a03a 14%, transparent);
+  color: var(--fg);
+  font-size: 13px;
+}
+.tl-warning span {
+  flex: 1 1 220px;
+}
+.tl-summary {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.tl-summary.warn {
+  color: var(--fg);
+}

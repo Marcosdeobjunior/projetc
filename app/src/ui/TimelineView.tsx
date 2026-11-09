@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { useTimeline } from "../state/timeline";
-import { buildTimeline, gapLabel, type TimelineItem } from "../timeline/timeline";
+import { buildTimeline, continuity, gapLabel, type TimelineItem } from "../timeline/timeline";
+import { useYearLength } from "./ContinuityEditors";
 import { dayToDate, formatDate, holidaysOn, seasonOf } from "../timeline/calendar";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
@@ -101,6 +102,16 @@ export function TimelineView({
   const calendarNotes = project.notes.filter((n) => n.kind === "calendarios");
   const defined = calendarNotes.filter((n) => data.calendars[n.id]);
   /** Data do mundo de um dia da história, por extenso. */
+  const { yearLen } = useYearLength();
+  /** Idades, locais e avisos de viagem (calculados sobre a linha inteira, sem filtro). */
+  const checks = useMemo(
+    () => continuity({ project, data, linksOf, yearLength: yearLen }),
+    [project, data, linksOf, yearLen],
+  );
+  const places = project.notes.filter((n) => n.kind === "lugares");
+  const title = (id: string) => project.notes.find((n) => n.id === id)?.title ?? "?";
+  const warningCount = [...checks.warnings.values()].reduce((n, l) => n + l.length, 0);
+  const ignoredCount = Object.values(data.scenes).filter((d) => d.ignore).length;
   const worldDate = (day: number) => {
     if (!calendar) return null;
     const d = dayToDate(calendar, day);
@@ -195,6 +206,70 @@ export function TimelineView({
               </span>
             )}
           </small>
+          {it.kind === "scene" && (
+            <div className="tl-scene-meta">
+              <label className="tl-place">
+                <Icon name="pin" size={13} />
+                <select
+                  aria-label={`Local de ${it.title}`}
+                  value={data.scenes[it.id]?.place ?? ""}
+                  onChange={(e) =>
+                    void useTimeline
+                      .getState()
+                      .setSceneMeta(it.id, { place: e.target.value || null })
+                  }
+                >
+                  <option value="">
+                    {checks.places.get(it.id)?.auto
+                      ? `${title(checks.places.get(it.id)!.place)} (pelo texto)`
+                      : "Local: não definido"}
+                  </option>
+                  {places.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {checks.ages.get(it.id)?.map((a) => (
+                <span key={a.noteId} className="tl-chip" title="Idade nesta cena">
+                  {title(a.noteId)}, {a.age} {a.age === 1 ? "ano" : "anos"}
+                </span>
+              ))}
+              {data.scenes[it.id]?.ignore && (
+                <button
+                  type="button"
+                  className="link-btn"
+                  title="Voltar a avisar sobre viagens nesta cena"
+                  onClick={() => void useTimeline.getState().setSceneMeta(it.id, { ignore: false })}
+                >
+                  avisos ignorados
+                </button>
+              )}
+            </div>
+          )}
+          {it.kind === "scene" &&
+            checks.warnings.get(it.id)?.map((w) => (
+              <p key={w.noteId} className="tl-warning" role="note">
+                <Icon name="clock" size={13} />
+                <span>
+                  <b>{title(w.noteId)}</b> vai de {title(w.from)} a {title(w.to)}, que leva{" "}
+                  {w.needs} {w.needs === 1 ? "dia" : "dias"}, mas{" "}
+                  {w.had <= 0
+                    ? "chega no mesmo dia"
+                    : `só passou ${w.had} ${w.had === 1 ? "dia" : "dias"}`}
+                  .
+                </span>
+                <button
+                  type="button"
+                  className="link-btn"
+                  title="Por exemplo, se usou um atalho ou magia"
+                  onClick={() => void useTimeline.getState().setSceneMeta(it.id, { ignore: true })}
+                >
+                  Ignorar nesta cena
+                </button>
+              </p>
+            ))}
         </div>
         <div className="tl-fields">
           <label>
@@ -308,6 +383,15 @@ export function TimelineView({
           </button>
         </div>
       </header>
+      {(warningCount > 0 || ignoredCount > 0) && (
+        <p className={"tl-summary" + (warningCount ? " warn" : "")}>
+          {warningCount > 0
+            ? `${warningCount} ${warningCount === 1 ? "aviso" : "avisos"} de continuidade: alguém chega a um lugar mais cedo do que a viagem permite.`
+            : "Nenhum aviso de continuidade."}
+          {ignoredCount > 0 &&
+            ` ${ignoredCount} ${ignoredCount === 1 ? "cena com avisos ignorados" : "cenas com avisos ignorados"}.`}
+        </p>
+      )}
       {defined.length === 0 && (
         <p className="muted small tl-hint">
           Para ver as datas no calendário do seu mundo (meses, semana, eras), defina um em{" "}

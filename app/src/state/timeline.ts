@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   EMPTY_TIMELINE,
   readTimeline,
+  setTravel,
   writeTimeline,
   type Dated,
   type TimelineData,
@@ -24,6 +25,12 @@ interface TimelineState {
   setCalendar(noteId: string, def: CalendarDef | null): Promise<void>;
   /** Escolhe o calendário que a linha do tempo usa (null = "Dia N"). */
   setActiveCalendar(noteId: string | null): Promise<void>;
+  /** Dia da história em que o personagem nasceu (null tira). */
+  setBirth(noteId: string, day: number | null): Promise<void>;
+  /** Tempo de viagem entre dois lugares (null tira). */
+  setTravelTime(a: string, b: string, days: number | null): Promise<void>;
+  /** Local e "ignorar avisos" de uma cena com data. */
+  setSceneMeta(sceneId: string, patch: { place?: string | null; ignore?: boolean }): Promise<void>;
 }
 
 export const useTimeline = create<TimelineState>((set, get) => {
@@ -44,7 +51,8 @@ export const useTimeline = create<TimelineState>((set, get) => {
     },
     async setScene(sceneId, date) {
       const scenes = { ...get().data.scenes };
-      if (date) scenes[sceneId] = date;
+      // Mudar o dia não apaga o local nem o "ignorar avisos" da cena.
+      if (date) scenes[sceneId] = { ...scenes[sceneId], ...date };
       else delete scenes[sceneId];
       await save({ ...get().data, scenes });
     },
@@ -75,6 +83,29 @@ export const useTimeline = create<TimelineState>((set, get) => {
     },
     async setActiveCalendar(noteId) {
       await save({ ...get().data, activeCalendar: noteId });
+    },
+    async setBirth(noteId, day) {
+      const births = { ...get().data.births };
+      if (day === null) delete births[noteId];
+      else births[noteId] = day;
+      await save({ ...get().data, births });
+    },
+    async setTravelTime(a, b, days) {
+      await save({ ...get().data, travel: setTravel(get().data.travel, a, b, days) });
+    },
+    async setSceneMeta(sceneId, patch) {
+      const cur = get().data.scenes[sceneId];
+      if (!cur) return;
+      const next = { ...cur };
+      if (patch.place !== undefined) {
+        if (patch.place) next.place = patch.place;
+        else delete next.place;
+      }
+      if (patch.ignore !== undefined) {
+        if (patch.ignore) next.ignore = true;
+        else delete next.ignore;
+      }
+      await save({ ...get().data, scenes: { ...get().data.scenes, [sceneId]: next } });
     },
   };
 });

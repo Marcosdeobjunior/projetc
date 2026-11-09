@@ -254,6 +254,23 @@ diferente da ordem do livro.
   (cenas que citam a nota e acontecimentos criados com o filtro ativo).
 - O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
 
+**Continuidade (idades e viagens):**
+
+- Na ficha de um **personagem**, em **Nascimento**, informe o dia da história em que ele nasceu ou
+  simplesmente **quantos anos tem no dia 1**. A linha do tempo passa a mostrar a idade dele em
+  cada cena em que aparece ("Lucas, 17 anos"), e a ficha mostra "Dia 12 · 17 anos" ao lado de
+  cada cena. O ano tem 365 dias, ou o tamanho do ano do calendário do mundo escolhido.
+- Na ficha de um **lugar**, em **Tempo de viagem**, cadastre quanto leva para ir dali a outros
+  lugares (vale nos dois sentidos). É só uma referência.
+- Cada cena com data tem um **local** (o alfinete): escolha um lugar, ou deixe em branco e o app
+  usa o único lugar citado no texto, marcado como "(pelo texto)".
+- Se um personagem vai de um lugar a outro **mais rápido** do que o tempo de viagem cadastrado, a
+  cena de chegada mostra um aviso ("Lucas vai de Vila Serena à Capital, que leva 2 dias, mas só
+  passou 1 dia"), e o topo da linha conta os avisos. **Demorar mais nunca gera aviso.** Sem tempo
+  de viagem cadastrado, o app não adivinha distâncias.
+- **Ignorar nesta cena** cala os avisos daquela cena (atalho, magia…); **avisos ignorados** volta a
+  avisar.
+
 **Calendário do mundo:** na ficha de um calendário (aba Calendários → Calendários do mundo →
 cartão), **Definir calendário** cria um calendário editável, começando com 12 meses e 7 dias na
 semana. Dá para:

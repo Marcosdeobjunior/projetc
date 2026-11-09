@@ -21,6 +21,21 @@ export interface Dated {
   days: number;
 }
 
+/** Data de uma cena, com o local (para os avisos de viagem). */
+export interface SceneDate extends Dated {
+  /** Onde a cena se passa (id de uma nota de lugar). Sem isto, vale o único lugar citado. */
+  place?: string;
+  /** O autor mandou ignorar os avisos de continuidade desta cena. */
+  ignore?: boolean;
+}
+
+/** Quanto tempo leva ir de um lugar a outro (vale nos dois sentidos). */
+export interface Travel {
+  from: string;
+  to: string;
+  days: number;
+}
+
 export interface TimelineEvent extends Dated {
   id: string;
   title: string;
@@ -30,13 +45,17 @@ export interface TimelineEvent extends Dated {
 
 export interface TimelineData {
   /** Data de cada cena, por id. Cena sem entrada = sem data. */
-  scenes: Record<string, Dated>;
+  scenes: Record<string, SceneDate>;
   /** Acontecimentos que não são cenas (guerras, nascimentos, a fuga do pai…). */
   events: TimelineEvent[];
   /** Definição de cada calendário do mundo, por id da nota da aba Calendários. */
   calendars: Record<string, CalendarDef>;
   /** Calendário usado para mostrar as datas da linha do tempo (null = "Dia N"). */
   activeCalendar: string | null;
+  /** Dia da história em que cada personagem nasceu (por id da nota). */
+  births: Record<string, number>;
+  /** Tempos de viagem entre lugares (referência; só servem para avisos). */
+  travel: Travel[];
 }
 
 export const EMPTY_TIMELINE: TimelineData = {
@@ -44,6 +63,8 @@ export const EMPTY_TIMELINE: TimelineData = {
   events: [],
   calendars: {},
   activeCalendar: null,
+  births: {},
+  travel: [],
 };
 
 const MAX_DAY = 10_000_000;
@@ -62,16 +83,23 @@ function dated(v: unknown): Dated | null {
 /** Confere o arquivo lido (pode ter vindo de fora ou do Drive). */
 export function sanitizeTimeline(raw: unknown): TimelineData {
   const o = (raw ?? {}) as {
+    births?: unknown;
+    travel?: unknown;
     scenes?: unknown;
     events?: unknown;
     calendars?: unknown;
     activeCalendar?: unknown;
   };
-  const scenes: Record<string, Dated> = {};
+  const scenes: Record<string, SceneDate> = {};
   if (o.scenes && typeof o.scenes === "object") {
     for (const [id, v] of Object.entries(o.scenes as Record<string, unknown>)) {
       const d = dated(v);
-      if (d && id.length <= 64) scenes[id] = d;
+      if (!d || id.length > 64) continue;
+      const x = v as Partial<SceneDate>;
+      const scene: SceneDate = d;
+      if (typeof x.place === "string" && x.place && x.place.length <= 64) scene.place = x.place;
+      if (x.ignore === true) scene.ignore = true;
+      scenes[id] = scene;
     }
   }
   const events: TimelineEvent[] = [];
@@ -98,7 +126,31 @@ export function sanitizeTimeline(raw: unknown): TimelineData {
   }
   const activeCalendar =
     typeof o.activeCalendar === "string" && calendars[o.activeCalendar] ? o.activeCalendar : null;
-  return { scenes, events, calendars, activeCalendar };
+  const births: Record<string, number> = {};
+  if (o.births && typeof o.births === "object") {
+    for (const [id, v] of Object.entries(o.births as Record<string, unknown>))
+      if (id.length <= 64 && typeof v === "number" && Number.isInteger(v) && Math.abs(v) <= MAX_DAY)
+        births[id] = v;
+  }
+  const travel: Travel[] = [];
+  if (Array.isArray(o.travel)) {
+    for (const t of (o.travel as Partial<Travel>[]).slice(0, 2000)) {
+      if (
+        typeof t?.from === "string" &&
+        typeof t.to === "string" &&
+        t.from &&
+        t.to &&
+        t.from !== t.to &&
+        typeof t.days === "number" &&
+        Number.isInteger(t.days) &&
+        t.days >= 0 &&
+        t.days <= MAX_DAY &&
+        !travel.some((x) => samePair(x, t as Travel))
+      )
+        travel.push({ from: t.from.slice(0, 64), to: t.to.slice(0, 64), days: t.days });
+    }
+  }
+  return { scenes, events, calendars, activeCalendar, births, travel };
 }
 
 export async function readTimeline(fs: VaultFs): Promise<TimelineData> {
@@ -221,4 +273,110 @@ export function gapLabel(gap: number): string {
   if (gap === 0) return "no mesmo dia";
   if (gap === 1) return "no dia seguinte";
   return `${gap} dias depois`;
+}
+
+const samePair = (a: Pick<Travel, "from" | "to">, b: Pick<Travel, "from" | "to">) =>
+  (a.from === b.from && a.to === b.to) || (a.from === b.to && a.to === b.from);
+
+/** Tempo de viagem cadastrado entre dois lugares, ou null se não houver. */
+export function travelDays(
+  data: Pick<TimelineData, "travel">,
+  a: string,
+  b: string,
+): number | null {
+  return data.travel.find((t) => samePair(t, { from: a, to: b }))?.days ?? null;
+}
+
+/** Troca (ou tira, com null) o tempo de viagem entre dois lugares. */
+export function setTravel(travel: Travel[], a: string, b: string, days: number | null): Travel[] {
+  const rest = travel.filter((t) => !samePair(t, { from: a, to: b }));
+  return days === null ? rest : [...rest, { from: a, to: b, days }];
+}
+
+// ---------------------------------------------------------------- continuidade
+
+export interface ContinuityInput {
+  project: Project;
+  data: TimelineData;
+  /** Textos ligados a cada texto (links e menções), nos dois sentidos. */
+  linksOf: Map<string, string[]>;
+  /** Dias de um ano (do calendário do mundo, ou 365). */
+  yearLength: number;
+}
+
+export interface TravelWarning {
+  noteId: string;
+  from: string;
+  to: string;
+  /** Dias que a viagem leva. */
+  needs: number;
+  /** Dias que passaram entre o fim da cena anterior e esta. */
+  had: number;
+  /** Cena anterior do personagem. */
+  prevScene: string;
+}
+
+export interface Continuity {
+  /** Idade (anos completos) dos personagens com nascimento, em cada cena com data. */
+  ages: Map<string, { noteId: string; age: number }[]>;
+  /** Avisos de viagem rápida demais, pela cena de chegada. */
+  warnings: Map<string, TravelWarning[]>;
+  /** Local usado para cada cena (escolhido ou deduzido), e se foi deduzido. */
+  places: Map<string, { place: string; auto: boolean }>;
+}
+
+/** Idade em anos completos no dia `day` de quem nasceu no dia `birth`. */
+export const ageOn = (birth: number, day: number, yearLength: number) =>
+  Math.floor((day - birth) / yearLength);
+
+/**
+ * Idades e avisos de continuidade. Só avisa quando a chegada é cedo demais
+ * para o tempo de viagem cadastrado; demorar mais nunca é erro.
+ */
+export function continuity({ project, data, linksOf, yearLength }: ContinuityInput): Continuity {
+  const kindOf = new Map(project.notes.map((n) => [n.id, n.kind]));
+  const characters = (id: string) =>
+    (linksOf.get(id) ?? []).filter((x) => kindOf.get(x) === "personagens");
+  const ages = new Map<string, { noteId: string; age: number }[]>();
+  const places = new Map<string, { place: string; auto: boolean }>();
+  const dated: { id: string; day: number; end: number; bookIndex: number }[] = [];
+  let bookIndex = 0;
+  for (const c of project.chapters)
+    for (const s of c.scenes) {
+      const i = bookIndex++;
+      const d = data.scenes[s.id];
+      if (!d) continue;
+      dated.push({ id: s.id, day: d.day, end: d.day + d.days - 1, bookIndex: i });
+      const list = characters(s.id)
+        .filter((n) => data.births[n] !== undefined)
+        .map((n) => ({ noteId: n, age: ageOn(data.births[n]!, d.day, yearLength) }));
+      if (list.length) ages.set(s.id, list);
+      if (d.place && kindOf.get(d.place) === "lugares")
+        places.set(s.id, { place: d.place, auto: false });
+      else {
+        const linked = (linksOf.get(s.id) ?? []).filter((x) => kindOf.get(x) === "lugares");
+        if (linked.length === 1) places.set(s.id, { place: linked[0]!, auto: true });
+      }
+    }
+  dated.sort((a, b) => a.day - b.day || a.bookIndex - b.bookIndex);
+
+  const warnings = new Map<string, TravelWarning[]>();
+  const last = new Map<string, { scene: string; end: number; place: string }>();
+  for (const s of dated) {
+    const place = places.get(s.id)?.place;
+    for (const n of characters(s.id)) {
+      const prev = last.get(n);
+      if (place && prev && prev.place !== place && !data.scenes[s.id]!.ignore) {
+        const needs = travelDays(data, prev.place, place);
+        const had = s.day - prev.end;
+        if (needs !== null && had < needs) {
+          const list = warnings.get(s.id) ?? [];
+          list.push({ noteId: n, from: prev.place, to: place, needs, had, prevScene: prev.scene });
+          warnings.set(s.id, list);
+        }
+      }
+      if (place) last.set(n, { scene: s.id, end: s.end, place });
+    }
+  }
+  return { ages, warnings, places };
 }

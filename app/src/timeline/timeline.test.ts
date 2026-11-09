@@ -25,6 +25,8 @@ describe("linha do tempo", () => {
       events: [{ id: "e1", title: "O pai some", day: -2555, days: 1, notes: [] }],
       calendars: {},
       activeCalendar: null,
+      births: {},
+      travel: [],
     };
     await writeTimeline(fs, data);
     expect(await readTimeline(fs)).toEqual(data);
@@ -52,6 +54,8 @@ describe("linha do tempo", () => {
       events: [{ id: "e", title: "Tempestade", day: 5, days: 1, notes: [] }],
       calendars: {},
       activeCalendar: null,
+      births: {},
+      travel: [],
     };
     const t = buildTimeline(project, data);
     expect(t.groups.map((g) => [g.day, g.gap, g.items.map((i) => i.id)])).toEqual([
@@ -73,6 +77,8 @@ describe("linha do tempo", () => {
       ],
       calendars: {},
       activeCalendar: null,
+      births: {},
+      travel: [],
     };
     const t = buildTimeline(project, data, { noteId: "n1", linked: new Set([ids[1]!]) });
     expect(t.groups.flatMap((g) => g.items.map((i) => i.id))).toEqual(["x"]);
