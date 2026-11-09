@@ -174,7 +174,8 @@ A barra é um **trilho estreito** com as seções do projeto. Do alto para baixo
    **busca** (lupa) e, ao lado dela, o ícone do **Elo** (planeta), que abre o
    [grafo](#7-grafo-e-minimapa) de conexões.
 3. **Manuscrito** — abre (ou fecha) um **painel ao lado** do trilho com os capítulos e as cenas.
-   O app lembra se ele ficou aberto.
+   Se você estiver em outra tela (Anexos, Mundo, Elo…), volta para o texto que estava aberto (ou
+   abre a primeira cena) e mostra o painel. O app lembra se ele ficou aberto.
 4. **Anexos** — abre a [galeria](#33-anexos) com os arquivos do projeto.
 5. **Mundo** — personagens, lugares e ideias (as notas) em cartões.
 6. No rodapé, **Configurações**, **Lixeira** e o player de música.

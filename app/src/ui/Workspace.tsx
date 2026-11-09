@@ -50,6 +50,12 @@ export function Workspace({ session }: { session: Session }) {
   /** Painel do Manuscrito, ao lado da barra (lembrado entre aberturas). */
   const panelOpen = !useSettings((s) => s.collapsed.includes("manuscrito"));
   const toggleSection = useSettings((s) => s.toggleSection);
+  /** Sem texto aberto: abre a primeira cena do livro (ou só mostra o editor vazio). */
+  const openFirstScene = () => {
+    const first = project.chapters.find((c) => c.scenes.length)?.scenes[0];
+    if (first) useApp.getState().openDoc(first.id);
+    else setView("editor");
+  };
   /** Os outros botões da barra recolhem o painel do Manuscrito. */
   const closePanel = () => {
     if (panelOpen) toggleSection("manuscrito");
@@ -196,6 +202,15 @@ export function Workspace({ session }: { session: Session }) {
               title="Mostrar ou esconder os capítulos e cenas"
               onClick={() => {
                 if (searching) useSearch.getState().close();
+                // Fora do texto (Mundo, Anexos, Elo…): volta para a escrita e mostra os
+                // capítulos. Já no texto: só abre ou fecha o painel.
+                if (view !== "editor") {
+                  if (!panelOpen) toggleSection("manuscrito");
+                  if (activeDocId) setView("editor");
+                  else openFirstScene();
+                  return;
+                }
+                if (!panelOpen && !activeDocId) openFirstScene();
                 toggleSection("manuscrito");
               }}
             >
