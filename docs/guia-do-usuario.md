@@ -205,6 +205,10 @@ Ficam em ordem alfabética, cada tipo no seu grupo.
 - Abrir, renomear e excluir funcionam como nas cenas. Notas não têm ordem manual.
 - O nome de uma nota é especial: quando ele aparece no texto das cenas, conta como **menção** e
   liga a nota àquela cena no [grafo](#7-grafo-e-minimapa).
+- **Mundo** (botão no alto da barra, ao lado de **Elo**, só dentro de um projeto) mostra todas as
+  notas em cartões, por tipo: o nome, o começo do texto e em quantas cenas cada uma aparece
+  (links `[[…]]` e menções do nome). Clique num cartão para abrir a nota; os botões **Novo
+  personagem**, **Novo lugar** e **Nova ideia** criam uma nota já aberta.
 
 ### 3.3 Anexos
 
@@ -244,7 +248,7 @@ Da esquerda para a direita:
 | Ferramenta                   | O que faz                                                                  |
 | ---------------------------- | -------------------------------------------------------------------------- |
 | Estilo do parágrafo          | **Texto** (parágrafo comum), **Título 1**, **Título 2**, **Título 3**      |
-| **T** (Aparência do texto)   | Fonte, tamanho e espaçamento entre letras, palavras e linhas (veja abaixo)  |
+| **T** (Aparência do texto)   | Fonte, tamanho e espaçamento entre letras, palavras e linhas (veja abaixo) |
 | Negrito, Itálico, Tachado    | Formatação do trecho selecionado (Ctrl+B, Ctrl+I, Ctrl+Shift+S)            |
 | Marca-texto                  | Marca-texto amarelo (Ctrl+Shift+H). **Não sai no livro exportado**         |
 | Lista, Lista numerada        | Lista com marcadores ou numerada                                           |

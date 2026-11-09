@@ -7,6 +7,7 @@ import { DocEditor } from "../editor/DocEditor";
 import { ManuscriptTree } from "./ManuscriptTree";
 import { NotesTree } from "./NotesTree";
 import { GraphView } from "./GraphView";
+import { WorldView } from "./WorldView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
 import { Settings, type SettingsTab } from "./Settings";
@@ -164,6 +165,20 @@ export function Workspace({ session }: { session: Session }) {
           >
             <Icon name="search" size={16} />
           </button>
+        </div>
+        <div className="side-links">
+          <button
+            type="button"
+            className={"graph-btn" + (view === "world" ? " on" : "")}
+            aria-pressed={view === "world"}
+            title="Mundo: personagens, lugares e ideias do projeto"
+            onClick={() => {
+              setView(view === "world" ? "editor" : "world");
+              closeNav();
+            }}
+          >
+            <Icon name="globe" size={16} /> Mundo
+          </button>
           <button
             type="button"
             className={"graph-btn" + (view === "graph" ? " on" : "")}
@@ -232,11 +247,13 @@ export function Workspace({ session }: { session: Session }) {
               <span className="crumb-title">
                 {view === "graph"
                   ? "Elo"
-                  : view === "history"
-                    ? "Histórico de versões"
-                    : view === "trash"
-                      ? "Lixeira"
-                      : "Configurações"}
+                  : view === "world"
+                    ? "Mundo"
+                    : view === "history"
+                      ? "Histórico de versões"
+                      : view === "trash"
+                        ? "Lixeira"
+                        : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -286,6 +303,8 @@ export function Workspace({ session }: { session: Session }) {
         <section className="editor-area">
           {view === "graph" ? (
             <GraphView session={session} />
+          ) : view === "world" ? (
+            <WorldView session={session} />
           ) : view === "settings" ? (
             <Settings key={settingsTab ?? ""} initialTab={settingsTab ?? undefined} />
           ) : view === "history" ? (

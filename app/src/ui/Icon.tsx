@@ -10,6 +10,8 @@ const PATHS: Record<string, string> = {
   redo: "m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3",
   plus: "M12 5v14M5 12h14",
   chevron: "m9 6 6 6-6 6",
+  globe:
+    "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z",
   type: "M5 7V5h14v2M12 5v14M9 19h6",
   "collapse-all": "m7 11 5-5 5 5M7 18l5-5 5 5",
   "expand-all": "m7 6 5 5 5-5M7 13l5 5 5-5",
