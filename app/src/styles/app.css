@@ -488,6 +488,11 @@ p {
 .sidebar {
   flex-direction: row;
 }
+/* Aberta, a barra deixa os menus (ex.: o de projetos, mais largo que o trilho)
+   passarem por cima do texto; recolhida, volta a cortar para a animação. */
+.workspace:not(.nav-collapsed) .sidebar {
+  overflow: visible;
+}
 .rail {
   display: flex;
   flex-direction: column;
