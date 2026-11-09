@@ -68,7 +68,7 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
 ];
 
 export type { HomeBg } from "./backgrounds";
-export { THEME_BACKGROUNDS, migrateHomeBg, themeBackgroundUrl } from "./backgrounds";
+export { migrateHomeBg } from "./backgrounds";
 
 /** Seções da barra lateral que podem ser recolhidas. */
 export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
@@ -111,7 +111,7 @@ const DEFAULTS: Prefs = {
   collapsed: [],
   userName: "",
   syncEvery: 5,
-  homeBg: "tema",
+  homeBg: "liso",
   homeBgDim: 45,
 };
 

@@ -2968,8 +2968,7 @@ p {
 .bg-paleta {
   background: var(--p-bg);
 }
-.bg-imagem,
-.bg-tema {
+.bg-imagem {
   background:
     linear-gradient(
       color-mix(in srgb, var(--p-bg) var(--home-bg-dim, 45%), transparent),
@@ -4724,9 +4723,6 @@ p {
 .bg-swatch.bg-imagem {
   background: var(--panel-2) center / cover no-repeat;
 }
-.bg-swatch.bg-tema {
-  background: var(--p-bg) center / cover no-repeat;
-}
 .bg-swatch[aria-checked="true"],
 .bg-swatch[data-checked="true"] {
   box-shadow: 0 0 0 2px var(--fg);
@@ -5575,8 +5571,7 @@ p {
 }
 /* Imagem de fundo nas paletas claras: o véu escurece levemente em vez de
    embranquecer, e os textos soltos sobre o fundo ganham um halo. */
-:root[data-theme="light"] .bg-imagem,
-:root[data-theme="light"] .bg-tema {
+:root[data-theme="light"] .bg-imagem {
   background:
     linear-gradient(
       color-mix(in srgb, var(--p-bg) var(--home-bg-dim, 45%), rgba(40, 30, 20, 0.08)),
@@ -5585,8 +5580,8 @@ p {
     var(--home-bg-image, none) center / cover no-repeat,
     var(--p-bg);
 }
-:root[data-theme="light"] :is(.bg-imagem, .bg-tema) .projects-brand,
-:root[data-theme="light"] :is(.bg-imagem, .bg-tema) .shelf-title {
+:root[data-theme="light"] .bg-imagem .projects-brand,
+:root[data-theme="light"] .bg-imagem .shelf-title {
   text-shadow:
     0 0 12px color-mix(in srgb, var(--p-bg) 90%, transparent),
     0 0 2px color-mix(in srgb, var(--p-bg) 90%, transparent);
@@ -6033,7 +6028,7 @@ p {
 }
 
 /* Título da tela sobre a imagem de fundo: um halo discreto mantém a leitura. */
-:root[data-theme="dark"] :is(.bg-imagem, .bg-tema) .projects-brand {
+:root[data-theme="dark"] .bg-imagem .projects-brand {
   text-shadow:
     0 1px 12px color-mix(in srgb, var(--p-bg) 85%, transparent),
     0 0 2px color-mix(in srgb, var(--p-bg) 90%, transparent);

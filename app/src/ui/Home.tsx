@@ -13,7 +13,7 @@ import { RadioButton } from "./Music";
 import { getMiniBook, peekMiniBook, prepareMiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
-import { THEME_BACKGROUNDS, themeBackgroundUrl, useSettings } from "../state/settings";
+import { useSettings } from "../state/settings";
 import { useFolderSyncStatus } from "../state/syncStatus";
 import type { RemoteProject } from "../sync/drive";
 import {
@@ -679,27 +679,17 @@ function DriveProjects() {
 }
 
 /**
- * Fundo da tela inicial. Por padrão é o da paleta (cada paleta tem o seu e ele
- * troca junto); a imagem do usuário ou o fundo liso, quando escolhidos, valem
- * em qualquer paleta.
+ * Fundo da tela inicial: liso (só a cor da paleta) ou a imagem do usuário,
+ * que vale em qualquer paleta.
  */
 function useHomeBackground(): { kind: string; style: CSSProperties | undefined } {
   const kind = useSettings((s) => s.homeBg);
   const dim = useSettings((s) => s.homeBgDim);
   const image = useSettings((s) => s.homeBgImage);
-  const palette = useSettings((s) => s.palette);
   if (kind === "imagem" && image)
     return {
       kind,
       style: { "--home-bg-dim": `${dim}%`, "--home-bg-image": cssUrl(image) } as CSSProperties,
     };
-  if (kind === "liso") return { kind: "paleta", style: undefined };
-  // "tema" (ou "imagem" sem imagem guardada): o fundo padrão da paleta.
-  return {
-    kind: "tema",
-    style: {
-      "--home-bg-dim": `${THEME_BACKGROUNDS[palette].dim}%`,
-      "--home-bg-image": cssUrl(themeBackgroundUrl(palette)),
-    } as CSSProperties,
-  };
+  return { kind: "paleta", style: undefined };
 }

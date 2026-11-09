@@ -1,11 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  PALETTES,
-  THEME_BACKGROUNDS,
-  themeBackgroundUrl,
-  useSettings,
-  type MinimapPos,
-} from "../state/settings";
+import { PALETTES, useSettings, type MinimapPos } from "../state/settings";
 import { useSync } from "../state/sync";
 import { SERVICE_LABEL, parseMusicLink, useMusic, type MusicService } from "../state/music";
 import { PLAYLISTS } from "../music/library";
@@ -437,7 +431,7 @@ function HomeBackground() {
     <Section title="Tela de projetos">
       <Field
         label="Fundo"
-        hint="Cada paleta tem um fundo próprio, que troca junto com ela. Se você escolher o fundo liso ou uma imagem sua, ele fica em qualquer paleta. A barra lateral e o topo são de vidro e mostram o fundo."
+        hint="Fundo liso, na cor da paleta, ou uma imagem sua, que fica em qualquer paleta. A barra lateral e o topo são de vidro e mostram o fundo."
       >
         <div
           className={"bg-picker" + (over ? " over" : "")}
@@ -455,16 +449,6 @@ function HomeBackground() {
               setError("Solte um arquivo de imagem ou o endereço de uma imagem.");
           }}
         >
-          <button
-            type="button"
-            role="radio"
-            className="bg-swatch bg-tema"
-            aria-checked={s.homeBg === "tema"}
-            aria-label={`Fundo da paleta: ${THEME_BACKGROUNDS[s.palette].label}`}
-            title={`Fundo da paleta: ${THEME_BACKGROUNDS[s.palette].label} (troca junto com a paleta)`}
-            style={{ backgroundImage: cssUrl(themeBackgroundUrl(s.palette)) }}
-            onClick={() => s.set({ homeBg: "tema" })}
-          />
           <button
             type="button"
             role="radio"
@@ -563,7 +547,7 @@ function HomeBackground() {
               className="link-btn"
               onClick={() => {
                 s.setHomeBgImage(null);
-                s.set({ homeBg: "tema" });
+                s.set({ homeBg: "liso" });
               }}
             >
               Remover imagem

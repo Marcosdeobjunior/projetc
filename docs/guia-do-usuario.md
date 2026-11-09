@@ -125,9 +125,9 @@ quarta capa (no livro 3D) vêm do projeto gráfico de cada livro: se você envio
 o desenho padrão da Tália. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
 busca abre o **Elo** do projeto ativo.
 
-Cada paleta tem um **fundo próprio**, que troca junto com ela. Em **Configurações → Geral → Tela
-de projetos** dá para escolher o fundo liso ou uma imagem sua; essa escolha vale em qualquer
-paleta até você voltar para o fundo do tema.
+A tela de projetos usa um **fundo liso**, na cor da paleta. Em **Configurações → Geral → Tela de
+projetos** dá para colocar uma imagem sua; ela vale em qualquer paleta até você voltar para o fundo
+liso ou remover a imagem.
 
 ### 2.2 Criar um projeto
 
