@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { useTimeline } from "../state/timeline";
 import { buildTimeline, gapLabel, type TimelineItem } from "../timeline/timeline";
+import { dayToDate, formatDate, holidaysOn, seasonOf } from "../timeline/calendar";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
 
@@ -65,10 +66,13 @@ function NumberField({
 export function TimelineView({
   session,
   linksOf,
+  onOpenCalendar,
 }: {
   session: Session;
   /** Textos ligados a cada nota (para filtrar por personagem, lugar…). */
   linksOf: Map<string, string[]>;
+  /** Abre a ficha de um calendário (para definir meses, semana…). */
+  onOpenCalendar(noteId: string): void;
 }) {
   const openDoc = useApp((s) => s.openDoc);
   const data = useTimeline((s) => s.data);
@@ -92,6 +96,20 @@ export function TimelineView({
   );
   const notes = [...project.notes].sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
   const lastDay = timeline.groups.at(-1)?.day ?? 0;
+  /** Calendário do mundo usado para mostrar as datas (ou nenhum: "Dia N"). */
+  const calendar = data.activeCalendar ? data.calendars[data.activeCalendar] : undefined;
+  const calendarNotes = project.notes.filter((n) => n.kind === "calendarios");
+  const defined = calendarNotes.filter((n) => data.calendars[n.id]);
+  /** Data do mundo de um dia da história, por extenso. */
+  const worldDate = (day: number) => {
+    if (!calendar) return null;
+    const d = dayToDate(calendar, day);
+    return {
+      text: (d.weekday ? `${d.weekday}, ` : "") + formatDate(calendar, d),
+      season: seasonOf(calendar, d),
+      holidays: holidaysOn(calendar, d),
+    };
+  };
 
   const newEvent = () =>
     void addEvent({
@@ -136,15 +154,45 @@ export function TimelineView({
                 )}
               </>
             ) : (
-              <>
-                Acontecimento (não é cena)
-                {it.notes.length > 0 &&
-                  " · " +
-                    it.notes
-                      .map((id) => project.notes.find((n) => n.id === id)?.title)
-                      .filter(Boolean)
-                      .join(", ")}
-              </>
+              <span className="tl-event-notes">
+                Acontecimento
+                {it.notes.map((id) => {
+                  const n = project.notes.find((x) => x.id === id);
+                  return n ? (
+                    <span key={id} className="tl-chip">
+                      {n.title}
+                      <button
+                        type="button"
+                        aria-label={`Desligar ${n.title}`}
+                        title="Desligar"
+                        onClick={() =>
+                          void updateEvent(it.id, { notes: it.notes.filter((x) => x !== id) })
+                        }
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : null;
+                })}
+                <select
+                  className="tl-add-note"
+                  aria-label="Ligar uma nota a este acontecimento"
+                  value=""
+                  onChange={(e) =>
+                    e.target.value &&
+                    void updateEvent(it.id, { notes: [...it.notes, e.target.value] })
+                  }
+                >
+                  <option value="">+ ligar nota</option>
+                  {notes
+                    .filter((n) => !it.notes.includes(n.id))
+                    .map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {KIND_LABEL[n.kind].one}: {n.title}
+                      </option>
+                    ))}
+                </select>
+              </span>
             )}
           </small>
         </div>
@@ -242,11 +290,44 @@ export function TimelineView({
               </option>
             ))}
           </select>
+          <select
+            className="tool-select"
+            aria-label="Calendário das datas"
+            value={data.activeCalendar ?? ""}
+            onChange={(e) => void useTimeline.getState().setActiveCalendar(e.target.value || null)}
+          >
+            <option value="">Datas: dias numerados</option>
+            {defined.map((n) => (
+              <option key={n.id} value={n.id}>
+                Datas: {n.title}
+              </option>
+            ))}
+          </select>
           <button type="button" className="btn sm" onClick={newEvent}>
             <Icon name="plus" size={14} /> Acontecimento
           </button>
         </div>
       </header>
+      {defined.length === 0 && (
+        <p className="muted small tl-hint">
+          Para ver as datas no calendário do seu mundo (meses, semana, eras), defina um em{" "}
+          <b>Calendários do mundo</b>
+          {calendarNotes[0] && (
+            <>
+              {" "}
+              ou{" "}
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => onOpenCalendar(calendarNotes[0]!.id)}
+              >
+                abra “{calendarNotes[0].title}”
+              </button>
+            </>
+          )}
+          .
+        </p>
+      )}
 
       {timeline.groups.length === 0 ? (
         <p className="muted">
@@ -258,7 +339,25 @@ export function TimelineView({
           {timeline.groups.map((g) => (
             <li key={g.day} className="tl-group">
               {g.gap !== null && <p className="tl-gap">{gapLabel(g.gap)}</p>}
-              <h3 className="tl-day">Dia {g.day}</h3>
+              {(() => {
+                const w = worldDate(g.day);
+                return w ? (
+                  <h3 className="tl-day">
+                    {w.text}
+                    <small>
+                      Dia {g.day}
+                      {w.season && ` · ${w.season}`}
+                    </small>
+                    {w.holidays.map((h) => (
+                      <span key={h} className="tl-tag">
+                        {h}
+                      </span>
+                    ))}
+                  </h3>
+                ) : (
+                  <h3 className="tl-day">Dia {g.day}</h3>
+                );
+              })()}
               <ul className="tl-items">{g.items.map(row)}</ul>
             </li>
           ))}

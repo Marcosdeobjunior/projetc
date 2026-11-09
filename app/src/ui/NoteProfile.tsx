@@ -5,6 +5,7 @@ import type { Note } from "../manuscript/types";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
+import { CalendarEditor } from "./CalendarEditor";
 
 const KIND_ICON = DOC_ICON;
 
@@ -163,6 +164,8 @@ export function NoteProfile({
           </button>
         </div>
       </div>
+
+      {note.kind === "calendarios" && <CalendarEditor noteId={note.id} />}
 
       <div className="profile-lists">
         <section>

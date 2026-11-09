@@ -7,6 +7,7 @@ import {
   type TimelineData,
   type TimelineEvent,
 } from "../timeline/timeline";
+import type { CalendarDef } from "../timeline/calendar";
 import { useApp } from "./store";
 import { serial } from "./writes";
 
@@ -19,6 +20,10 @@ interface TimelineState {
   addEvent(e: Omit<TimelineEvent, "id">): Promise<string>;
   updateEvent(id: string, patch: Partial<Omit<TimelineEvent, "id">>): Promise<void>;
   removeEvent(id: string): Promise<void>;
+  /** Grava (ou apaga, com null) a definição de um calendário do mundo. */
+  setCalendar(noteId: string, def: CalendarDef | null): Promise<void>;
+  /** Escolhe o calendário que a linha do tempo usa (null = "Dia N"). */
+  setActiveCalendar(noteId: string | null): Promise<void>;
 }
 
 export const useTimeline = create<TimelineState>((set, get) => {
@@ -56,6 +61,20 @@ export const useTimeline = create<TimelineState>((set, get) => {
     },
     async removeEvent(id) {
       await save({ ...get().data, events: get().data.events.filter((e) => e.id !== id) });
+    },
+    async setCalendar(noteId, def) {
+      const calendars = { ...get().data.calendars };
+      if (def) calendars[noteId] = def;
+      else delete calendars[noteId];
+      const active = get().data.activeCalendar;
+      await save({
+        ...get().data,
+        calendars,
+        activeCalendar: active && calendars[active] ? active : def ? noteId : null,
+      });
+    },
+    async setActiveCalendar(noteId) {
+      await save({ ...get().data, activeCalendar: noteId });
     },
   };
 });

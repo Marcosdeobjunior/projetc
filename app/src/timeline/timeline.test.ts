@@ -23,6 +23,8 @@ describe("linha do tempo", () => {
     const data: TimelineData = {
       scenes: { [ids[0]!]: { day: 1, days: 1 } },
       events: [{ id: "e1", title: "O pai some", day: -2555, days: 1, notes: [] }],
+      calendars: {},
+      activeCalendar: null,
     };
     await writeTimeline(fs, data);
     expect(await readTimeline(fs)).toEqual(data);
@@ -48,6 +50,8 @@ describe("linha do tempo", () => {
     const data: TimelineData = {
       scenes: { [a!]: { day: 1, days: 3 }, [b!]: { day: 10, days: 1 }, [c!]: { day: 5, days: 1 } },
       events: [{ id: "e", title: "Tempestade", day: 5, days: 1, notes: [] }],
+      calendars: {},
+      activeCalendar: null,
     };
     const t = buildTimeline(project, data);
     expect(t.groups.map((g) => [g.day, g.gap, g.items.map((i) => i.id)])).toEqual([
@@ -67,10 +71,22 @@ describe("linha do tempo", () => {
         { id: "x", title: "com", day: 2, days: 1, notes: ["n1"] },
         { id: "y", title: "sem", day: 3, days: 1, notes: [] },
       ],
+      calendars: {},
+      activeCalendar: null,
     };
     const t = buildTimeline(project, data, { noteId: "n1", linked: new Set([ids[1]!]) });
     expect(t.groups.flatMap((g) => g.items.map((i) => i.id))).toEqual(["x"]);
     expect(t.undated.map((u) => u.id)).toEqual([ids[1]]);
+  });
+
+  it("guarda calendários e só aceita o ativo se ele existir", () => {
+    const d = sanitizeTimeline({
+      calendars: { nt_1: { months: [{ name: "Único", days: 10 }] } },
+      activeCalendar: "nt_1",
+    });
+    expect(d.calendars.nt_1!.months).toEqual([{ name: "Único", days: 10 }]);
+    expect(d.activeCalendar).toBe("nt_1");
+    expect(sanitizeTimeline({ activeCalendar: "nada" }).activeCalendar).toBeNull();
   });
 
   it("descreve o tempo decorrido", () => {

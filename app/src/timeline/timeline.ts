@@ -1,5 +1,6 @@
 import type { VaultFs } from "../platform/types";
 import type { Project } from "../manuscript/types";
+import { sanitizeCalendar, type CalendarDef } from "./calendar";
 
 /*
  * Linha do tempo da história. As datas são sempre do autor: cada cena (e cada
@@ -32,9 +33,18 @@ export interface TimelineData {
   scenes: Record<string, Dated>;
   /** Acontecimentos que não são cenas (guerras, nascimentos, a fuga do pai…). */
   events: TimelineEvent[];
+  /** Definição de cada calendário do mundo, por id da nota da aba Calendários. */
+  calendars: Record<string, CalendarDef>;
+  /** Calendário usado para mostrar as datas da linha do tempo (null = "Dia N"). */
+  activeCalendar: string | null;
 }
 
-export const EMPTY_TIMELINE: TimelineData = { scenes: {}, events: [] };
+export const EMPTY_TIMELINE: TimelineData = {
+  scenes: {},
+  events: [],
+  calendars: {},
+  activeCalendar: null,
+};
 
 const MAX_DAY = 10_000_000;
 
@@ -51,7 +61,12 @@ function dated(v: unknown): Dated | null {
 
 /** Confere o arquivo lido (pode ter vindo de fora ou do Drive). */
 export function sanitizeTimeline(raw: unknown): TimelineData {
-  const o = (raw ?? {}) as { scenes?: unknown; events?: unknown };
+  const o = (raw ?? {}) as {
+    scenes?: unknown;
+    events?: unknown;
+    calendars?: unknown;
+    activeCalendar?: unknown;
+  };
   const scenes: Record<string, Dated> = {};
   if (o.scenes && typeof o.scenes === "object") {
     for (const [id, v] of Object.entries(o.scenes as Record<string, unknown>)) {
@@ -76,7 +91,14 @@ export function sanitizeTimeline(raw: unknown): TimelineData {
       });
     }
   }
-  return { scenes, events };
+  const calendars: Record<string, CalendarDef> = {};
+  if (o.calendars && typeof o.calendars === "object") {
+    for (const [id, v] of Object.entries(o.calendars as Record<string, unknown>).slice(0, 100))
+      if (id.length <= 64) calendars[id] = sanitizeCalendar(v);
+  }
+  const activeCalendar =
+    typeof o.activeCalendar === "string" && calendars[o.activeCalendar] ? o.activeCalendar : null;
+  return { scenes, events, calendars, activeCalendar };
 }
 
 export async function readTimeline(fs: VaultFs): Promise<TimelineData> {

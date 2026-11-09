@@ -12,18 +12,28 @@ const KIND_ICON = DOC_ICON;
 
 const TAB_KEY = "talia.worldTab";
 
-/** Abas do Mundo: um tipo de nota cada, e a Linha do tempo junto dos Calendários. */
-type WorldTab = NoteKind | "timeline";
-const TABS: WorldTab[] = NOTE_KINDS.flatMap((k): WorldTab[] =>
-  k === "calendarios" ? [k, "timeline"] : [k],
-);
+/** Abas do Mundo: um tipo de nota cada. A Linha do tempo fica dentro de Calendários. */
+type WorldTab = NoteKind;
+const TABS: WorldTab[] = [...NOTE_KINDS];
+const SUB_KEY = "talia.calendarView";
+type CalendarView = "timeline" | "calendars";
 
 function readTab(): WorldTab {
   try {
-    const t = localStorage.getItem(TAB_KEY) as WorldTab | null;
-    return t && TABS.includes(t) ? t : TABS[0]!;
+    const t = localStorage.getItem(TAB_KEY);
+    // A antiga aba "Linha do tempo" agora mora em Calendários.
+    if (t === "timeline") return "calendarios";
+    return t && (TABS as string[]).includes(t) ? (t as WorldTab) : TABS[0]!;
   } catch {
     return TABS[0]!;
+  }
+}
+
+function readSub(): CalendarView {
+  try {
+    return localStorage.getItem(SUB_KEY) === "calendars" ? "calendars" : "timeline";
+  } catch {
+    return "timeline";
   }
 }
 
@@ -96,7 +106,17 @@ export function WorldView({ session }: { session: Session }) {
     );
   };
 
-  const kind: NoteKind = tab === "timeline" ? "calendarios" : tab;
+  const kind: NoteKind = tab;
+  /** Dentro de Calendários: a Linha do tempo ou os calendários do mundo. */
+  const [sub, setSubState] = useState<CalendarView>(readSub);
+  const setSub = (v: CalendarView) => {
+    setSubState(v);
+    try {
+      localStorage.setItem(SUB_KEY, v);
+    } catch {
+      // sem armazenamento: vale só agora
+    }
+  };
   const notes = project.notes
     .filter((n) => n.kind === kind)
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
@@ -132,18 +152,9 @@ export function WorldView({ session }: { session: Session }) {
               setOpenId(null);
             }}
           >
-            {k === "timeline" ? (
-              <>
-                <Icon name="clock" size={15} />
-                Linha do tempo
-              </>
-            ) : (
-              <>
-                <Icon name={KIND_ICON[k]} size={15} />
-                {KIND_LABEL[k].many}
-                <span className="world-count">{count(k)}</span>
-              </>
-            )}
+            <Icon name={KIND_ICON[k]} size={15} />
+            {KIND_LABEL[k].many}
+            <span className="world-count">{count(k)}</span>
           </button>
         ))}
       </div>
@@ -154,8 +165,32 @@ export function WorldView({ session }: { session: Session }) {
         role="tabpanel"
         aria-labelledby={`world-tab-${tab}`}
       >
-        {tab === "timeline" && !opened ? (
-          <TimelineView session={session} linksOf={linksOf} />
+        {tab === "calendarios" && !opened && (
+          <div className="segmented wide world-sub" role="radiogroup" aria-label="Calendários">
+            {(
+              [
+                ["timeline", "clock", "Linha do tempo"],
+                ["calendars", "calendar", "Calendários do mundo"],
+              ] as const
+            ).map(([v, icon, text]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={sub === v}
+                onClick={() => setSub(v)}
+              >
+                <Icon name={icon} size={14} /> {text}
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === "calendarios" && sub === "timeline" && !opened ? (
+          <TimelineView
+            session={session}
+            linksOf={linksOf}
+            onOpenCalendar={(id) => setOpenId(id)}
+          />
         ) : opened ? (
           <NoteProfile
             session={session}

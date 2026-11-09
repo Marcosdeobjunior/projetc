@@ -6950,3 +6950,130 @@ div.row-title {
   color: var(--faint);
   margin-right: auto;
 }
+
+/* ---------- Calendários: sub-seções, editor do calendário do mundo ---------- */
+.world-sub {
+  align-self: flex-start;
+}
+.tl-hint {
+  margin: -8px 0 0;
+}
+.tl-day small {
+  margin-left: 10px;
+  color: var(--faint);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.tl-day .tl-tag {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+.tl-event-notes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.tl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px 1px 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--fg);
+}
+.tl-chip button {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.tl-add-note {
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 1px 6px;
+}
+.cal-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.cal-editor h3 {
+  margin: 0;
+  font: 700 11px/1.2 var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.cal-editor h4 {
+  margin: 0 0 8px;
+  font: 600 13px/1.2 var(--font-ui);
+  color: var(--fg);
+}
+.cal-editor p {
+  margin: 0;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cal-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--fg);
+}
+.cal-active input {
+  accent-color: var(--accent);
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+.cal-rows {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cal-rows li,
+.cal-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.cal-rows .text-input {
+  width: auto;
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.cal-index {
+  width: 20px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.cal-foot {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}

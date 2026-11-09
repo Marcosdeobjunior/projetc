@@ -282,10 +282,18 @@ calcula intervalos.
 }
 ```
 
-| Campo      | Tipo   | Descrição                                                                     |
-| ---------- | ------ | ----------------------------------------------------------------------------- |
-| `scenes`   | objeto | Por id de cena: `day` (dia da história, inteiro) e `days` (duração, ≥ 1)      |
-| `events[]` | array  | Acontecimentos que não são cenas: `id`, `title`, `day`, `days`, `notes` (ids) |
+| Campo            | Tipo           | Descrição                                                                     |
+| ---------------- | -------------- | ----------------------------------------------------------------------------- |
+| `scenes`         | objeto         | Por id de cena: `day` (dia da história, inteiro) e `days` (duração, ≥ 1)      |
+| `events[]`       | array          | Acontecimentos que não são cenas: `id`, `title`, `day`, `days`, `notes` (ids) |
+| `calendars`      | objeto         | Por id de nota de calendário: definição do calendário do mundo (abaixo)       |
+| `activeCalendar` | string ou null | Calendário usado para mostrar as datas (precisa existir em `calendars`)       |
+
+Definição de um calendário (`timeline/calendar.ts`, lida com `sanitizeCalendar`):
+`months[]` (`name`, `days` 1–1000), `weekdays[]` (nomes; vazio = sem semana), `yearSuffix`,
+`start` (`year`, `month` índice, `day`) = a data do dia 1 da história, `startWeekday` (índice),
+`holidays[]` (`name`, `month`, `day`) e `seasons[]` (`name`, `month` em que começa). Sem anos
+bissextos. Valores fora da faixa voltam ao padrão.
 
 - Cena sem entrada em `scenes` = sem data. Ids de cenas excluídas são ignorados.
 - Lido com `sanitizeTimeline`: valores não inteiros, fora da faixa ou ids repetidos são

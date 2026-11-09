@@ -228,10 +228,13 @@ menções do nome).
   liga a nota àquela cena no [grafo](#7-grafo-e-minimapa).
 - A [busca](#6-busca-no-projeto) também encontra as notas.
 
-#### Linha do tempo
+#### Calendários: linha do tempo e calendários do mundo
 
-A aba **Linha do tempo** (no Mundo, ao lado de Calendários) mostra as cenas na ordem em que
-**acontecem na história**, que pode ser diferente da ordem do livro.
+A aba **Calendários** do Mundo tem duas partes, escolhidas no alto: **Linha do tempo** e
+**Calendários do mundo** (as fichas de calendário). O app lembra qual ficou aberta.
+
+**Linha do tempo** mostra as cenas na ordem em que **acontecem na história**, que pode ser
+diferente da ordem do livro.
 
 - **As datas são suas.** Cada cena começa em **Sem data**, embaixo. Digite o **dia da história**
   (1, 2, 3…; pode ser negativo, para o passado antes do livro) e ela entra na linha. **Dura** diz
@@ -242,12 +245,32 @@ A aba **Linha do tempo** (no Mundo, ao lado de Calendários) mostra as cenas na 
 - **fora de ordem** marca uma cena que o livro conta depois de outra que acontece mais tarde
   (flashback). É só um aviso.
 - **Acontecimento** cria um evento que não é cena (uma guerra, um nascimento, a fuga do pai), com
-  nome, dia e duração editáveis.
+  nome, dia e duração editáveis. **+ ligar nota** liga personagens, lugares etc. ao acontecimento
+  (o × do nome desliga).
+- **Datas:** escolha um calendário do mundo para ver as datas nele ("Terça, 3 de Brumal de 412 da
+  Segunda Era", com a estação e os feriados do dia) em vez de "Dia 3". O número do dia continua
+  ao lado.
 - **Mostrar tudo / uma nota:** filtra a linha pelo que está ligado a um personagem, lugar etc.
   (cenas que citam a nota e acontecimentos criados com o filtro ativo).
 - O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
 
-As datas ficam em `.talia/linha-do-tempo.json` e vão junto na sincronização com o Drive.
+**Calendário do mundo:** na ficha de um calendário (aba Calendários → Calendários do mundo →
+cartão), **Definir calendário** cria um calendário editável, começando com 12 meses e 7 dias na
+semana. Dá para:
+
+- renomear, mudar a quantidade de dias, subir e tirar **meses** (+ mês acrescenta);
+- definir os **dias da semana** (separados por vírgula; vazio = sem semana);
+- pôr um texto depois do **ano** ("da Segunda Era", "d.C.");
+- dizer **que data é o dia 1 da história** (dia, mês, ano e dia da semana);
+- cadastrar **feriados e festas** (repetem todo ano) e **estações** (cada uma começa no primeiro dia
+  de um mês);
+- marcar **Usar na linha do tempo**.
+
+O ano não tem bissextos: tem a soma dos dias dos meses. **Apagar a definição** tira só o calendário;
+a ficha e as datas das cenas continuam.
+
+As datas e os calendários ficam em `.talia/linha-do-tempo.json` e vão junto na sincronização com o
+Drive.
 
 ### 3.3 Anexos
 

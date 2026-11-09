@@ -380,8 +380,11 @@ e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíve
 `timeline/timeline.ts`: `readTimeline`/`writeTimeline`/`sanitizeTimeline` (formato em
 `formato-do-projeto.md`) e `buildTimeline` (pura: agrupa por dia, calcula o intervalo desde o fim
 do grupo anterior, lista as cenas sem data e marca as "fora de ordem" em relação ao livro).
-Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx`, uma
-aba do Mundo. Calendário próprio do mundo, idades e avisos de viagem ficam para as próximas fases.
+Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx`,
+dentro da aba Calendários do Mundo (sub-seção "Linha do tempo"). `timeline/calendar.ts` converte
+dia da história ↔ data do calendário do mundo (`dayToDate`, `dateToDay`, `formatDate`,
+`holidaysOn`, `seasonOf`); a definição é editada em `ui/CalendarEditor.tsx` (ficha de uma nota de
+calendário). Idades e avisos de viagem ficam para a fase 3.
 
 ### 6.1 Comentários
 
