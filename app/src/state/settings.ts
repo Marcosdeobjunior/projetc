@@ -80,6 +80,8 @@ interface Prefs {
   /** Conta as menções automáticas (nomes no texto) no minimapa. */
   minimapMentions: boolean;
   collapsed: SectionId[];
+  /** Capítulos recolhidos no Manuscrito, por id do projeto. */
+  collapsedChapters: Record<string, string[]>;
   /** Nome do escritor, mostrado no topo da tela de projetos. */
   userName: string;
   /** De quantos em quantos minutos sincronizar com o Drive (0 = só quando pedir). */
@@ -95,6 +97,8 @@ interface SettingsState extends Prefs {
   homeBgImage: string | null;
   set(patch: Partial<Prefs>): void;
   toggleSection(id: SectionId): void;
+  /** Guarda quais capítulos do projeto estão recolhidos. */
+  setCollapsedChapters(projectId: string, ids: string[]): void;
   /** Troca a imagem de fundo. Devolve false se não couber no armazenamento. */
   setHomeBgImage(image: string | null): boolean;
 }
@@ -109,6 +113,7 @@ const DEFAULTS: Prefs = {
   minimapPos: "bottom-right",
   minimapMentions: true,
   collapsed: [],
+  collapsedChapters: {},
   userName: "",
   syncEvery: 5,
   homeBg: "liso",
@@ -183,6 +188,12 @@ export const useSettings = create<SettingsState>((set, get) => ({
     const c = get().collapsed;
     set({ collapsed: c.includes(id) ? c.filter((x) => x !== id) : [...c, id] });
   },
+  setCollapsedChapters(projectId, ids) {
+    const all = { ...get().collapsedChapters };
+    if (ids.length) all[projectId] = ids;
+    else delete all[projectId];
+    set({ collapsedChapters: all });
+  },
 }));
 
 applyPalette(useSettings.getState().palette);
@@ -194,6 +205,7 @@ useSettings.subscribe((s, prev) => {
     minimapPos: s.minimapPos,
     minimapMentions: s.minimapMentions,
     collapsed: s.collapsed,
+    collapsedChapters: s.collapsedChapters,
     userName: s.userName,
     syncEvery: s.syncEvery,
     homeBg: s.homeBg,

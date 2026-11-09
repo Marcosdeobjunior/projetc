@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import {
   addChapter,
@@ -31,7 +31,15 @@ export function ManuscriptTree({
   const openDoc = useApp((s) => s.openDoc);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Capítulos recolhidos: guardados nas preferências, por projeto, para a
+  // barra voltar do mesmo jeito ao reabrir o app.
+  const folded = useSettings((s) => s.collapsedChapters[session.project.id]);
+  const collapsed = useMemo(() => new Set(folded ?? []), [folded]);
+  const setCollapsed = (update: (s: Set<string>) => Set<string>) => {
+    const ids = new Set(project.chapters.map((c) => c.id));
+    const next = [...update(new Set(collapsed))].filter((id) => ids.has(id));
+    useSettings.getState().setCollapsedChapters(project.id, next);
+  };
   const [drag, setDrag] = useState<Drag>(null);
   const [mark, setMark] = useState<DropMark>(null);
   const { project, words, activeDocId } = session;
@@ -156,7 +164,9 @@ export function ManuscriptTree({
               collapsed={allCollapsed}
               what="os capítulos"
               onClick={() =>
-                setCollapsed(allCollapsed ? new Set() : new Set(project.chapters.map((c) => c.id)))
+                setCollapsed(() =>
+                  allCollapsed ? new Set() : new Set(project.chapters.map((c) => c.id)),
+                )
               }
             />
           )}

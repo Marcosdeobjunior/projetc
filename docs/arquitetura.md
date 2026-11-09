@@ -261,7 +261,7 @@ Caminhos são sempre relativos à raiz do projeto e usam `/`.
 | Arquivos          | Comandos Rust (`invoke`)                               | `KeyValueFs` sobre IndexedDB (chave `raiz + "\0" + caminho`); memória se o IndexedDB falhar (`persistent: false`) |
 | Pastas            | Reais                                                  | Implícitas (existem enquanto há arquivos dentro)                                                                  |
 | `mtime` no `walk` | ms desde 1970                                          | `null` (o MD5 é recalculado sempre)                                                                               |
-| Recentes          | `localStorage["talia.recentVaults"]` (até 12)        | Derivados das chaves `…\0.talia/project.json`                                                                   |
+| Recentes          | `localStorage["talia.recentVaults"]` (até 12)          | Derivados das chaves `…\0.talia/project.json`                                                                     |
 | `forgetVault`     | Só tira da lista                                       | **Apaga os arquivos** do projeto                                                                                  |
 | `saveFile`        | Diálogo "Salvar como" + `export_write`                 | Download (`<a download>`)                                                                                         |
 | `openFile`        | `vault_open` (programa padrão)                         | Download                                                                                                          |
@@ -698,7 +698,7 @@ em texto. `root` é sempre um caminho absoluto e `path`/`from`/`to` são relativ
 | `vault_write_bytes` | corpo binário; cabeçalhos `x-root`, `x-path` | `()`                                           | Cabeçalhos com `encodeURIComponent`; gravação atômica                                                       |
 | `vault_exists`      | `root`, `path`                               | `bool`                                         | Arquivo ou pasta                                                                                            |
 | `vault_list`        | `root`, `path`                               | `string[]`                                     | Só arquivos (não pastas) direto na pasta, em ordem; `[]` se a pasta não existe                              |
-| `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.talia-tmp`; em ordem                        |
+| `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.talia-tmp`; em ordem                          |
 | `vault_rename`      | `root`, `from`, `to`                         | `()`                                           | Recusa se o destino existe; cria as pastas do destino                                                       |
 | `vault_remove`      | `root`, `path`                               | `()`                                           | Pasta: remove tudo; inexistente: ok; recusa apagar a própria raiz                                           |
 | `vault_open`        | `root`, `path`                               | `()`                                           | Abre no programa padrão (`tauri-plugin-opener`); só `anexos/` com extensão permitida; erro se não é arquivo |
@@ -847,18 +847,18 @@ Qualidade local: `pnpm lint`, `pnpm typecheck`, `pnpm format` (Prettier, `printW
 
 Chaves no `localStorage` do WebView (por computador, não vão para o projeto nem para o Drive):
 
-| Chave                        | Conteúdo                                                                      |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                         |
-| `talia.lastVault`          | Raiz do último projeto aberto                                                 |
-| `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)        |
-| `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `syncEvery` |
-| `talia.theme`              | Formato antigo (só o tema), lido na migração                                  |
-| `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                       |
-| `talia.export.<projectId>` | Opções de exportação daquele projeto                                          |
-| `talia.googleClient`       | `{ id, secret }` do cliente OAuth                                             |
-| `talia.google`             | `{ email, refreshToken }` da conta conectada                                  |
-| `talia.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                        |
+| Chave                      | Conteúdo                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                                              |
+| `talia.lastVault`          | Raiz do último projeto aberto                                                                      |
+| `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)                             |
+| `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `collapsedChapters`, `syncEvery` |
+| `talia.theme`              | Formato antigo (só o tema), lido na migração                                                       |
+| `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                                            |
+| `talia.export.<projectId>` | Opções de exportação daquele projeto                                                               |
+| `talia.googleClient`       | `{ id, secret }` do cliente OAuth                                                                  |
+| `talia.google`             | `{ email, refreshToken }` da conta conectada                                                       |
+| `talia.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                                             |
 
 `sessionStorage["talia.settingsTab"]` lembra a última aba das Configurações.
 

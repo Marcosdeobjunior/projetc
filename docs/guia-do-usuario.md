@@ -193,7 +193,8 @@ Do alto para baixo:
 - **Excluir:** a lixeirinha. O app pede confirmação; o texto vai para a
   [Lixeira](#9-lixeira) e pode voltar.
 - O número à direita de cada capítulo e cena é a contagem de palavras.
-- A setinha ao lado do capítulo recolhe ou mostra as cenas dele.
+- A setinha ao lado do capítulo recolhe ou mostra as cenas dele. O app lembra, em cada projeto,
+  quais capítulos ficaram recolhidos.
 
 ### 3.2 Notas: personagens, lugares e ideias
 
