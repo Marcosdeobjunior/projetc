@@ -13,7 +13,7 @@ import {
   type VersionInfo,
 } from "../vault/history";
 import { formatCount } from "../manuscript/wordCount";
-import { KIND_LABEL } from "../links/context";
+import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { DocPreview } from "./DocPreview";
 import { Icon } from "./Icon";
 
@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<DocStatus, string> = {
   same: "Igual a agora",
 };
 const STATUS_ORDER: DocStatus[] = ["changed", "removed", "added", "same"];
-const KIND_ICON = { scene: "file", personagens: "person", lugares: "pin", ideias: "bulb" };
+const KIND_ICON = DOC_ICON;
 
 const time = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const longDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeStyle: "short" });

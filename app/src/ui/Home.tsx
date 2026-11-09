@@ -365,7 +365,7 @@ function SelectedCard(props: {
         <Stat n={stats?.words} label="Palavras" />
         <Stat n={stats?.chapters} label="Capítulos" />
         <Stat n={stats?.scenes} label="Cenas" />
-        <Stat n={stats ? stats.characters + stats.places + stats.ideas : undefined} label="Notas" />
+        <Stat n={stats?.notes} label="Notas" />
       </div>
       {goal ? (
         <div className="hero-goal">

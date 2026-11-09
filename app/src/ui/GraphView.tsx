@@ -11,6 +11,9 @@ const TYPES: { type: NodeType; label: string }[] = [
   { type: "personagens", label: KIND_LABEL.personagens.many },
   { type: "lugares", label: KIND_LABEL.lugares.many },
   { type: "ideias", label: KIND_LABEL.ideias.many },
+  { type: "calendarios", label: KIND_LABEL.calendarios.many },
+  { type: "idiomas", label: KIND_LABEL.idiomas.many },
+  { type: "organizacoes", label: KIND_LABEL.organizacoes.many },
 ];
 
 /** Elo: grafo de conexões entre cenas e notas, cada texto é um ponto. */

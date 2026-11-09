@@ -2,15 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { findDoc, setNoteImage } from "../manuscript/tree";
 import type { Note } from "../manuscript/types";
-import { KIND_LABEL } from "../links/context";
+import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
 
-const KIND_ICON: Record<Note["kind"], string> = {
-  personagens: "person",
-  lugares: "pin",
-  ideias: "bulb",
-};
+const KIND_ICON = DOC_ICON;
 
 /** Imagem de anexos/ como blob: (ou null enquanto carrega / se sumiu). */
 export function useAttachmentImage(src: string | undefined) {

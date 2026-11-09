@@ -8,6 +8,20 @@ export const KIND_LABEL: Record<NoteKind, { one: string; many: string; new: stri
   personagens: { one: "Personagem", many: "Personagens", new: "Novo personagem" },
   lugares: { one: "Lugar", many: "Lugares", new: "Novo lugar" },
   ideias: { one: "Ideia", many: "Ideias", new: "Nova ideia" },
+  calendarios: { one: "Calendário", many: "Calendários", new: "Novo calendário" },
+  idiomas: { one: "Idioma", many: "Idiomas", new: "Novo idioma" },
+  organizacoes: { one: "Organização", many: "Organizações", new: "Nova organização" },
+};
+
+/** Ícone de cada tipo de nota (e das cenas), usado em todas as telas. */
+export const DOC_ICON: Record<NoteKind | "scene", string> = {
+  scene: "file",
+  personagens: "person",
+  lugares: "pin",
+  ideias: "bulb",
+  calendarios: "calendar",
+  idiomas: "language",
+  organizacoes: "organization",
 };
 
 // Índices recalculados só quando o projeto muda (não a cada tecla).

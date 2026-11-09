@@ -10,6 +10,9 @@ const PATHS: Record<string, string> = {
   redo: "m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3",
   plus: "M12 5v14M5 12h14",
   chevron: "m9 6 6 6-6 6",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  language: "M4 5h9M8.5 5v2c0 4-2 7-5 8M6 10c1.5 2.5 4 4 7 5M13 21l4-9 4 9M14.5 18h5",
+  organization: "M4 21V8l8-5 8 5v13M9 21v-5h6v5M8 11h.01M12 11h.01M16 11h.01",
   comment: "M5 5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z",
   globe:
     "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z",

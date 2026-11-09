@@ -1,3 +1,4 @@
+import type { NoteKind } from "../manuscript/types";
 import { create } from "zustand";
 import { migrateHomeBg, type HomeBg } from "./backgrounds";
 import { DEFAULT_TEXT_STYLE, sanitizeTextStyle, type TextStyle } from "../editor/textStyle";
@@ -72,7 +73,7 @@ export type { HomeBg } from "./backgrounds";
 export { migrateHomeBg } from "./backgrounds";
 
 /** Seções da barra lateral que podem ser recolhidas. */
-export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
+export type SectionId = "manuscrito" | "notas" | NoteKind | "anexos";
 
 interface Prefs {
   palette: PaletteId;

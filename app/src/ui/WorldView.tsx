@@ -3,15 +3,11 @@ import { useApp, type Session } from "../state/store";
 import { addNote } from "../manuscript/tree";
 import { NOTE_KINDS, type NoteKind } from "../manuscript/types";
 import { buildGraph } from "../links/links";
-import { KIND_LABEL } from "../links/context";
+import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
 import { NoteProfile, useAttachmentImage } from "./NoteProfile";
 
-const KIND_ICON: Record<NoteKind, string> = {
-  personagens: "person",
-  lugares: "pin",
-  ideias: "bulb",
-};
+const KIND_ICON = DOC_ICON;
 
 const TAB_KEY = "talia.worldTab";
 

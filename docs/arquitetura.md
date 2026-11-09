@@ -209,7 +209,7 @@ erDiagram
   `updatedAt`, `chapters[]`, `notes[]`, `author?`.
 - **`Chapter`**: `id` (`ch_…`), `title`, `dir` (pasta em `manuscrito/`), `scenes[]`.
 - **`Scene`**: `id` (`sc_…`), `title`, `file` (`.md` dentro da pasta do capítulo).
-- **`Note`**: `id` (`nt_…`), `title`, `kind` (`personagens` | `lugares` | `ideias`), `file`.
+- **`Note`**: `id` (`nt_…`), `title`, `kind` (`personagens` | `lugares` | `ideias` | `calendarios` | `idiomas` | `organizacoes`; ícones em `DOC_ICON`), `file`.
 - Ids: prefixo + 12 hex de um UUID (`newId` em `manuscript/tree.ts`).
 - Nomes de arquivo/pasta: `slugify(título)` (sem acentos, minúsculas, `-`, até 60 caracteres) +
   sufixo `-2`, `-3`… se já usado (`uniqueName`). A pasta do projeto usa `folderName` (mantém

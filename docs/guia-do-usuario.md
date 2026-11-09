@@ -177,7 +177,7 @@ A barra é um **trilho estreito** com as seções do projeto. Do alto para baixo
    Se você estiver em outra tela (Anexos, Mundo, Elo…), volta para o texto que estava aberto (ou
    abre a primeira cena) e mostra o painel. O app lembra se ele ficou aberto.
 4. **Anexos** — abre a [galeria](#33-anexos) com os arquivos do projeto.
-5. **Mundo** — personagens, lugares e ideias (as notas) em cartões.
+5. **Mundo** — personagens, lugares, ideias, calendários, idiomas e organizações (as notas) em cartões.
 6. No rodapé, **Música** (o player), **Configurações** e **Lixeira**.
 
 No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
@@ -201,16 +201,20 @@ No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
 - A setinha ao lado do capítulo recolhe ou mostra as cenas dele. O app lembra, em cada projeto,
   quais capítulos ficaram recolhidos.
 
-### 3.2 Mundo: personagens, lugares e ideias
+### 3.2 Mundo: personagens, lugares, ideias, calendários, idiomas e organizações
 
-As notas guardam o que não é o livro em si: fichas de personagens, lugares, ideias de enredo.
+As notas guardam o que não é o livro em si: fichas de personagens, lugares, ideias de enredo,
+calendários do mundo (meses, festas, eras), idiomas inventados e organizações (reinos, guildas,
+famílias, ordens).
 Elas ficam no **Mundo** (no trilho, abaixo de Anexos), organizadas em **abas** no alto da tela
-(**Personagens**, **Lugares** e **Ideias**, cada uma com a quantidade; as setas ← → do teclado
+(**Personagens**, **Lugares**, **Ideias**, **Calendários**, **Idiomas** e **Organizações**, cada
+uma com a quantidade; as setas ← → do teclado
 também trocam de aba, e o app lembra a última). Cada aba mostra cartões em ordem alfabética: o nome, o começo do texto e em quantas cenas cada uma aparece (links `[[…]]` e
 menções do nome).
 
-- **Nova nota:** os botões **Novo personagem**, **Novo lugar** e **Nova ideia** criam a nota e já
-  abrem.
+- **Nova nota:** o botão de cada aba (**Novo personagem**, **Novo lugar**, **Nova ideia**, **Novo
+  calendário**, **Novo idioma**, **Nova organização**) cria a nota e abre a ficha. Cada tipo fica
+  numa subpasta de `notas/` (`calendarios/`, `idiomas/`, `organizacoes/`…).
 - **Ficha:** clique no cartão para abrir a página própria da nota, com:
   - a **imagem** (retrato do personagem, foto do lugar): **Escolher imagem**, ou arraste uma
     imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
@@ -424,7 +428,7 @@ A busca não procura dentro dos anexos nem na lixeira.
 O botão **Grafo** (barra lateral) mostra todos os textos do projeto como pontos e as ligações
 entre eles como linhas, no estilo do Obsidian:
 
-- cada **cor** é um tipo: cenas, personagens, lugares e ideias. Clique nos botões do alto para
+- cada **cor** é um tipo: cenas, personagens, lugares, ideias, calendários, idiomas e organizações. Clique nos botões do alto para
   esconder ou mostrar cada tipo;
 - **linha cheia** = link `[[…]]` escrito; **linha tracejada** = menção automática (o nome de uma
   nota aparecendo no texto). A caixa **Menções automáticas** liga ou desliga essas linhas;

@@ -31,7 +31,14 @@ export interface Scene {
   file: string;
 }
 
-export const NOTE_KINDS = ["personagens", "lugares", "ideias"] as const;
+export const NOTE_KINDS = [
+  "personagens",
+  "lugares",
+  "ideias",
+  "calendarios",
+  "idiomas",
+  "organizacoes",
+] as const;
 export type NoteKind = (typeof NOTE_KINDS)[number];
 
 export interface Note {

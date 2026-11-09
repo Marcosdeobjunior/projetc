@@ -12,6 +12,8 @@ export interface ProjectStats {
   characters: number;
   places: number;
   ideas: number;
+  /** Total de notas, de todos os tipos. */
+  notes: number;
   createdAt: number;
   updatedAt: number;
   /** Começo do primeiro texto com conteúdo, mostrado como sinopse na capa. */
@@ -34,6 +36,7 @@ async function readStats(platform: Platform, root: string): Promise<ProjectStats
       characters: kind("personagens"),
       places: kind("lugares"),
       ideas: kind("ideias"),
+      notes: project.notes.length,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       excerpt: firstText.length > 420 ? firstText.slice(0, 420).trimEnd() + "…" : firstText,
