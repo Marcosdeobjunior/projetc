@@ -852,7 +852,7 @@ Chaves no `localStorage` do WebView (por computador, não vão para o projeto ne
 | `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                                              |
 | `talia.lastVault`          | Raiz do último projeto aberto                                                                      |
 | `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)                             |
-| `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `collapsedChapters`, `syncEvery` |
+| `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `collapsedChapters`, `syncEvery`, `textStyle` |
 | `talia.theme`              | Formato antigo (só o tema), lido na migração                                                       |
 | `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                                            |
 | `talia.export.<projectId>` | Opções de exportação daquele projeto                                                               |

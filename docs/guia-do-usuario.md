@@ -244,16 +244,24 @@ Da esquerda para a direita:
 | Ferramenta                   | O que faz                                                                  |
 | ---------------------------- | -------------------------------------------------------------------------- |
 | Estilo do parágrafo          | **Texto** (parágrafo comum), **Título 1**, **Título 2**, **Título 3**      |
+| **T** (Aparência do texto)   | Fonte, tamanho e espaçamento entre letras, palavras e linhas (veja abaixo)  |
 | Negrito, Itálico, Tachado    | Formatação do trecho selecionado (Ctrl+B, Ctrl+I, Ctrl+Shift+S)            |
 | Marca-texto                  | Marca-texto amarelo (Ctrl+Shift+H). **Não sai no livro exportado**         |
 | Lista, Lista numerada        | Lista com marcadores ou numerada                                           |
 | Citação                      | Parágrafo recuado, para epígrafes, cartas, citações                        |
 | Separador de cena (\* \* \*) | Linha que separa duas partes da mesma cena                                 |
 | Limpar formatação            | Tira negrito, itálico etc. e volta o bloco a parágrafo comum               |
+| Imagem                       | Inserir uma ou mais imagens no texto (copiadas para `anexos/`)             |
 | Clipe                        | Anexar arquivo (veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos)) |
 | Desfazer / Refazer           | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y também refaz)                                |
 | Relógio                      | Abre o [Histórico de versões](#8-histórico-de-versões)                     |
 | Grafo pequeno                | Mostra ou esconde o [minimapa](#72-minimapa)                               |
+
+**Aparência do texto** (botão **T**): escolha a fonte (Literata, EB Garamond, Fraunces, Georgia,
+Figtree sem serifa ou máquina de escrever), o tamanho da letra e o espaço entre as letras, as
+palavras e as linhas. Vale para todos os textos e o app lembra a escolha. É só a forma de ver o
+texto na tela: o arquivo `.md` e o livro exportado não mudam (a tipografia do livro fica no
+[Diagramação](#104-diagramação)). **Voltar ao padrão** desfaz tudo.
 
 Você também pode formatar escrevendo como no Markdown: `**negrito**`, `*itálico*`, `~~tachado~~`,
 `==destaque==`, `# ` no começo da linha para título, `> ` para citação, `- ` para lista, `1. `
@@ -323,7 +331,8 @@ Imagens, vídeos, áudios, PDFs e outros arquivos podem fazer parte do projeto. 
 **Para anexar:**
 
 - **arraste** o arquivo para dentro do texto, ou **cole** (Ctrl+V) uma imagem copiada;
-- ou clique no **clipe** da barra de ferramentas;
+- ou clique no botão de **imagem** (só imagens) ou no **clipe** (qualquer arquivo) da barra de
+  ferramentas;
 - ou use o **+** da seção **Anexos** na barra lateral (só copia, não insere no texto).
 
 **No texto**, o anexo aparece como um bloco: imagens são mostradas, vídeos e áudios ganham um

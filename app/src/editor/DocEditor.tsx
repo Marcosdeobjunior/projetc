@@ -21,6 +21,7 @@ import { allDocs, findDoc } from "../manuscript/tree";
 import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
+import { textStyleVars } from "./textStyle";
 import { ContextMenu } from "./ContextMenu";
 import { REFRESH_SEARCH, SearchHighlight, searchHits } from "./searchHighlight";
 import { useSearch } from "../state/search";
@@ -101,6 +102,8 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
     if (ed && !ed.isDestroyed && added.length) insertAttachments(ed, added, at);
   };
   const minimapPos = useSettings((s) => s.minimapPos);
+  const textStyle = useSettings((s) => s.textStyle);
+  const textVars = useMemo(() => textStyleVars(textStyle), [textStyle]);
 
   const editor = useEditor(
     {
@@ -317,6 +320,7 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
       <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
         <div
           className="page"
+          style={textVars}
           onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
         >
           <EditorContent

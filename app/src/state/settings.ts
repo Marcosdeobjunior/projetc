@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { migrateHomeBg, type HomeBg } from "./backgrounds";
+import { DEFAULT_TEXT_STYLE, sanitizeTextStyle, type TextStyle } from "../editor/textStyle";
 
 /*
  * Preferências do app (valem para todos os projetos), guardadas no
@@ -90,6 +91,8 @@ interface Prefs {
   homeBg: HomeBg;
   /** Quanto a imagem de fundo é suavizada (0 a 85, em %), para o texto continuar legível. */
   homeBgDim: number;
+  /** Fonte, tamanho e espaçamentos do texto no editor. */
+  textStyle: TextStyle;
 }
 
 interface SettingsState extends Prefs {
@@ -118,6 +121,7 @@ const DEFAULTS: Prefs = {
   syncEvery: 5,
   homeBg: "liso",
   homeBgDim: 45,
+  textStyle: DEFAULT_TEXT_STYLE,
 };
 
 function loadImage(): string | null {
@@ -145,6 +149,7 @@ function load(): Prefs {
       ...pick(saved ?? {}),
       palette,
       homeBg: migrateHomeBg(saved?.homeBg),
+      textStyle: sanitizeTextStyle(saved?.textStyle),
     };
   } catch {
     return DEFAULTS;
@@ -210,6 +215,7 @@ useSettings.subscribe((s, prev) => {
     syncEvery: s.syncEvery,
     homeBg: s.homeBg,
     homeBgDim: s.homeBgDim,
+    textStyle: s.textStyle,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));

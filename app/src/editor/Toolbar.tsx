@@ -3,6 +3,7 @@ import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
 import { useSettings } from "../state/settings";
 import { useApp } from "../state/store";
+import { TextStyleButton } from "./TextStylePanel";
 import {
   BLOCK_STYLES,
   blockStyle,
@@ -22,6 +23,7 @@ export function Toolbar({
   onAttach(files: File[]): void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) =>
@@ -88,6 +90,7 @@ export function Toolbar({
           </option>
         ))}
       </select>
+      <TextStyleButton />
       <span className="toolbar-sep" />
       {MARKS.map((m) => (
         <ToolButton
@@ -104,6 +107,22 @@ export function Toolbar({
       ))}
       <ToolButton label="Limpar formatação" icon="clear" run={() => clearFormatting(editor)} />
       <span className="toolbar-sep" />
+      <ToolButton
+        label="Inserir imagem. Também dá para arrastar ou colar no texto."
+        icon="image"
+        run={() => imageInput.current?.click()}
+      />
+      <input
+        ref={imageInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/avif"
+        multiple
+        hidden
+        onChange={(e) => {
+          onAttach([...(e.target.files ?? [])]);
+          e.target.value = "";
+        }}
+      />
       <ToolButton
         label="Anexar arquivo (imagem, vídeo, áudio…). Também dá para arrastar ou colar no texto."
         icon="paperclip"
