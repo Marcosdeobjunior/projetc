@@ -375,6 +375,14 @@ aceita até 6), citação, listas com marcador e numeradas (com `start`), `* * *
 quebra de linha (`\` no fim da linha), `**negrito**`, `*itálico*`, `~~tachado~~`, `==destaque==`
 e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíveis.
 
+### 6.0 Linha do tempo
+
+`timeline/timeline.ts`: `readTimeline`/`writeTimeline`/`sanitizeTimeline` (formato em
+`formato-do-projeto.md`) e `buildTimeline` (pura: agrupa por dia, calcula o intervalo desde o fim
+do grupo anterior, lista as cenas sem data e marca as "fora de ordem" em relação ao livro).
+Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx`, uma
+aba do Mundo. Calendário próprio do mundo, idades e avisos de viagem ficam para as próximas fases.
+
 ### 6.1 Comentários
 
 - Dados em `.talia/comentarios/<id>.json` (`comments/comments.ts`: `readComments`,

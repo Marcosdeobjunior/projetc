@@ -29,6 +29,7 @@ A Casa das Marés/                       ← raiz do projeto (nome legível, com
       sc_3f9a1c2b7d4e.yjs               ← estado do editor (Yjs) de cada cena/nota
     comentarios/
       sc_3f9a1c2b7d4e.json              ← comentários de uma cena/nota (só se houver)
+    linha-do-tempo.json                 ← dias da história das cenas e acontecimentos
     versoes/
       indice.json                       ← índice do histórico (só neste computador)
       v-2026-11-02T20-17-05-123Z.json   ← uma versão do projeto inteiro
@@ -255,6 +256,40 @@ comentário; ao excluir o último, ele é removido.
   outro programa), as âncoras deixam de achar o trecho; o comentário continua na lista.
 - Lido com `sanitizeComments`: entradas sem `id`, `from` ou `to`, ou repetidas, são ignoradas;
   arquivo danificado é lido como sem comentários (não é apagado).
+- Vai para o Drive como qualquer arquivo (em conflito, fica a versão local e a remota vai para a
+  lixeira).
+
+---
+
+## `.talia/linha-do-tempo.json`
+
+Datas da história (`timeline/timeline.ts`). As datas são sempre do autor; o app só ordena e
+calcula intervalos.
+
+```json
+{
+  "format": 1,
+  "scenes": { "sc_3f9a1c2b7d4e": { "day": 1, "days": 3 } },
+  "events": [
+    {
+      "id": "6f1c…",
+      "title": "O pai some",
+      "day": -2555,
+      "days": 1,
+      "notes": ["nt_…"]
+    }
+  ]
+}
+```
+
+| Campo      | Tipo   | Descrição                                                                     |
+| ---------- | ------ | ----------------------------------------------------------------------------- |
+| `scenes`   | objeto | Por id de cena: `day` (dia da história, inteiro) e `days` (duração, ≥ 1)      |
+| `events[]` | array  | Acontecimentos que não são cenas: `id`, `title`, `day`, `days`, `notes` (ids) |
+
+- Cena sem entrada em `scenes` = sem data. Ids de cenas excluídas são ignorados.
+- Lido com `sanitizeTimeline`: valores não inteiros, fora da faixa ou ids repetidos são
+  descartados; arquivo danificado é lido como vazio (não é apagado).
 - Vai para o Drive como qualquer arquivo (em conflito, fica a versão local e a remota vai para a
   lixeira).
 

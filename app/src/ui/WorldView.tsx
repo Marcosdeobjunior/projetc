@@ -6,17 +6,24 @@ import { buildGraph } from "../links/links";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
 import { NoteProfile, useAttachmentImage } from "./NoteProfile";
+import { TimelineView } from "./TimelineView";
 
 const KIND_ICON = DOC_ICON;
 
 const TAB_KEY = "talia.worldTab";
 
-function readTab(): NoteKind {
+/** Abas do Mundo: um tipo de nota cada, e a Linha do tempo junto dos Calendários. */
+type WorldTab = NoteKind | "timeline";
+const TABS: WorldTab[] = NOTE_KINDS.flatMap((k): WorldTab[] =>
+  k === "calendarios" ? [k, "timeline"] : [k],
+);
+
+function readTab(): WorldTab {
   try {
-    const t = localStorage.getItem(TAB_KEY);
-    return (NOTE_KINDS as readonly string[]).includes(t ?? "") ? (t as NoteKind) : NOTE_KINDS[0];
+    const t = localStorage.getItem(TAB_KEY) as WorldTab | null;
+    return t && TABS.includes(t) ? t : TABS[0]!;
   } catch {
-    return NOTE_KINDS[0];
+    return TABS[0]!;
   }
 }
 
@@ -45,8 +52,8 @@ export function WorldView({ session }: { session: Session }) {
   const change = useApp((s) => s.change);
   const { project, texts } = session;
   /** Aba aberta (Personagens, Lugares ou Ideias), lembrada neste computador. */
-  const [tab, setTabState] = useState<NoteKind>(readTab);
-  const setTab = (k: NoteKind) => {
+  const [tab, setTabState] = useState<WorldTab>(readTab);
+  const setTab = (k: WorldTab) => {
     setTabState(k);
     try {
       localStorage.setItem(TAB_KEY, k);
@@ -89,7 +96,7 @@ export function WorldView({ session }: { session: Session }) {
     );
   };
 
-  const kind = tab;
+  const kind: NoteKind = tab === "timeline" ? "calendarios" : tab;
   const notes = project.notes
     .filter((n) => n.kind === kind)
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
@@ -104,17 +111,14 @@ export function WorldView({ session }: { session: Session }) {
         onKeyDown={(e) => {
           // Setas trocam de aba, como em qualquer lista de abas.
           if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-          const i = NOTE_KINDS.indexOf(tab);
-          const next =
-            NOTE_KINDS[
-              (i + (e.key === "ArrowRight" ? 1 : -1) + NOTE_KINDS.length) % NOTE_KINDS.length
-            ]!;
+          const i = TABS.indexOf(tab);
+          const next = TABS[(i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length]!;
           setTab(next);
           setOpenId(null);
           document.getElementById(`world-tab-${next}`)?.focus();
         }}
       >
-        {NOTE_KINDS.map((k) => (
+        {TABS.map((k) => (
           <button
             key={k}
             id={`world-tab-${k}`}
@@ -128,9 +132,18 @@ export function WorldView({ session }: { session: Session }) {
               setOpenId(null);
             }}
           >
-            <Icon name={KIND_ICON[k]} size={15} />
-            {KIND_LABEL[k].many}
-            <span className="world-count">{count(k)}</span>
+            {k === "timeline" ? (
+              <>
+                <Icon name="clock" size={15} />
+                Linha do tempo
+              </>
+            ) : (
+              <>
+                <Icon name={KIND_ICON[k]} size={15} />
+                {KIND_LABEL[k].many}
+                <span className="world-count">{count(k)}</span>
+              </>
+            )}
           </button>
         ))}
       </div>
@@ -139,9 +152,11 @@ export function WorldView({ session }: { session: Session }) {
         id="world-panel"
         className="world-body"
         role="tabpanel"
-        aria-labelledby={`world-tab-${kind}`}
+        aria-labelledby={`world-tab-${tab}`}
       >
-        {opened ? (
+        {tab === "timeline" && !opened ? (
+          <TimelineView session={session} linksOf={linksOf} />
+        ) : opened ? (
           <NoteProfile
             session={session}
             note={opened}

@@ -228,6 +228,27 @@ menções do nome).
   liga a nota àquela cena no [grafo](#7-grafo-e-minimapa).
 - A [busca](#6-busca-no-projeto) também encontra as notas.
 
+#### Linha do tempo
+
+A aba **Linha do tempo** (no Mundo, ao lado de Calendários) mostra as cenas na ordem em que
+**acontecem na história**, que pode ser diferente da ordem do livro.
+
+- **As datas são suas.** Cada cena começa em **Sem data**, embaixo. Digite o **dia da história**
+  (1, 2, 3…; pode ser negativo, para o passado antes do livro) e ela entra na linha. **Dura** diz
+  quantos dias a cena (ou a viagem) leva.
+- Entre um dia e outro aparece quanto tempo passou (**no dia seguinte**, **4 dias depois**…). É só
+  uma conta a partir das datas que você deu: se a viagem demorou mais por causa dos acontecimentos,
+  basta pôr o dia certo na chegada.
+- **fora de ordem** marca uma cena que o livro conta depois de outra que acontece mais tarde
+  (flashback). É só um aviso.
+- **Acontecimento** cria um evento que não é cena (uma guerra, um nascimento, a fuga do pai), com
+  nome, dia e duração editáveis.
+- **Mostrar tudo / uma nota:** filtra a linha pelo que está ligado a um personagem, lugar etc.
+  (cenas que citam a nota e acontecimentos criados com o filtro ativo).
+- O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
+
+As datas ficam em `.talia/linha-do-tempo.json` e vão junto na sincronização com o Drive.
+
 ### 3.3 Anexos
 
 O botão **Anexos** abre a **galeria** dos arquivos da pasta `anexos/`: imagens em miniatura,
