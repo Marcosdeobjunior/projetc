@@ -204,8 +204,9 @@ No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
 ### 3.2 Mundo: personagens, lugares e ideias
 
 As notas guardam o que não é o livro em si: fichas de personagens, lugares, ideias de enredo.
-Elas ficam no **Mundo** (no trilho, abaixo de Anexos), em cartões separados por tipo e em ordem
-alfabética: o nome, o começo do texto e em quantas cenas cada uma aparece (links `[[…]]` e
+Elas ficam no **Mundo** (no trilho, abaixo de Anexos), organizadas em **abas** no alto da tela
+(**Personagens**, **Lugares** e **Ideias**, cada uma com a quantidade; as setas ← → do teclado
+também trocam de aba, e o app lembra a última). Cada aba mostra cartões em ordem alfabética: o nome, o começo do texto e em quantas cenas cada uma aparece (links `[[…]]` e
 menções do nome).
 
 - **Nova nota:** os botões **Novo personagem**, **Novo lugar** e **Nova ideia** criam a nota e já
