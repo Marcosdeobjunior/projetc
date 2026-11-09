@@ -1,6 +1,10 @@
 /* Layout: barra lateral do manuscrito + página de texto centralizada.
    Escuro: tons de preto com cores pastel; claro: papel com tinta violeta. */
 :root {
+  /* Barra lateral: as mesmas medidas na tela de projetos e no editor. */
+  --side-w: 248px;
+  --side-item-h: 36px;
+  --side-radius: 8px;
   --bg: #0b0b0d;
   --panel: #111114;
   --panel-2: #1b1b20;
@@ -458,7 +462,7 @@ p {
 /* ---------- Área de trabalho ---------- */
 .workspace {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
   height: 100%;
   transition: grid-template-columns 0.2s ease;
 }
@@ -479,7 +483,7 @@ p {
 }
 /* O conteúdo mantém a largura enquanto a coluna encolhe, para não reorganizar o texto. */
 .sidebar > * {
-  min-width: 300px;
+  min-width: var(--side-w);
 }
 .nav-close,
 .nav-toggle {
@@ -681,10 +685,10 @@ p {
 .section-toggle .tree-label {
   color: inherit;
 }
+/* Títulos de seção: mesmo estilo dos títulos do menu da tela de projetos. */
 .tree-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font: 700 10px/1.2 var(--font-ui);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--faint);
 }
@@ -705,15 +709,17 @@ p {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 34px;
+  min-height: var(--side-item-h);
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--side-radius);
 }
 .row:hover {
   background: var(--panel-2);
 }
+/* Item ativo: o mesmo desenho do menu da tela de projetos (tinta + filete à esquerda). */
 .row.active {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .row.dragging {
   opacity: 0.4;
@@ -770,7 +776,7 @@ p {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
+  height: var(--side-item-h);
   padding: 0 6px;
   border: 0;
   background: none;
@@ -847,15 +853,25 @@ p {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 8px;
   border: 0;
   border-radius: 8px;
   background: none;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13.5px;
+  white-space: nowrap;
   cursor: pointer;
+}
+/* Barra mais estreita: o ícone nunca encolhe; o nome corta com reticências. */
+.foot-btn svg {
+  flex-shrink: 0;
+}
+.foot-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .foot-btn:hover {
   background: var(--panel-2);
@@ -2993,7 +3009,7 @@ p {
   --p-muted: #9fb0c3;
   --p-faint: #6b7a8e;
   --appbar-h: 56px;
-  --nav-w: 232px;
+  --nav-w: var(--side-w);
   --nav-rail: 60px;
   --nav-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   /* Largura atual da barra (anima ao recolher; veja @property --nav-now). */
@@ -3530,10 +3546,10 @@ p {
   align-items: center;
   gap: 12px;
   width: 100%;
-  height: 36px;
+  height: var(--side-item-h);
   padding: 0 11px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--side-radius);
   background: none;
   color: var(--p-muted);
   font: 600 13px/1 var(--font-ui);
@@ -3825,7 +3841,8 @@ p {
 .kicker.faint {
   color: var(--p-faint);
 }
-.row-title {
+/* Linha de título dos painéis (div). A barra lateral usa .row-title em botões, sem isto. */
+div.row-title {
   display: flex;
   align-items: center;
   justify-content: space-between;

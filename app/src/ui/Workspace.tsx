@@ -201,7 +201,7 @@ export function Workspace({ session }: { session: Session }) {
               }}
             >
               <Icon name={v === "settings" ? "settings" : "trash"} size={17} />
-              {v === "settings" ? "Configurações" : "Lixeira"}
+              <span>{v === "settings" ? "Configurações" : "Lixeira"}</span>
             </button>
           ))}
           <MusicFloating
