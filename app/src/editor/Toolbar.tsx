@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useSettings } from "../state/settings";
 import { useApp } from "../state/store";
 import { TextStyleButton } from "./TextStylePanel";
+import { useComments } from "../state/comments";
 import {
   BLOCK_STYLES,
   blockStyle,
@@ -18,9 +19,11 @@ import {
 export function Toolbar({
   editor,
   onAttach,
+  onComment,
 }: {
   editor: Editor | null;
   onAttach(files: File[]): void;
+  onComment(): void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -37,10 +40,13 @@ export function Toolbar({
             bullet: e.isActive("bulletList"),
             ordered: e.isActive("orderedList"),
             quote: e.isActive("blockquote"),
+            selected: !e.state.selection.empty,
           }
         : null,
   });
   const minimap = useSettings((s) => s.minimap);
+  const commentsOpen = useComments((s) => s.panelOpen);
+  const openComments = useComments((s) => s.comments.filter((c) => !c.resolved).length);
   const setSettings = useSettings((s) => s.set);
   if (!editor || !state) return <div className="toolbar" />;
   const chain = () => editor.chain().focus();
@@ -149,7 +155,30 @@ export function Toolbar({
         icon="redo"
         run={() => editor.commands.redo()}
       />
+      <span className="toolbar-sep" />
+      <button
+        type="button"
+        className="tool tool-text"
+        title={`Comentar o trecho selecionado (${shortcut("Mod+Alt+M")})`}
+        disabled={!state.selected}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onComment}
+      >
+        <Icon name="comment" /> Comentar
+      </button>
       <span className="toolbar-spacer" />
+      <button
+        type="button"
+        className="tool tool-count"
+        title={commentsOpen ? "Esconder comentários" : "Mostrar comentários"}
+        aria-label={`Comentários (${openComments})`}
+        aria-pressed={commentsOpen}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => useComments.getState().setPanel(!commentsOpen)}
+      >
+        <Icon name="comment" />
+        {openComments > 0 && <span className="tool-badge">{openComments}</span>}
+      </button>
       <ToolButton
         label="Histórico de versões"
         icon="history"

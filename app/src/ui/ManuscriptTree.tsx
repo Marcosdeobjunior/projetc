@@ -14,7 +14,7 @@ import type { Chapter, Scene } from "../manuscript/types";
 import { formatCount } from "../manuscript/wordCount";
 import { Icon } from "./Icon";
 import { InlineEdit } from "./InlineEdit";
-import { useSettings, type SectionId } from "../state/settings";
+import { useSettings } from "../state/settings";
 
 type Drag = { kind: "scene" | "chapter"; id: string } | null;
 type DropMark = { id: string; where: "before" | "after" | "inside" } | null;
@@ -157,7 +157,7 @@ export function ManuscriptTree({
   return (
     <nav className="tree" aria-label="Manuscrito" onDragEnd={finishDrag}>
       <div className="tree-head">
-        <SectionToggle id="manuscrito" label="Manuscrito" />
+        <h2 className="tree-label tree-title">Manuscrito</h2>
         <div className="tree-actions">
           {sectionOpen && project.chapters.length > 0 && (
             <CollapseAllButton
@@ -459,22 +459,6 @@ export function CollapseAllButton({
   return (
     <button type="button" className="icon-btn" title={label} aria-label={label} onClick={onClick}>
       <Icon name={collapsed ? "expand-all" : "collapse-all"} size={15} />
-    </button>
-  );
-}
-
-export function SectionToggle({ id, label }: { id: SectionId; label: string }) {
-  const open = !useSettings((s) => s.collapsed.includes(id));
-  const toggle = useSettings((s) => s.toggleSection);
-  return (
-    <button
-      type="button"
-      className={"section-toggle" + (open ? " open" : "")}
-      aria-expanded={open}
-      onClick={() => toggle(id)}
-    >
-      <Icon name="chevron" size={13} />
-      <span className="tree-label">{label}</span>
     </button>
   );
 }

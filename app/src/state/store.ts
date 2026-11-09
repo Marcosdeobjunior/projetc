@@ -56,7 +56,7 @@ export interface Session {
   activeDocId: string | null;
   /** Arquivos da pasta anexos/. */
   attachments: string[];
-  view: "editor" | "graph" | "world" | "settings" | "history" | "trash";
+  view: "editor" | "graph" | "world" | "attachments" | "settings" | "history" | "trash";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";

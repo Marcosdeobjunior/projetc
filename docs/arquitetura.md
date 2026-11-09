@@ -167,8 +167,10 @@ app/
       settings.ts         useSettings: tema, minimapa, seções recolhidas, intervalo de sync
       search.ts           useSearch: estado do painel de busca
       openEditors.ts      Editores abertos (troca de links ao renomear) e editor ativo
-    ui/                   Telas: Home, Workspace, VaultSwitcher, ManuscriptTree, NotesTree,
-                          AttachmentsTree, SearchPanel, GraphView, graphCanvas, MiniMap, Settings,
+      comments.ts         useComments: comentários da cena aberta, painel e destaque
+    ui/                   Telas: Home, Workspace (trilho + painel do Manuscrito), VaultSwitcher,
+                          ManuscriptTree, WorldView (Mundo), GalleryView (Anexos), SearchPanel,
+                          GraphView, graphCanvas, MiniMap, Settings,
                           HistoryView, TrashView, ExportView, BookDesignView, Book3D, DocPreview,
                           InlineEdit, Icon
     styles/               app.css (tema claro/escuro por CSS variables), fonts.css (@fontsource)
@@ -372,6 +374,19 @@ Subconjunto de Markdown (`markdown/serialize.ts` e `parse.ts`): parágrafos, tí
 aceita até 6), citação, listas com marcador e numeradas (com `start`), `* * *` (separador),
 quebra de linha (`\` no fim da linha), `**negrito**`, `*itálico*`, `~~tachado~~`, `==destaque==`
 e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíveis.
+
+### 6.1 Comentários
+
+- Dados em `.talia/comentarios/<id>.json` (`comments/comments.ts`: `readComments`,
+  `writeComments`, `sanitizeComments`; formato em `formato-do-projeto.md`). Gravação pela fila
+  (`serial`) a partir de `state/comments.ts`.
+- Âncora: `editor/commentAnchors.ts` converte a seleção em duas `Y.RelativePosition`
+  (`absolutePositionToRelativePosition` com o `binding` do `ySyncPluginKey`) e, para desenhar,
+  volta para posições absolutas (`relativePositionToAbsolutePosition`).
+- Os destaques são decorações (`CommentAnchors`). Em edição local elas só são **mapeadas** pela
+  transação (o mapeamento do Yjs ainda não foi atualizado ali); são recalculadas pelas âncoras
+  quando chega uma transação do `ySyncPluginKey` (abrir, desfazer, Yjs) ou `REFRESH_COMMENTS`.
+- UI em `editor/Comments.tsx` (`CommentComposer`, `CommentsPanel`); atalho Ctrl/⌘+Alt+M.
 
 ---
 
@@ -847,18 +862,18 @@ Qualidade local: `pnpm lint`, `pnpm typecheck`, `pnpm format` (Prettier, `printW
 
 Chaves no `localStorage` do WebView (por computador, não vão para o projeto nem para o Drive):
 
-| Chave                      | Conteúdo                                                                                           |
-| -------------------------- | -------------------------------------------------------------------------------------------------- |
-| `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                                              |
-| `talia.lastVault`          | Raiz do último projeto aberto                                                                      |
-| `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)                             |
+| Chave                      | Conteúdo                                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                                                           |
+| `talia.lastVault`          | Raiz do último projeto aberto                                                                                   |
+| `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)                                          |
 | `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `collapsedChapters`, `syncEvery`, `textStyle` |
-| `talia.theme`              | Formato antigo (só o tema), lido na migração                                                       |
-| `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                                            |
-| `talia.export.<projectId>` | Opções de exportação daquele projeto                                                               |
-| `talia.googleClient`       | `{ id, secret }` do cliente OAuth                                                                  |
-| `talia.google`             | `{ email, refreshToken }` da conta conectada                                                       |
-| `talia.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                                             |
+| `talia.theme`              | Formato antigo (só o tema), lido na migração                                                                    |
+| `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                                                         |
+| `talia.export.<projectId>` | Opções de exportação daquele projeto                                                                            |
+| `talia.googleClient`       | `{ id, secret }` do cliente OAuth                                                                               |
+| `talia.google`             | `{ email, refreshToken }` da conta conectada                                                                    |
+| `talia.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                                                          |
 
 `sessionStorage["talia.settingsTab"]` lembra a última aba das Configurações.
 

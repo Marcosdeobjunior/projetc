@@ -167,15 +167,19 @@ no histórico (se algo mudou) e, se a sincronização estiver ligada, sincroniza
 
 ## 3. A barra lateral
 
-Do alto para baixo:
+A barra é um **trilho estreito** com as seções do projeto. Do alto para baixo:
 
 1. **Nome do projeto** (o menu de projetos, acima).
-2. **Total de palavras** do livro (só as cenas do manuscrito; notas não contam), o botão de
-   **busca** (lupa) e o botão **Grafo**.
-3. **Manuscrito** — capítulos e cenas.
-4. **Notas** — Personagens, Lugares e Ideias.
-5. **Anexos** — arquivos do projeto.
-6. No rodapé, **Configurações** e **Lixeira**.
+2. **Total de palavras** do livro (só as cenas do manuscrito; notas não contam) e o botão de
+   **busca** (lupa).
+3. **Manuscrito** — abre (ou fecha) um **painel ao lado** do trilho com os capítulos e as cenas.
+   O app lembra se ele ficou aberto.
+4. **Anexos** — abre a [galeria](#33-anexos) com os arquivos do projeto.
+5. **Mundo** — personagens, lugares e ideias (as notas) em cartões.
+6. **Elo** — o [grafo](#7-grafo-e-minimapa) de conexões.
+7. No rodapé, **Configurações**, **Lixeira** e o player de música.
+
+No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
 
 ### 3.1 Manuscrito: capítulos e cenas
 
@@ -196,31 +200,33 @@ Do alto para baixo:
 - A setinha ao lado do capítulo recolhe ou mostra as cenas dele. O app lembra, em cada projeto,
   quais capítulos ficaram recolhidos.
 
-### 3.2 Notas: personagens, lugares e ideias
+### 3.2 Mundo: personagens, lugares e ideias
 
 As notas guardam o que não é o livro em si: fichas de personagens, lugares, ideias de enredo.
-Ficam em ordem alfabética, cada tipo no seu grupo.
+Elas ficam no **Mundo** (no trilho, abaixo de Anexos), em cartões separados por tipo e em ordem
+alfabética: o nome, o começo do texto e em quantas cenas cada uma aparece (links `[[…]]` e
+menções do nome).
 
-- **Nova nota:** o **+** de "Personagens", "Lugares" ou "Ideias".
-- Abrir, renomear e excluir funcionam como nas cenas. Notas não têm ordem manual.
+- **Nova nota:** os botões **Novo personagem**, **Novo lugar** e **Nova ideia** criam a nota e já
+  abrem.
+- **Abrir:** clique no cartão. Renomeie pelo nome no alto do texto.
 - O nome de uma nota é especial: quando ele aparece no texto das cenas, conta como **menção** e
   liga a nota àquela cena no [grafo](#7-grafo-e-minimapa).
-- **Mundo** (botão no alto da barra, ao lado de **Elo**, só dentro de um projeto) mostra todas as
-  notas em cartões, por tipo: o nome, o começo do texto e em quantas cenas cada uma aparece
-  (links `[[…]]` e menções do nome). Clique num cartão para abrir a nota; os botões **Novo
-  personagem**, **Novo lugar** e **Nova ideia** criam uma nota já aberta.
+- A [busca](#6-busca-no-projeto) também encontra as notas.
 
 ### 3.3 Anexos
 
-Lista os arquivos da pasta `anexos/` do projeto. Veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos).
+O botão **Anexos** abre a **galeria** dos arquivos da pasta `anexos/`: imagens em miniatura,
+vídeos, áudios e outros arquivos como cartões. Os filtros (**Todos**, **Imagens**, **Vídeos**,
+**Áudios**, **Outros**) mostram só um tipo. **Adicionar arquivos** copia arquivos para o
+projeto; clicar num item abre no programa padrão; a lixeirinha (ao passar o mouse) manda o
+arquivo para a Lixeira. Veja também [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos).
 
-### 3.4 Recolher seções e a barra inteira
+### 3.4 Painel do Manuscrito e a barra inteira
 
-- Clique no título de uma seção (**Manuscrito**, **Notas**, **Anexos**) ou de um grupo de notas
-  para recolher ou mostrar o conteúdo. O app lembra o que ficou recolhido.
-- O botão de **setas duplas** ao lado de **Manuscrito** recolhe todos os capítulos de uma vez (ou
-  expande todos, se já estiverem recolhidos). Em **Notas**, o mesmo botão faz isso com Personagens,
-  Lugares e Ideias. **Anexos** é uma lista simples, sem grupos, e recolhe pelo próprio título.
+- **Manuscrito** no trilho abre ou fecha o painel de capítulos. O app lembra a escolha.
+- O botão de **setas duplas** no painel recolhe todos os capítulos de uma vez (ou expande todos,
+  se já estiverem recolhidos).
 - **Ctrl + \\** esconde ou mostra a **barra lateral inteira**, para escrever com a tela livre.
   O mesmo vale para o botão de painel no alto da barra (e no alto do texto, quando ela está
   escondida). O app lembra a escolha.
@@ -260,6 +266,21 @@ Da esquerda para a direita:
 | Desfazer / Refazer           | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y também refaz)                                |
 | Relógio                      | Abre o [Histórico de versões](#8-histórico-de-versões)                     |
 | Grafo pequeno                | Mostra ou esconde o [minimapa](#72-minimapa)                               |
+
+**Comentários:** selecione o trecho exato que quer comentar e clique em **Comentar** na barra
+(ou **Ctrl+Alt+M**). Escreva e confirme (**Ctrl+Enter** também salva). O trecho fica marcado no
+texto e o comentário aparece no painel **Comentários**, à direita, que abre e fecha pelo botão de
+balão no fim da barra (o número é quantos comentários estão abertos). No painel:
+
+- clique num comentário para ir até o trecho; clique num trecho marcado para ver o comentário;
+- **lápis** edita, **✓** resolve (o trecho deixa de ser marcado, e o comentário vai para
+  "Mostrar resolvidos", de onde pode ser reaberto) e a **lixeirinha** exclui (pede confirmação e
+  não tem volta);
+- o comentário segue o trecho mesmo que você escreva antes ou dentro dele. Se o trecho inteiro
+  for apagado, o comentário fica na lista com o aviso "(trecho apagado)".
+
+Os comentários são só para você: não entram no arquivo `.md` nem no livro exportado. Ficam em
+`.talia/comentarios/` e vão junto na sincronização com o Drive.
 
 **Aparência do texto** (botão **T**): escolha a fonte (Literata, EB Garamond, Fraunces, Georgia,
 Figtree sem serifa ou máquina de escrever), o tamanho da letra e o espaço entre as letras, as

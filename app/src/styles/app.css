@@ -2,7 +2,9 @@
    Escuro: tons de preto com cores pastel; claro: papel com tinta violeta. */
 :root {
   /* Barra lateral: as mesmas medidas na tela de projetos e no editor. */
-  --side-w: 220px;
+  --side-w: 168px;
+  /* Painel do Manuscrito, aberto ao lado da barra no editor. */
+  --panel-w: 224px;
   --side-item-h: 36px;
   --side-radius: 8px;
   --bg: #0b0b0d;
@@ -462,7 +464,7 @@ p {
 /* ---------- Área de trabalho ---------- */
 .workspace {
   display: grid;
-  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   height: 100%;
   transition: grid-template-columns 0.2s ease;
 }
@@ -482,8 +484,120 @@ p {
   padding: 12px 10px 2px;
 }
 /* O conteúdo mantém a largura enquanto a coluna encolhe, para não reorganizar o texto. */
-.sidebar > * {
+/* Barra do editor: trilho estreito com as seções + painel do Manuscrito ao lado. */
+.sidebar {
+  flex-direction: row;
+}
+.rail {
+  display: flex;
+  flex-direction: column;
+  width: var(--side-w);
   min-width: var(--side-w);
+  min-height: 0;
+}
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-w);
+  min-width: var(--panel-w);
+  min-height: 0;
+  border-left: 1px solid var(--line);
+}
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px;
+}
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: var(--side-item-h);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--side-radius);
+  background: none;
+  color: var(--muted);
+  font: 600 13px/1 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.rail-item svg {
+  flex: none;
+}
+.rail-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rail-item:hover {
+  background: var(--panel-2);
+  color: var(--fg);
+}
+.rail-item.on {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+/* Manuscrito aberto (painel ao lado): só o fundo, sem o filete da tela ativa. */
+.rail-item[aria-expanded="true"] {
+  color: var(--fg);
+  background: var(--panel-2);
+}
+/* Celular com o painel aberto: o trilho vira só ícones e o painel ocupa o resto. */
+@media (max-width: 760px) {
+  .sidebar:has(.side-panel) .rail {
+    width: 60px;
+    min-width: 60px;
+  }
+  .sidebar:has(.side-panel)
+    .rail
+    :is(.rail-item span, .foot-btn span, .project-total, .switch-title),
+  .sidebar:has(.side-panel) .rail .switch-btn svg:last-child,
+  .sidebar:has(.side-panel) .rail .nav-collapse {
+    display: none;
+  }
+  .sidebar:has(.side-panel) .rail :is(.rail-item, .foot-btn) {
+    justify-content: center;
+    padding: 0;
+  }
+  .sidebar:has(.side-panel) .rail .side-meta {
+    justify-content: center;
+    padding: 0 0 10px;
+  }
+  .sidebar:has(.side-panel) .rail .side-top {
+    flex-direction: column;
+  }
+  .sidebar:has(.side-panel) .side-panel {
+    width: min(300px, calc(100vw - 60px));
+    min-width: 0;
+  }
+}
+.rail-spacer {
+  flex: 1;
+}
+/* Trilho estreito: o nome do projeto ganha uma letra menor para caber. */
+.rail .switch-title {
+  font-size: 15px;
+}
+.rail .side-top {
+  padding-inline: 6px;
+}
+.rail .side-meta {
+  padding: 0 10px 10px 18px;
+}
+/* No trilho estreito, o rodapé vira uma coluna de itens. */
+.rail .side-foot {
+  flex-direction: column;
+  gap: 2px;
+}
+.rail .foot-btn.music-foot {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 8px;
 }
 .nav-close,
 .nav-toggle {
@@ -648,6 +762,9 @@ p {
 }
 .tree {
   padding: 10px 8px 8px;
+}
+.tree-title {
+  margin: 0;
 }
 .tree-head {
   display: flex;
@@ -1241,7 +1358,7 @@ p {
     position: fixed;
     z-index: 20;
     inset: 0 auto 0 0;
-    width: min(320px, 86vw);
+    max-width: 100vw;
     padding-top: env(safe-area-inset-top, 0px);
     transform: translateX(-100%);
     /* Fechada, sai também da ordem do teclado (depois da animação). */
@@ -6218,13 +6335,288 @@ div.row-title {
   font-size: 12px;
 }
 
-/* Mundo e Elo: uma linha própria na barra do editor, botões do mesmo tamanho. */
-.side-links {
-  display: flex;
-  gap: 6px;
-  padding: 2px 10px 10px;
+/* ---------- Comentários ---------- */
+.comment-mark {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  cursor: pointer;
 }
-.side-links .graph-btn {
+.comment-mark.focused {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.tool.tool-text {
+  width: auto;
+  gap: 6px;
+  padding: 0 10px;
+  font: 600 13px/1 var(--font-ui);
+  display: inline-flex;
+}
+.tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.tool.tool-count {
+  position: relative;
+}
+.tool-badge {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 700 10px/16px var(--font-ui);
+}
+.editor-split {
   flex: 1;
-  justify-content: center;
+  min-height: 0;
+  display: flex;
+}
+.editor-split > .page-wrap {
+  min-width: 0;
+}
+.comments-panel {
+  width: 290px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  padding: 12px;
+  gap: 10px;
+}
+.comments-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.comments-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 700 11px/1.2 var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.comments-empty {
+  margin: 0;
+  line-height: 1.5;
+}
+.comments-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--page);
+  cursor: pointer;
+}
+.comment-card.focused {
+  border-color: var(--accent);
+}
+.comments-list.resolved .comment-card {
+  opacity: 0.65;
+}
+.comment-quote {
+  margin: 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+  color: var(--muted);
+  font: italic 13px/1.4 var(--font-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.comment-missing {
+  font-style: normal;
+  color: var(--faint);
+}
+.comment-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.comment-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--faint);
+}
+.comment-tools,
+.comment-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.comment-composer textarea,
+.comment-card textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+  color: var(--fg);
+  font: 14px/1.4 var(--font-ui);
+}
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.comment-composer {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.comments-resolved-toggle {
+  align-self: flex-start;
+}
+@media (max-width: 900px) {
+  .editor-split.with-comments .comments-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 12;
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.3);
+  }
+  .editor-split {
+    position: relative;
+  }
+}
+
+/* ---------- Galeria de anexos ---------- */
+.gallery {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px clamp(16px, 4vw, 48px) 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.gallery-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.gallery-head h2 {
+  margin: 0 0 4px;
+  font: 600 24px/1.2 var(--font-text);
+}
+.gallery-head p {
+  margin: 0;
+}
+.gallery-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gallery-filters .chip[aria-checked="true"] {
+  border-color: var(--accent);
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.gallery-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+.gallery-item {
+  position: relative;
+}
+.gallery-open {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+.gallery-media {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--muted);
+  overflow: hidden;
+}
+.gallery-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gallery-open:hover .gallery-media,
+.gallery-open:focus-visible .gallery-media {
+  border-color: var(--accent);
+}
+.gallery-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gallery-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--panel);
+  opacity: 0;
+}
+.gallery-item:hover .gallery-delete,
+.gallery-delete:focus-visible {
+  opacity: 1;
+}
+.gallery-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gallery-empty {
+  margin: 0;
 }

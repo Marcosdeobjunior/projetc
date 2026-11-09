@@ -27,6 +27,8 @@ A Casa das Marés/                       ← raiz do projeto (nome legível, com
     project.json                        ← estrutura: título, capítulos, cenas, notas, autor
     ydoc/
       sc_3f9a1c2b7d4e.yjs               ← estado do editor (Yjs) de cada cena/nota
+    comentarios/
+      sc_3f9a1c2b7d4e.json              ← comentários de uma cena/nota (só se houver)
     versoes/
       indice.json                       ← índice do histórico (só neste computador)
       v-2026-11-02T20-17-05-123Z.json   ← uma versão do projeto inteiro
@@ -218,6 +220,42 @@ esquema de `editor/extensions.ts`).
 - Pode faltar: o app cria a partir do `.md` ao abrir o texto.
 - Se o `.md` e o `.yjs` divergirem, vale o `.md` (a diferença é aplicada como edição).
 - Excluir uma cena leva o `.yjs` junto para a lixeira.
+
+---
+
+## `.talia/comentarios/<id>.json`
+
+Comentários de uma cena ou nota (`comments/comments.ts`). O arquivo só existe enquanto houver
+comentário; ao excluir o último, ele é removido.
+
+```json
+{
+  "format": 1,
+  "comments": [
+    {
+      "id": "6f1c…",
+      "text": "Trocar por \"gelado\"?",
+      "quote": "frio",
+      "from": "AZ7x…",
+      "to": "AZ7x…",
+      "createdAt": 1794230000000,
+      "resolved": false
+    }
+  ]
+}
+```
+
+- `from`/`to`: posições **relativas do Yjs** (`Y.encodeRelativePosition`, em base64) no
+  `Y.XmlFragment` do `.yjs` da mesma cena. Elas acompanham o texto quando ele é editado e
+  quando edições de dois computadores são mescladas.
+- `quote`: o trecho no momento do comentário, para mostrar o comentário mesmo que o trecho seja
+  apagado (o app avisa "(trecho apagado)").
+- Se o `.yjs` da cena for **recriado do zero** a partir do `.md` (arquivo apagado ou vindo de
+  outro programa), as âncoras deixam de achar o trecho; o comentário continua na lista.
+- Lido com `sanitizeComments`: entradas sem `id`, `from` ou `to`, ou repetidas, são ignoradas;
+  arquivo danificado é lido como sem comentários (não é apagado).
+- Vai para o Drive como qualquer arquivo (em conflito, fica a versão local e a remota vai para a
+  lixeira).
 
 ---
 

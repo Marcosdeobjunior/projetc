@@ -22,6 +22,9 @@ import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
 import { textStyleVars } from "./textStyle";
+import { CommentAnchors, REFRESH_COMMENTS } from "./commentAnchors";
+import { CommentComposer, CommentsPanel, startComment, type Draft } from "./Comments";
+import { useComments } from "../state/comments";
 import { ContextMenu } from "./ContextMenu";
 import { REFRESH_SEARCH, SearchHighlight, searchHits } from "./searchHighlight";
 import { useSearch } from "../state/search";
@@ -104,6 +107,9 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const minimapPos = useSettings((s) => s.minimapPos);
   const textStyle = useSettings((s) => s.textStyle);
   const textVars = useMemo(() => textStyleVars(textStyle), [textStyle]);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const closeDraft = useCallback(() => setDraft(null), []);
+  const commentsOpen = useComments((s) => s.panelOpen);
 
   const editor = useEditor(
     {
@@ -113,6 +119,10 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         Placeholder.configure({ placeholder: "Comece a escrever…" }),
         createLinksExtension(linkContext),
         SearchHighlight,
+        CommentAnchors.configure({
+          comments: () => useComments.getState().comments,
+          focused: () => useComments.getState().focused,
+        }),
       ],
       editorProps: {
         // Arquivos soltos ou colados no texto viram anexos.
@@ -123,6 +133,26 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
           const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
           void attach(files, at);
           return true;
+        },
+        // Clicar num trecho comentado mostra o comentário na lista.
+        handleClick: (_view, _pos, event) => {
+          const el = (event.target as HTMLElement).closest?.("[data-comment]");
+          if (el) {
+            const c = useComments.getState();
+            c.focus(el.getAttribute("data-comment"));
+            c.setPanel(true);
+          }
+          return false;
+        },
+        // Ctrl/⌘ + Alt + M: comentar o trecho selecionado.
+        handleKeyDown: (_view, event) => {
+          if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === "KeyM") {
+            const ed = editorRef.current;
+            const d = ed ? startComment(ed) : null;
+            if (d) setDraft(d);
+            return true;
+          }
+          return false;
         },
         handlePaste: (_view, event) => {
           const files = [...(event.clipboardData?.files ?? [])];
@@ -151,6 +181,19 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
     },
     [doc],
   );
+
+  // Comentários da cena: carrega ao abrir e redesenha os trechos quando a lista muda.
+  useEffect(() => {
+    void useComments.getState().load(sceneId);
+  }, [sceneId]);
+  useEffect(() => {
+    if (!editor) return;
+    return useComments.subscribe((s, prev) => {
+      if (s.comments === prev.comments && s.focused === prev.focused) return;
+      if (!editor.isDestroyed)
+        editor.view.dispatch(editor.state.tr.setMeta(REFRESH_COMMENTS, true));
+    });
+  }, [editor]);
 
   useEffect(() => {
     editorRef.current = editor;
@@ -316,26 +359,37 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
 
   return (
     <>
-      <Toolbar editor={editor} onAttach={(files) => void attach(files)} />
-      <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
-        <div
-          className="page"
-          style={textVars}
-          onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
-        >
-          <EditorContent
-            editor={editor}
-            className="page-body"
-            onContextMenu={(e) => {
-              // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
-              if (!editor || e.shiftKey || editor.state.selection.empty) return;
-              e.preventDefault();
-              setMenu({ x: e.clientX, y: e.clientY });
-            }}
-          />
+      <Toolbar
+        editor={editor}
+        onAttach={(files) => void attach(files)}
+        onComment={() => {
+          const d = editor ? startComment(editor) : null;
+          if (d) setDraft(d);
+        }}
+      />
+      <div className={"editor-split" + (commentsOpen ? " with-comments" : "")}>
+        <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
+          <div
+            className="page"
+            style={textVars}
+            onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
+          >
+            <EditorContent
+              editor={editor}
+              className="page-body"
+              onContextMenu={(e) => {
+                // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
+                if (!editor || e.shiftKey || editor.state.selection.empty) return;
+                e.preventDefault();
+                setMenu({ x: e.clientX, y: e.clientY });
+              }}
+            />
+          </div>
+          {minimap && <MiniMap session={session} docId={sceneId} />}
         </div>
-        {minimap && <MiniMap session={session} docId={sceneId} />}
+        {commentsOpen && <CommentsPanel editor={editor} />}
       </div>
+      {draft && <CommentComposer draft={draft} onClose={closeDraft} />}
       {menu && editor && (
         <ContextMenu
           editor={editor}
