@@ -555,7 +555,7 @@ p {
   }
   .sidebar:has(.side-panel)
     .rail
-    :is(.rail-item span, .foot-btn span, .project-total, .switch-title),
+    :is(.rail-item span, .foot-btn span:not(.music-live), .project-total, .switch-title),
   .sidebar:has(.side-panel) .rail .switch-btn svg:last-child,
   .sidebar:has(.side-panel) .rail .nav-collapse {
     display: none;

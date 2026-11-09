@@ -473,11 +473,11 @@ export function MusicFloating({ onSettings }: { onSettings?: () => void }) {
         type="button"
         className={"foot-btn music-foot" + (open ? " on" : "")}
         aria-pressed={open}
-        aria-label="Música"
         title={playing ? "Música (tocando)" : "Música"}
         onClick={() => setOpen(!open)}
       >
         <Icon name="turntable" size={18} />
+        <span className="music-foot-label">Música</span>
         {playing && <span className="music-live" aria-hidden="true" />}
       </button>
       {open && (

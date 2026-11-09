@@ -243,6 +243,13 @@ export function Workspace({ session }: { session: Session }) {
 
           <div className="rail-spacer" />
           <div className="side-foot">
+            <MusicFloating
+              onSettings={() => {
+                setSettingsTab("musica");
+                setView("settings");
+                closeNav();
+              }}
+            />
             {(["settings", "trash"] as const).map((v) => (
               <button
                 key={v}
@@ -260,13 +267,6 @@ export function Workspace({ session }: { session: Session }) {
                 <span>{v === "settings" ? "Configurações" : "Lixeira"}</span>
               </button>
             ))}
-            <MusicFloating
-              onSettings={() => {
-                setSettingsTab("musica");
-                setView("settings");
-                closeNav();
-              }}
-            />
           </div>
         </div>
 

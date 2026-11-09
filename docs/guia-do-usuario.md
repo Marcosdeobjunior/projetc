@@ -178,7 +178,7 @@ A barra é um **trilho estreito** com as seções do projeto. Do alto para baixo
    abre a primeira cena) e mostra o painel. O app lembra se ele ficou aberto.
 4. **Anexos** — abre a [galeria](#33-anexos) com os arquivos do projeto.
 5. **Mundo** — personagens, lugares e ideias (as notas) em cartões.
-6. No rodapé, **Configurações**, **Lixeira** e o player de música.
+6. No rodapé, **Música** (o player), **Configurações** e **Lixeira**.
 
 No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
 
