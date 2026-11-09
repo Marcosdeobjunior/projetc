@@ -92,7 +92,7 @@ export function epub(
   const opf = `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid" xml:lang="pt-BR">
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-<dc:identifier id="uid">urn:inkflow:${esc(id)}</dc:identifier>
+<dc:identifier id="uid">urn:talia:${esc(id)}</dc:identifier>
 <dc:title>${esc(book.title)}</dc:title>
 ${book.author ? `<dc:creator>${esc(book.author)}</dc:creator>` : ""}
 <dc:language>pt-BR</dc:language>

@@ -320,7 +320,7 @@ export const useApp = create<AppState>((set, get) => {
     if (!restorable(contents)) {
       set({
         message:
-          "Esta cópia de segurança só tem arquivos técnicos do app, que não dá para restaurar por aqui. Ela continua na Lixeira, dentro da pasta .inkflow/lixeira do projeto.",
+          "Esta cópia de segurança só tem arquivos técnicos do app, que não dá para restaurar por aqui. Ela continua na Lixeira, dentro da pasta .talia/lixeira do projeto.",
         messageTone: "info",
       });
       return;

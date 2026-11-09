@@ -1,7 +1,8 @@
 import { IdbStore } from "./idbStore";
 import { KeyValueFs, MemoryStore, vaultRootsIn, type KeyValueStore } from "./kvFs";
 import type { Platform, VaultRef } from "./types";
-import { PROJECT_FILE } from "../vault/paths";
+import { LEGACY_PROJECT_FILE, PROJECT_FILE } from "../vault/paths";
+import { migrateLegacyMeta } from "../vault/legacy";
 
 /**
  * Modo navegador: os projetos ficam no IndexedDB deste navegador.
@@ -26,10 +27,16 @@ export async function createBrowserPlatform(): Promise<Platform & { persistent: 
     },
 
     async knownVaults() {
-      const roots = vaultRootsIn(await store.keys(""), PROJECT_FILE);
+      const keys = await store.keys("");
+      const roots = new Set([
+        ...vaultRootsIn(keys, PROJECT_FILE),
+        ...vaultRootsIn(keys, LEGACY_PROJECT_FILE),
+      ]);
       const refs: VaultRef[] = [];
       for (const root of roots) {
-        const raw = await new KeyValueFs(store, root).readText(PROJECT_FILE);
+        const fs = new KeyValueFs(store, root);
+        await migrateLegacyMeta(fs);
+        const raw = await fs.readText(PROJECT_FILE);
         try {
           const p = JSON.parse(raw ?? "{}") as { title?: string; updatedAt?: number };
           refs.push({

@@ -66,7 +66,7 @@ async function sync(fs: KeyValueFs, drive: Drive) {
     projectBase: null,
     lastSync: null,
   };
-  const project = (await fs.exists(".inkflow/project.json")) ? await loadProject(fs) : null;
+  const project = (await fs.exists(".talia/project.json")) ? await loadProject(fs) : null;
   const plan = await planSync(
     fs,
     drive,
@@ -114,7 +114,7 @@ describe("sincronização", () => {
     const { a, b, scene } = await twoComputers();
     expect(await readSceneFile(b, await loadProject(b), scene)).toContain("Primeira frase.");
     const files = async (fs: KeyValueFs) =>
-      (await fs.walk()).map((f) => f.path).filter((p) => !p.startsWith(".inkflow/sync"));
+      (await fs.walk()).map((f) => f.path).filter((p) => !p.startsWith(".talia/sync"));
     expect(await files(b)).toEqual(await files(a));
   });
 

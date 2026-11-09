@@ -96,7 +96,7 @@ servidor.
 
 Cada livro é um **projeto**, e cada projeto é uma **pasta** no seu computador. Dentro dela ficam
 os capítulos e cenas (arquivos `.md` que qualquer editor de texto abre), as notas, os anexos e
-uma pasta escondida `.inkflow` com os dados do app (ordem dos capítulos, histórico, lixeira). O
+uma pasta escondida `.talia` com os dados do app (ordem dos capítulos, histórico, lixeira). O
 formato exato está em [Formato do projeto](formato-do-projeto.md).
 
 ### 2.1 A tela inicial (Início)
@@ -142,9 +142,9 @@ Se já existir uma pasta com esse nome no local escolhido, o app avisa e não cr
 
 **Abrir projeto existente** pede uma pasta:
 
-- se ela já é um projeto da Tália (tem `.inkflow/project.json`), ele abre;
+- se ela já é um projeto da Tália (tem `.talia/project.json`), ele abre;
 - se é uma pasta comum, o app pergunta se você quer **Criar projeto nesta pasta**. Ele cria
-  `manuscrito/`, `.inkflow/` e um arquivo `LEIA-ME.md` (se ainda não existir), com o nome da
+  `manuscrito/`, `.talia/` e um arquivo `LEIA-ME.md` (se ainda não existir), com o nome da
   pasta como título. **Os arquivos que já estavam lá não são alterados.**
 
 Use isso também quando você mover a pasta de um projeto de lugar: a lista de recentes guarda o
@@ -454,7 +454,7 @@ Clique num texto para ver como ele estava. Então:
 ## 9. Lixeira
 
 Na Tália **nada é apagado de verdade** quando você exclui: cenas, capítulos, notas e anexos vão
-para a **Lixeira**, que fica dentro da pasta do projeto (`.inkflow/lixeira/`). Abra pelo rodapé
+para a **Lixeira**, que fica dentro da pasta do projeto (`.talia/lixeira/`). Abra pelo rodapé
 da barra lateral.
 
 Cada item mostra o nome, o tipo (por exemplo "Cena de "Capítulo 2"", "Capítulo com 3 cenas",
@@ -497,8 +497,8 @@ para você comparar e ficar com o que quiser.
 
 Arquivos técnicos do app (como `project.json` ou o estado do editor) não voltam pela Lixeira: uma
 cópia só com eles não tem o botão Restaurar, e numa pasta eles ficam na Lixeira depois de
-restaurar o resto. Se precisar de um deles, abra a pasta `.inkflow/lixeira/` do projeto no
-gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.inkflow`). Veja também
+restaurar o resto. Se precisar de um deles, abra a pasta `.talia/lixeira/` do projeto no
+gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.talia`). Veja também
 [Conflitos de sincronização](#a-sincronização-avisou-que-um-arquivo-foi-alterado-aqui-e-em-outro-computador).
 
 > A Lixeira fica só neste computador: ela **não é sincronizada** com o Drive.
@@ -657,12 +657,12 @@ Desligar a chave para de sincronizar este projeto (nada é apagado nem aqui nem 
   você exclui vai para a lixeira do Drive (recuperável por 30 dias).
 
 O histórico de versões também é sincronizado. A Lixeira e o estado da sincronização
-(`.inkflow/sync.json`) ficam só em cada computador.
+(`.talia/sync.json`) ficam só em cada computador.
 
 ### 10.4 Diagramação
 
 A aba Diagramação faz o **projeto gráfico** do livro impresso: capa, quarta capa, lombada,
-orelhas e miolo, com uma prévia ao vivo. Tudo é gravado sozinho em `.inkflow/livro.json`
+orelhas e miolo, com uma prévia ao vivo. Tudo é gravado sozinho em `.talia/livro.json`
 (sincronizado com o Drive); as imagens ficam em `anexos/`. Se não entender algum termo, veja o
 [glossário](#glossário-de-termos-editoriais) no fim desta seção.
 
@@ -822,7 +822,7 @@ No Mac, troque **Ctrl** por **⌘** e **Alt** por **⌥ (Option)**.
 Na pasta do projeto que você escolheu ao criar. Cada cena é um arquivo `.md` em
 `manuscrito/<capítulo>/`, e cada nota em `notas/<tipo>/`. Você pode abrir esses arquivos em
 qualquer editor de texto (e até no Obsidian). Para fazer um backup, basta copiar a pasta inteira
-— **inclusive a pasta escondida `.inkflow`**, que guarda a ordem dos capítulos, o histórico e a
+— **inclusive a pasta escondida `.talia`**, que guarda a ordem dos capítulos, o histórico e a
 lixeira. As preferências do app (tema, minimapa, projetos recentes, a conta Google) ficam no
 computador, fora da pasta do projeto.
 

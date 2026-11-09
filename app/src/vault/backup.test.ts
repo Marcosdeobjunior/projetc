@@ -115,12 +115,7 @@ describe("cópias de segurança da lixeira", () => {
     const { fs, p } = await setup();
     await fs.writeBytes("anexos/mapa.png", new Uint8Array([1]));
     await saveToTrash(fs, "anexos/mapa.png", new Uint8Array([2]), "mapa do Drive");
-    await saveToTrash(
-      fs,
-      ".inkflow/project.json",
-      enc("{"),
-      "project.json do Drive (com problema)",
-    );
+    await saveToTrash(fs, ".talia/project.json", enc("{"), "project.json do Drive (com problema)");
     const [technical, image] = await listTrash(fs);
 
     const t = await readBackup(fs, technical!);

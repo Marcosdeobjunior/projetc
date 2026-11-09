@@ -10,12 +10,13 @@ import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { renameLinksInText } from "../links/links";
 import { PROJECT_FILE, ydocPath } from "./paths";
+import { migrateLegacyMeta } from "./legacy";
 import { moveToTrash } from "./trash";
 
 /*
  * Leitura e gravação de um vault. Cada cena é guardada em dois formatos:
  *  - manuscrito/<capítulo>/<cena>.md  → texto legível, a fonte da verdade para o usuário
- *  - .inkflow/ydoc/<id>.yjs           → estado do editor, usado para mesclar edições no sync
+ *  - .talia/ydoc/<id>.yjs           → estado do editor, usado para mesclar edições no sync
  */
 
 export class VaultError extends Error {}
@@ -41,20 +42,21 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
       "- `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.\n" +
       "- `notas/` guarda os personagens, lugares e ideias.\n" +
       "- `anexos/` guarda as imagens, vídeos, áudios e outros arquivos usados nos textos.\n" +
-      "- `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.\n",
+      "- `.talia/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.\n",
   );
   await saveProject(fs, project);
   return project;
 }
 
 export async function loadProject(fs: VaultFs): Promise<Project> {
+  await migrateLegacyMeta(fs);
   const raw = await fs.readText(PROJECT_FILE);
   if (raw === null) throw new VaultError("Essa pasta não é um projeto da Tália.");
   let data: Project;
   try {
     data = JSON.parse(raw) as Project;
   } catch {
-    throw new VaultError("O arquivo .inkflow/project.json está corrompido.");
+    throw new VaultError("O arquivo .talia/project.json está corrompido.");
   }
   if (data.format !== 1) {
     throw new VaultError("Este projeto foi criado por uma versão mais nova da Tália.");
@@ -77,7 +79,7 @@ const safeName = (n: unknown) =>
 export function validateProject(p: Project): void {
   const bad = (what: string) => {
     throw new VaultError(
-      `Não foi possível abrir o projeto: a lista de capítulos e notas está danificada (${what}). Restaure uma cópia da pasta .inkflow ou fale com o suporte.`,
+      `Não foi possível abrir o projeto: a lista de capítulos e notas está danificada (${what}). Restaure uma cópia da pasta .talia ou fale com o suporte.`,
     );
   };
   if (!p || typeof p !== "object" || !Array.isArray(p.chapters) || !Array.isArray(p.notes ?? []))

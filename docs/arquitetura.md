@@ -46,7 +46,7 @@ Princípios que atravessam o código:
 - **A interface nunca toca em arquivos diretamente**: tudo passa por `VaultFs`.
 - **Toda escrita é serializada** numa fila única (`serial`), para nenhuma gravação cruzar com um
   `rename`.
-- **Nada é apagado**: excluir move para `.inkflow/lixeira/`.
+- **Nada é apagado**: excluir move para `.talia/lixeira/`.
 - A ordem de capítulos e cenas fica em `project.json`, não no nome dos arquivos (reordenar não
   renomeia arquivos — bom para o sync).
 
@@ -175,8 +175,8 @@ app/
   src-tauri/
     tauri.conf.json       Janela, CSP, bundle (ícones, targets "all")
     capabilities/default.json   Permissões da janela: core:default, window destroy, dialog open/save
-    Cargo.toml            Crate "inkflow" (lib inkflow_lib)
-    src/main.rs           Esconde o console no Windows (release) e chama inkflow_lib::run
+    Cargo.toml            Crate "talia" (lib talia_lib)
+    src/main.rs           Esconde o console no Windows (release) e chama talia_lib::run
     src/lib.rs            Registra plugins e comandos
     src/vault.rs          Comandos de arquivo (com testes)
     src/google.rs         Login OAuth (loopback + PKCE), refresh e revoke (com testes)
@@ -194,16 +194,16 @@ erDiagram
   CHAPTER ||--o{ SCENE : "scenes (ordem)"
   PROJECT ||--o{ NOTE : "notes"
   SCENE ||--|| SCENE_MD : "manuscrito/<dir>/<file>"
-  SCENE ||--o| YDOC : ".inkflow/ydoc/<id>.yjs"
+  SCENE ||--o| YDOC : ".talia/ydoc/<id>.yjs"
   NOTE ||--|| NOTE_MD : "notas/<kind>/<file>"
-  NOTE ||--o| YDOC : ".inkflow/ydoc/<id>.yjs"
-  PROJECT ||--o| DESIGN : ".inkflow/livro.json"
-  PROJECT ||--o{ VERSION : ".inkflow/versoes/*.json"
-  PROJECT ||--o{ TRASH_ENTRY : ".inkflow/lixeira/indice.json"
-  PROJECT ||--o| SYNC_STATE : ".inkflow/sync.json"
+  NOTE ||--o| YDOC : ".talia/ydoc/<id>.yjs"
+  PROJECT ||--o| DESIGN : ".talia/livro.json"
+  PROJECT ||--o{ VERSION : ".talia/versoes/*.json"
+  PROJECT ||--o{ TRASH_ENTRY : ".talia/lixeira/indice.json"
+  PROJECT ||--o| SYNC_STATE : ".talia/sync.json"
 ```
 
-- **`Project`** (`.inkflow/project.json`): `format: 1`, `id` (`prj_…`), `title`, `createdAt`,
+- **`Project`** (`.talia/project.json`): `format: 1`, `id` (`prj_…`), `title`, `createdAt`,
   `updatedAt`, `chapters[]`, `notes[]`, `author?`.
 - **`Chapter`**: `id` (`ch_…`), `title`, `dir` (pasta em `manuscrito/`), `scenes[]`.
 - **`Scene`**: `id` (`sc_…`), `title`, `file` (`.md` dentro da pasta do capítulo).
@@ -215,7 +215,7 @@ erDiagram
 - Ao abrir (e ao receber do Drive), `validateProject` confere a estrutura: listas no lugar, ids e
   títulos como texto, `dir`/`file` sem `/`, `\`, `:`, `..` ou caracteres de controle, `file`
   terminando em `.md`, `kind` conhecido. Um problema vira
-  `VaultError("O arquivo .inkflow/project.json tem um problema (capítulo).")` (ou `estrutura`,
+  `VaultError("O arquivo .talia/project.json tem um problema (capítulo).")` (ou `estrutura`,
   `título`, `cena`, `nota`).
 
 Toda mudança de estrutura é uma **função pura** em `manuscript/tree.ts` que devolve
@@ -261,7 +261,7 @@ Caminhos são sempre relativos à raiz do projeto e usam `/`.
 | Arquivos          | Comandos Rust (`invoke`)                               | `KeyValueFs` sobre IndexedDB (chave `raiz + "\0" + caminho`); memória se o IndexedDB falhar (`persistent: false`) |
 | Pastas            | Reais                                                  | Implícitas (existem enquanto há arquivos dentro)                                                                  |
 | `mtime` no `walk` | ms desde 1970                                          | `null` (o MD5 é recalculado sempre)                                                                               |
-| Recentes          | `localStorage["inkflow.recentVaults"]` (até 12)        | Derivados das chaves `…\0.inkflow/project.json`                                                                   |
+| Recentes          | `localStorage["inkflow.recentVaults"]` (até 12)        | Derivados das chaves `…\0.talia/project.json`                                                                   |
 | `forgetVault`     | Só tira da lista                                       | **Apaga os arquivos** do projeto                                                                                  |
 | `saveFile`        | Diálogo "Salvar como" + `export_write`                 | Download (`<a download>`)                                                                                         |
 | `openFile`        | `vault_open` (programa padrão)                         | Download                                                                                                          |
@@ -269,8 +269,8 @@ Caminhos são sempre relativos à raiz do projeto e usam `/`.
 | Sincronização     | Disponível                                             | Desligada (`useSync.available = false`)                                                                           |
 
 Gravação segura: no desktop, `write_atomic` grava num temporário novo
-`.<nome>.<aleatório>.inkflow-tmp` na mesma pasta, faz `sync_all` e renomeia por cima. O `walk` e
-o sync ignoram `*.inkflow-tmp`.
+`.<nome>.<aleatório>.talia-tmp` na mesma pasta, faz `sync_all` e renomeia por cima. O `walk` e
+o sync ignoram `*.talia-tmp`.
 
 ---
 
@@ -320,7 +320,7 @@ projeto continua aberto. Escolher a pasta do próprio projeto aberto não faz na
 
 `DocEditor` (uma instância por texto, `key={id}`) carrega via `serial(loadSceneDoc)`:
 
-- se existe `.inkflow/ydoc/<id>.yjs`: aplica o update num `Y.Doc`, converte para Markdown e
+- se existe `.talia/ydoc/<id>.yjs`: aplica o update num `Y.Doc`, converte para Markdown e
   compara com o `.md` (`sameText`: só o corpo, sem o cabeçalho, com `trim`). Se diferem, o `.md`
   foi editado fora: `external = parseMarkdown(md)`, que o editor aplica com `setContent` **como
   uma edição** (preserva o histórico Yjs e desfazer);
@@ -427,9 +427,9 @@ o `DocEditor` daquele texto recalcula as ocorrências no doc do ProseMirror
 
 ## 9. Histórico de versões
 
-`src/vault/history.ts`. Cada versão é `.inkflow/versoes/<id>.json` com a estrutura e o **corpo
+`src/vault/history.ts`. Cada versão é `.talia/versoes/<id>.json` com a estrutura e o **corpo
 Markdown (sem frontmatter)** de todas as cenas e notas, lidos do disco (`readBodies`). Anexos não
-entram. Um índice `.inkflow/versoes/indice.json` (só metadados) acelera a lista; se faltar ou
+entram. Um índice `.talia/versoes/indice.json` (só metadados) acelera a lista; se faltar ou
 estiver corrompido, é refeito a partir dos arquivos.
 
 - `id = "v-" + ISO(createdAt)` com `:` e `.` trocados por `-` (com sufixo se colidir).
@@ -443,7 +443,7 @@ estiver corrompido, é refeito a partir dos arquivos.
 - `restoreText` (store): salva antes uma versão manual "Antes de restaurar …", grava o corpo no
   `.md` (ou recria a cena/nota se foi excluída, no mesmo capítulo/posição ou num capítulo novo).
 - `restoreProjectFiles`: manda `manuscrito/` e `notas/` para a lixeira como `backup`, reescreve
-  todos os `.md` da versão e o `project.json`. O `.inkflow/ydoc` fica; cada texto aplica a
+  todos os `.md` da versão e o `project.json`. O `.talia/ydoc` fica; cada texto aplica a
   diferença como edição ao abrir.
 
 Na sincronização, os arquivos de versão são sincronizados, mas `indice.json` não: quando chega ou
@@ -453,11 +453,11 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 ## 10. Lixeira
 
-`src/vault/trash.ts`. Tudo em `.inkflow/lixeira/`, com um índice `indice.json`
+`src/vault/trash.ts`. Tudo em `.talia/lixeira/`, com um índice `indice.json`
 (`TrashEntry[]`: `id`, `deletedAt`, `title`, `item`, `path`, `ydocs`).
 
 - `moveToTrash(path, item, sceneIds)` move o arquivo/pasta para
-  `.inkflow/lixeira/<stamp>-<nome>` e os `.yjs` das cenas para `<stamp>-<id>.yjs`.
+  `.talia/lixeira/<stamp>-<nome>` e os `.yjs` das cenas para `<stamp>-<id>.yjs`.
 - `saveToTrash(path, bytes, label)` grava um conteúdo que não existia em arquivo (cópias da
   sincronização) como item `backup`.
 - `restorePlan` calcula o projeto novo e os `move` de volta: ids já usados ganham id novo; nomes
@@ -516,11 +516,11 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 ### 11.3 Algoritmo (três vias por MD5)
 
-`src/sync/engine.ts`. Estado em `.inkflow/sync.json` (`folderId`, `base`, `cache`,
+`src/sync/engine.ts`. Estado em `.talia/sync.json` (`folderId`, `base`, `cache`,
 `projectBase`, `lastSync`).
 
-Ficam **fora** da sincronização: `.inkflow/sync.json`, `.inkflow/versoes/indice.json`,
-`.inkflow/lixeira/**`, `*.inkflow-tmp`, `.DS_Store`, `Thumbs.db`, `desktop.ini`.
+Ficam **fora** da sincronização: `.talia/sync.json`, `.talia/versoes/indice.json`,
+`.talia/lixeira/**`, `*.talia-tmp`, `.DS_Store`, `Thumbs.db`, `desktop.ini`.
 
 1. **`hashLocal`**: MD5 de cada arquivo local; reaproveita o `cache` quando `size` e `mtime`
    não mudaram (no navegador, `mtime = null`, recalcula sempre).
@@ -534,7 +534,7 @@ flowchart TD
   B1 -- não --> B2{L == B?}
   B2 -- "sim (só o Drive mudou)" --> S2{"R existe?"}
   S2 -- sim --> D1[download]
-  S2 -- não --> D2["deleteLocal → Lixeira (ou remove se em .inkflow/)"]
+  S2 -- não --> D2["deleteLocal → Lixeira (ou remove se em .talia/)"]
   B2 -- não --> B3{R == B?}
   B3 -- "sim (só aqui mudou)" --> S3{"L existe?"}
   S3 -- sim --> U1[upload]
@@ -616,7 +616,7 @@ com `chooseNewVaultRoot`, roda o sync com `base = {}` (tudo vira `download`) e a
 flowchart LR
   P["project.json + .md das cenas"] --> B["buildBook(opts)"]
   B -->|"[[links]] → texto<br/>sem marca-texto<br/>só imagens"| Book["Book (capítulos, cenas, blocos, imagens)"]
-  D[".inkflow/livro.json (se existir)"] -.-> X
+  D[".talia/livro.json (se existir)"] -.-> X
   Book --> X{formato}
   X -->|docx| W["docx.ts → Packer → saveFile"]
   X -->|pdf| H["bookHtml (+ interiorCss se houver design e estilo Livro) → iframe → print()"]
@@ -647,7 +647,7 @@ flowchart LR
 
 ## 13. Projeto gráfico (Diagramação)
 
-- **`book/design.ts`**: o modelo `BookDesign` (`.inkflow/livro.json`, gravado 500 ms depois de
+- **`book/design.ts`**: o modelo `BookDesign` (`.talia/livro.json`, gravado 500 ms depois de
   cada mudança — o arquivo só passa a existir depois da primeira mudança), tamanhos (`TRIM`),
   papéis (`PAPER`: espessura por página), `estimatePages` (linhas por página × palavras por linha
   estimadas, + aberturas de capítulo, + 6 páginas iniciais; sempre par), `spineWidth`
@@ -696,7 +696,7 @@ em texto. `root` é sempre um caminho absoluto e `path`/`from`/`to` são relativ
 | `vault_write_bytes` | corpo binário; cabeçalhos `x-root`, `x-path` | `()`                                           | Cabeçalhos com `encodeURIComponent`; gravação atômica                                                       |
 | `vault_exists`      | `root`, `path`                               | `bool`                                         | Arquivo ou pasta                                                                                            |
 | `vault_list`        | `root`, `path`                               | `string[]`                                     | Só arquivos (não pastas) direto na pasta, em ordem; `[]` se a pasta não existe                              |
-| `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.inkflow-tmp`; em ordem                        |
+| `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.talia-tmp`; em ordem                        |
 | `vault_rename`      | `root`, `from`, `to`                         | `()`                                           | Recusa se o destino existe; cria as pastas do destino                                                       |
 | `vault_remove`      | `root`, `path`                               | `()`                                           | Pasta: remove tudo; inexistente: ok; recusa apagar a própria raiz                                           |
 | `vault_open`        | `root`, `path`                               | `()`                                           | Abre no programa padrão (`tauri-plugin-opener`); só `anexos/` com extensão permitida; erro se não é arquivo |

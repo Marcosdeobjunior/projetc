@@ -1,5 +1,5 @@
 /**
- * Conteúdo de `.inkflow/project.json`. A ordem dos capítulos e das cenas vive
+ * Conteúdo de `.talia/project.json`. A ordem dos capítulos e das cenas vive
  * aqui; os textos ficam em `manuscrito/<pasta do capítulo>/<arquivo da cena>.md`
  * e as notas em `notas/<tipo>/<arquivo>.md`.
  */

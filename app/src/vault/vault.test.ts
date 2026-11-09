@@ -157,7 +157,7 @@ describe("vault", () => {
     const p = await createVault(fs, "x");
     const old: Partial<typeof p> = { ...p };
     delete old.notes;
-    await fs.writeText(".inkflow/project.json", JSON.stringify(old));
+    await fs.writeText(".talia/project.json", JSON.stringify(old));
     expect((await loadProject(fs)).notes).toEqual([]);
   });
 
@@ -209,7 +209,7 @@ describe("vault", () => {
     const removed = removeScene(renamed.project, sc.id);
     await applyOps(fs, removed.ops);
     expect(await fs.exists("manuscrito/capitulo-1/a-carta.md")).toBe(false);
-    const trash = await store.keys("browser:teste\u0000.inkflow/lixeira/");
+    const trash = await store.keys("browser:teste\u0000.talia/lixeira/");
     expect(trash.map((k) => k.replace(/^.*?Z-/, ""))).toEqual(
       expect.arrayContaining(["a-carta.md", `${sc.id}.yjs`]),
     );

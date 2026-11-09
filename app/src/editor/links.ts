@@ -35,7 +35,7 @@ export interface LinkContext {
 }
 
 /** Meta de transação para redesenhar os links quando títulos mudam. */
-export const REFRESH_LINKS = "inkflowRefreshLinks";
+export const REFRESH_LINKS = "taliaRefreshLinks";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 const OPEN_HINT = `${isMac ? "⌘" : "Ctrl"}+clique para abrir`;
@@ -118,7 +118,7 @@ export function redecorate(tr: Transaction, old: DecorationSet, ctx: LinkContext
   return set;
 }
 
-const linksKey = new PluginKey<DecorationSet>("inkflowLinks");
+const linksKey = new PluginKey<DecorationSet>("taliaLinks");
 
 function linksPlugin(ctx: LinkContext) {
   return new Plugin<DecorationSet>({
@@ -229,14 +229,14 @@ function suggestionPopup() {
 
 export function createLinksExtension(ctx: LinkContext) {
   return Extension.create({
-    name: "inkflowLinks",
+    name: "taliaLinks",
     addProseMirrorPlugins() {
       const editor = this.editor as Editor;
       return [
         linksPlugin(ctx),
         Suggestion<LinkSuggestion, LinkSuggestion>({
           editor,
-          pluginKey: new PluginKey("inkflowLinkSuggest"),
+          pluginKey: new PluginKey("taliaLinkSuggest"),
           char: "[[",
           allowSpaces: true,
           allowedPrefixes: null,

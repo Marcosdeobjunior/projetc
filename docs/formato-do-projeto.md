@@ -23,7 +23,7 @@ A Casa das Marés/                       ← raiz do projeto (nome legível, com
     ideias/o-segredo-do-pai.md
   anexos/
     mapa-da-vila.png                    ← imagens, vídeos, áudios e outros arquivos
-  .inkflow/
+  .talia/
     project.json                        ← estrutura: título, capítulos, cenas, notas, autor
     ydoc/
       sc_3f9a1c2b7d4e.yjs               ← estado do editor (Yjs) de cada cena/nota
@@ -43,13 +43,19 @@ Regras gerais:
 - Caminhos dentro do projeto usam `/` em qualquer sistema e são sempre relativos à raiz.
 - Arquivos de texto em **UTF-8**. JSON com indentação de 2 espaços (`project.json`, `livro.json`)
   ou 1 espaço (índices), com exceção de `sync.json` e das versões, que são compactos.
-- No desktop, toda gravação é atômica: o app grava `.<nome>.<aleatório>.inkflow-tmp` na mesma
-  pasta e renomeia por cima. Um `*.inkflow-tmp` que sobrar (queda de energia no meio) pode ser
+- No desktop, toda gravação é atômica: o app grava `.<nome>.<aleatório>.talia-tmp` na mesma
+  pasta e renomeia por cima. Um `*.talia-tmp` que sobrar (queda de energia no meio) pode ser
   apagado; o app e a sincronização o ignoram.
 - **Links simbólicos (atalhos) dentro do projeto não são aceitos**: o app desktop recusa ler ou
   gravar através deles. A própria pasta do projeto pode ser um atalho.
-- **Nada é apagado** ao excluir pela interface: vai para `.inkflow/lixeira/`.
+- **Nada é apagado** ao excluir pela interface: vai para `.talia/lixeira/`.
 - A ordem de capítulos e cenas vem de `project.json`, nunca do nome dos arquivos.
+- **Projetos antigos**: quando o app se chamava InkFlow, a pasta interna era `.inkflow/`. Ao abrir
+  um projeto assim, `loadProject` (via `vault/legacy.ts`) renomeia `.inkflow/` para `.talia/` uma
+  única vez. Na próxima sync, os arquivos em `.inkflow/` no Drive são apagados e os de `.talia/`
+  enviados. As chaves do `localStorage`, o IndexedDB, o identificador `app.inkflow.desktop` e as
+  marcações `inkflowRoot`/`inkflowProject` no Drive continuam com o nome antigo de propósito:
+  trocá-las faria o app perder configurações, a conta conectada e a ligação com o Drive.
 
 ### Nomes de arquivos e pastas
 
@@ -75,14 +81,14 @@ Criado ao criar o projeto, só se ainda não existir:
 Este é um projeto da Tália.
 
 - `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.
-- `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.
+- `.talia/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.
 ```
 
 O app não lê esse arquivo.
 
 ---
 
-## `.inkflow/project.json`
+## `.talia/project.json`
 
 A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tália.
 
@@ -148,10 +154,10 @@ Caminho de uma cena: `manuscrito/<chapter.dir>/<scene.file>`. De uma nota:
 `notas/<note.kind>/<note.file>`.
 
 Ao abrir, o app confere o arquivo e recusa abrir o projeto (mensagem "O arquivo
-.inkflow/project.json tem um problema (…)") se: `chapters` ou `notes` não forem listas; algum
+.talia/project.json tem um problema (…)") se: `chapters` ou `notes` não forem listas; algum
 `id` ou `title` não for texto; algum `dir` ou `file` for vazio, `.`, `..` ou tiver `/`, `\`, `:`
 ou caracteres de controle; algum `file` de cena não terminar em `.md`; ou algum `kind` não for um
-dos três tipos. JSON inválido dá "O arquivo .inkflow/project.json está corrompido.".
+dos três tipos. JSON inválido dá "O arquivo .talia/project.json está corrompido.".
 
 ---
 
@@ -207,7 +213,7 @@ código **não** existem no editor.
 
 ---
 
-## `.inkflow/ydoc/<id>.yjs`
+## `.talia/ydoc/<id>.yjs`
 
 Estado do editor de cada cena ou nota, em binário: `Y.encodeStateAsUpdate(doc)` de um `Y.Doc`
 cujo `Y.XmlFragment` `"default"` contém o documento ProseMirror (via `@tiptap/y-tiptap`, com o
@@ -230,7 +236,7 @@ entram na sincronização.
 
 ---
 
-## `.inkflow/versoes/` (histórico)
+## `.talia/versoes/` (histórico)
 
 ### `<id>.json` — uma versão
 
@@ -283,7 +289,7 @@ cada dia. Versões manuais nunca são podadas.
 
 ---
 
-## `.inkflow/lixeira/`
+## `.talia/lixeira/`
 
 O conteúdo excluído fica aqui com o nome `<stamp>-<nome original>`, onde `stamp` é a data ISO
 com `:` e `.` trocados por `-` (por exemplo `2026-11-02T20-30-00-000Z-a-carta.md`, ou uma pasta
@@ -331,9 +337,9 @@ Exemplo:
       "chapter": { "id": "ch_1a2b3c4d5e6f", "title": "O começo" },
       "index": 0
     },
-    "path": ".inkflow/lixeira/2026-11-02T20-30-00-000Z-a-carta.md",
+    "path": ".talia/lixeira/2026-11-02T20-30-00-000Z-a-carta.md",
     "ydocs": {
-      "sc_3f9a1c2b7d4e": ".inkflow/lixeira/2026-11-02T20-30-00-000Z-sc_3f9a1c2b7d4e.yjs"
+      "sc_3f9a1c2b7d4e": ".talia/lixeira/2026-11-02T20-30-00-000Z-sc_3f9a1c2b7d4e.yjs"
     }
   }
 ]
@@ -350,11 +356,11 @@ Rótulos das cópias de segurança (`backup`) criadas pelo app:
 | `"<título>" — editado fora do app antes de sincronizar`                             | `.md` editado fora do app e refeito a partir do `.yjs` que chegou |
 | `project.json do Drive (com problema)`                                              | `project.json` do Drive corrompido ou inválido (fica o local)     |
 
-Esvaziar a lixeira apaga a pasta `.inkflow/lixeira/` inteira.
+Esvaziar a lixeira apaga a pasta `.talia/lixeira/` inteira.
 
 ---
 
-## `.inkflow/livro.json` (projeto gráfico)
+## `.talia/livro.json` (projeto gráfico)
 
 Criado pela aba Diagramação na primeira mudança. Sincronizado. Ao ler, cada campo é conferido e
 o que for inválido volta ao padrão.
@@ -403,7 +409,7 @@ Medidas derivadas (não gravadas): lombada = `páginas × espessura do papel + 1
 
 ---
 
-## `.inkflow/sync.json` (estado da sincronização)
+## `.talia/sync.json` (estado da sincronização)
 
 Existe só quando a sincronização do projeto está ligada **neste computador**. Não é
 sincronizado. Apagar o arquivo desliga a sincronização (a próxima vez que ligar, tudo é comparado
@@ -423,7 +429,7 @@ Exemplo (resumido):
 {
   "folderId": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
   "base": {
-    ".inkflow/project.json": "9e107d9d372bb6826bd81d3542a419d6",
+    ".talia/project.json": "9e107d9d372bb6826bd81d3542a419d6",
     "manuscrito/o-comeco/a-carta.md": "e4d909c290d0fb1ca068ffaddf22cbd0"
   },
   "cache": {
@@ -440,11 +446,11 @@ Exemplo (resumido):
 
 ### O que vai para o Drive
 
-Tudo da pasta do projeto, **exceto**: `.inkflow/sync.json`, `.inkflow/versoes/indice.json`,
-`.inkflow/lixeira/**`, `*.inkflow-tmp`, `.DS_Store`, `Thumbs.db` e `desktop.ini`.
+Tudo da pasta do projeto, **exceto**: `.talia/sync.json`, `.talia/versoes/indice.json`,
+`.talia/lixeira/**`, `*.talia-tmp`, `.DS_Store`, `Thumbs.db` e `desktop.ini`.
 
 No Drive, a estrutura é espelhada dentro de `Tália/<título do projeto>/`. A pasta `Tália` tem
-a propriedade de app `inkflowRoot = "1"` e a pasta do projeto `inkflowProject = <project.id>` — é
+a propriedade de app `taliaRoot = "1"` e a pasta do projeto `taliaProject = <project.id>` — é
 por ela (e não pelo nome) que o app encontra o projeto.
 
 ---
@@ -459,7 +465,7 @@ lista completa de chaves está em
 
 ## Prévia no navegador
 
-Na prévia, cada arquivo é uma entrada do IndexedDB `inkflow` / `files` com a chave
+Na prévia, cada arquivo é uma entrada do IndexedDB `talia` / `files` com a chave
 `browser:<uuid>` + `\0` + caminho relativo, e o valor é o texto ou os bytes. As pastas não
 existem de fato: valem enquanto houver arquivos com aquele prefixo. O formato dos arquivos é o
 mesmo descrito acima.

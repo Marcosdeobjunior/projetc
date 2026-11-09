@@ -2,11 +2,11 @@ import type { VaultFs } from "../platform/types";
 
 /*
  * Projeto gráfico do livro: capa (1ª capa, quarta capa, lombada, orelhas) e
- * diagramação do miolo. Fica em `.inkflow/livro.json` (vai junto na
+ * diagramação do miolo. Fica em `.talia/livro.json` (vai junto na
  * sincronização); as imagens ficam em anexos/.
  */
 
-export const DESIGN_FILE = ".inkflow/livro.json";
+export const DESIGN_FILE = ".talia/livro.json";
 
 export type FontId = "literata" | "garamond" | "fraunces" | "figtree";
 
