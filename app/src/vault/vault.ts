@@ -59,10 +59,24 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
   if (data.format !== 1) {
     throw new VaultError("Este projeto foi criado por uma versão mais nova da Tália.");
   }
-  // Projetos criados antes das notas existirem.
-  const project = { ...data, notes: data.notes ?? [] };
+  // Projetos criados antes das notas existirem. Imagem de ficha só se apontar
+  // para um arquivo de anexos/ (o project.json pode ter sido editado por fora).
+  const project = {
+    ...data,
+    notes: (data.notes ?? []).map((n) => {
+      if (n.image === undefined || validNoteImage(n.image)) return n;
+      const rest = { ...n };
+      delete rest.image;
+      return rest;
+    }),
+  };
   validateProject(project);
   return project;
+}
+
+/** Imagem de ficha válida: `anexos/<arquivo>`, sem subir de pasta. */
+export function validNoteImage(v: unknown): v is string {
+  return typeof v === "string" && v.startsWith("anexos/") && safeName(v.slice("anexos/".length));
 }
 
 /** Nome de pasta ou arquivo que não sai do lugar (sem "/", "\\", ":", "..", controle). */

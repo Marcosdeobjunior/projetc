@@ -40,6 +40,8 @@ export interface Note {
   kind: NoteKind;
   /** Nome do arquivo .md dentro de `notas/<tipo>/`. */
   file: string;
+  /** Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Opcional. */
+  image?: string;
 }
 
 /** Qualquer texto do projeto que abre no editor: uma cena ou uma nota. */

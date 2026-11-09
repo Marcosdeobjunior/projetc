@@ -211,7 +211,15 @@ menções do nome).
 
 - **Nova nota:** os botões **Novo personagem**, **Novo lugar** e **Nova ideia** criam a nota e já
   abrem.
-- **Abrir:** clique no cartão. Renomeie pelo nome no alto do texto.
+- **Ficha:** clique no cartão para abrir a página própria da nota, com:
+  - a **imagem** (retrato do personagem, foto do lugar): **Escolher imagem**, ou arraste uma
+    imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
+    remove da ficha (o arquivo continua em Anexos);
+  - o nome, o tipo e o texto da ficha; **Editar a ficha** abre o texto no editor (renomeie pelo
+    nome no alto do texto);
+  - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);
+  - **Ligado a**: as outras notas ligadas a ela (clique para abrir a ficha delas).
+- **Voltar** pela seta no alto da ficha ou por qualquer aba.
 - O nome de uma nota é especial: quando ele aparece no texto das cenas, conta como **menção** e
   liga a nota àquela cena no [grafo](#7-grafo-e-minimapa).
 - A [busca](#6-busca-no-projeto) também encontra as notas.

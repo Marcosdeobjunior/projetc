@@ -5,6 +5,7 @@ import { NOTE_KINDS, type NoteKind } from "../manuscript/types";
 import { buildGraph } from "../links/links";
 import { KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
+import { NoteProfile, useAttachmentImage } from "./NoteProfile";
 
 const KIND_ICON: Record<NoteKind, string> = {
   personagens: "person",
@@ -33,6 +34,12 @@ function excerpt(text: string): string {
   return t.length > 160 ? t.slice(0, 160).trimEnd() + "…" : t;
 }
 
+/** Miniatura da imagem da ficha no cartão. */
+function CardImage({ src }: { src: string }) {
+  const url = useAttachmentImage(src);
+  return <span className="world-card-image">{url && <img src={url} alt="" />}</span>;
+}
+
 /**
  * Mundo: o universo do projeto num lugar só. Personagens, lugares e ideias
  * em cartões, com o começo da nota e em quantas cenas cada um aparece
@@ -40,7 +47,6 @@ function excerpt(text: string): string {
  */
 export function WorldView({ session }: { session: Session }) {
   const change = useApp((s) => s.change);
-  const openDoc = useApp((s) => s.openDoc);
   const { project, texts } = session;
   /** Aba aberta (Personagens, Lugares ou Ideias), lembrada neste computador. */
   const [tab, setTabState] = useState<NoteKind>(readTab);
@@ -54,17 +60,24 @@ export function WorldView({ session }: { session: Session }) {
   };
   const count = (k: NoteKind) => project.notes.filter((n) => n.kind === k).length;
 
-  /** Quantas cenas ligam a cada nota. */
-  const scenesOf = useMemo(() => {
+  /** Textos ligados a cada nota (links [[…]] e menções), e quantos são cenas. */
+  const { linksOf, scenesOf } = useMemo(() => {
     const g = buildGraph(project, texts, { mentions: true });
     const type = new Map(g.nodes.map((n) => [n.id, n.type]));
-    const out = new Map<string, number>();
+    const linksOf = new Map<string, string[]>();
+    const add = (a: string, b: string) => linksOf.set(a, [...(linksOf.get(a) ?? []), b]);
     for (const e of g.edges) {
-      if (type.get(e.source) === "scene") out.set(e.target, (out.get(e.target) ?? 0) + 1);
-      if (type.get(e.target) === "scene") out.set(e.source, (out.get(e.source) ?? 0) + 1);
+      add(e.source, e.target);
+      add(e.target, e.source);
     }
-    return out;
+    const scenesOf = new Map<string, number>();
+    for (const [id, list] of linksOf)
+      scenesOf.set(id, list.filter((x) => type.get(x) === "scene").length);
+    return { linksOf, scenesOf };
   }, [project, texts]);
+  /** Nota aberta na sua página própria (null = lista da aba). */
+  const [openId, setOpenId] = useState<string | null>(null);
+  const opened = openId ? project.notes.find((n) => n.id === openId) : undefined;
 
   const create = (kind: NoteKind) => {
     let id: string | null = null;
@@ -75,7 +88,7 @@ export function WorldView({ session }: { session: Session }) {
         return r;
       },
       async () => {
-        if (id) openDoc(id);
+        if (id) setOpenId(id);
       },
     );
   };
@@ -101,6 +114,7 @@ export function WorldView({ session }: { session: Session }) {
               (i + (e.key === "ArrowRight" ? 1 : -1) + NOTE_KINDS.length) % NOTE_KINDS.length
             ]!;
           setTab(next);
+          setOpenId(null);
           document.getElementById(`world-tab-${next}`)?.focus();
         }}
       >
@@ -113,7 +127,10 @@ export function WorldView({ session }: { session: Session }) {
             aria-selected={tab === k}
             aria-controls="world-panel"
             tabIndex={tab === k ? 0 : -1}
-            onClick={() => setTab(k)}
+            onClick={() => {
+              setTab(k);
+              setOpenId(null);
+            }}
           >
             <Icon name={KIND_ICON[k]} size={15} />
             {KIND_LABEL[k].many}
@@ -128,37 +145,54 @@ export function WorldView({ session }: { session: Session }) {
         role="tabpanel"
         aria-labelledby={`world-tab-${kind}`}
       >
-        <header className="world-head">
-          <div>
-            <h2>{label.many}</h2>
-            <p className="muted">{project.title}: clique num cartão para abrir a nota.</p>
-          </div>
-          <button type="button" className="btn sm" onClick={() => create(kind)}>
-            <Icon name="plus" size={14} /> {label.new}
-          </button>
-        </header>
-        {notes.length === 0 ? (
-          <p className="muted">Nenhum ainda. Use “{label.new}” para começar.</p>
+        {opened ? (
+          <NoteProfile
+            session={session}
+            note={opened}
+            links={linksOf.get(opened.id) ?? []}
+            onBack={() => setOpenId(null)}
+            onOpenNote={(id) => {
+              const n = project.notes.find((x) => x.id === id);
+              if (n) setTab(n.kind);
+              setOpenId(id);
+            }}
+          />
         ) : (
-          <ul className="world-cards">
-            {notes.map((n) => {
-              const text = excerpt(texts[n.id] ?? "");
-              const scenes = scenesOf.get(n.id) ?? 0;
-              return (
-                <li key={n.id}>
-                  <button type="button" className="world-card" onClick={() => openDoc(n.id)}>
-                    <b>{n.title}</b>
-                    <span className="world-excerpt">{text || "Sem descrição ainda."}</span>
-                    <small>
-                      {scenes === 0
-                        ? "Não aparece em nenhuma cena"
-                        : `Aparece em ${scenes} ${scenes === 1 ? "cena" : "cenas"}`}
-                    </small>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <header className="world-head">
+              <div>
+                <h2>{label.many}</h2>
+                <p className="muted">{project.title}: clique num cartão para ver a ficha.</p>
+              </div>
+              <button type="button" className="btn sm" onClick={() => create(kind)}>
+                <Icon name="plus" size={14} /> {label.new}
+              </button>
+            </header>
+            {notes.length === 0 ? (
+              <p className="muted">Nenhum ainda. Use “{label.new}” para começar.</p>
+            ) : (
+              <ul className="world-cards">
+                {notes.map((n) => {
+                  const text = excerpt(texts[n.id] ?? "");
+                  const scenes = scenesOf.get(n.id) ?? 0;
+                  return (
+                    <li key={n.id}>
+                      <button type="button" className="world-card" onClick={() => setOpenId(n.id)}>
+                        {n.image && <CardImage src={n.image} />}
+                        <b>{n.title}</b>
+                        <span className="world-excerpt">{text || "Sem descrição ainda."}</span>
+                        <small>
+                          {scenes === 0
+                            ? "Não aparece em nenhuma cena"
+                            : `Aparece em ${scenes} ${scenes === 1 ? "cena" : "cenas"}`}
+                        </small>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </div>
     </div>

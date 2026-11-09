@@ -141,6 +141,12 @@ export function mergeProjects(
       title: pick(bn?.title, ln.title, rn.title),
       file: pick(bn?.file, ln.file, rn.file),
       kind: pick(bn?.kind, ln.kind, rn.kind),
+      // Opcional: "sem imagem" na base também conta como valor (pick ignora undefined).
+      image: bn
+        ? JSON.stringify(ln.image) === JSON.stringify(bn.image)
+          ? rn.image
+          : ln.image
+        : (ln.image ?? rn.image),
     }),
     changed,
   );
