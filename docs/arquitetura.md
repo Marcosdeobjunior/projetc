@@ -388,7 +388,11 @@ calendário). Continuidade: `continuity()` (pura) calcula as idades (`ageOn`, an
 ativo ou 365), o local de cada cena (escolhido ou o único lugar ligado) e os avisos de viagem,
 só quando a chegada é mais cedo que `travelDays`; nunca adivinha distâncias nem reclama de
 viagens lentas. Nascimento e tempos de viagem são editados em `ui/ContinuityEditors.tsx` (fichas
-de personagem e lugar).
+de personagem e lugar). Faixas: `buildLanes()` (uma linha por nota, uma coluna por dia ocupado).
+Calendário de escrita: `writing/writing.ts` (`streak`, `lastDays`, `heatmap`) e
+`state/writing.ts`; o `DocEditor` soma ao dia as palavras novas de cenas (diferença positiva a
+cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de teste em
+`timeline/example.ts` (também usadas em `vault/sample.ts`).
 
 ### 6.1 Comentários
 

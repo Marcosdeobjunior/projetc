@@ -25,6 +25,8 @@ interface TimelineState {
   setCalendar(noteId: string, def: CalendarDef | null): Promise<void>;
   /** Escolhe o calendário que a linha do tempo usa (null = "Dia N"). */
   setActiveCalendar(noteId: string | null): Promise<void>;
+  /** Troca a linha do tempo inteira (datas de teste). */
+  replace(data: TimelineData): Promise<void>;
   /** Dia da história em que o personagem nasceu (null tira). */
   setBirth(noteId: string, day: number | null): Promise<void>;
   /** Tempo de viagem entre dois lugares (null tira). */
@@ -80,6 +82,9 @@ export const useTimeline = create<TimelineState>((set, get) => {
         calendars,
         activeCalendar: active && calendars[active] ? active : def ? noteId : null,
       });
+    },
+    async replace(data) {
+      await save(data);
     },
     async setActiveCalendar(noteId) {
       await save({ ...get().data, activeCalendar: noteId });

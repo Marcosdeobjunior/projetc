@@ -230,8 +230,9 @@ menções do nome).
 
 #### Calendários: linha do tempo e calendários do mundo
 
-A aba **Calendários** do Mundo tem duas partes, escolhidas no alto: **Linha do tempo** e
-**Calendários do mundo** (as fichas de calendário). O app lembra qual ficou aberta.
+A aba **Calendários** do Mundo tem três partes, escolhidas no alto: **Linha do tempo**,
+**Calendários do mundo** (as fichas de calendário) e **Escrita** (o seu calendário de escrita). O
+app lembra qual ficou aberta.
 
 **Linha do tempo** mostra as cenas na ordem em que **acontecem na história**, que pode ser
 diferente da ordem do livro.
@@ -253,6 +254,23 @@ diferente da ordem do livro.
 - **Mostrar tudo / uma nota:** filtra a linha pelo que está ligado a um personagem, lugar etc.
   (cenas que citam a nota e acontecimentos criados com o filtro ativo).
 - O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
+
+**Faixas por personagem:** na Linha do tempo, troque **Lista** por **Faixas por personagem** para
+ver uma linha para cada personagem (ou lugar, organização — escolha nos botões acima da tabela) e
+uma coluna para cada dia com alguma coisa: quem está em qual cena ao mesmo tempo. Uma cena que
+dura vários dias aparece em todos eles; a linha mais grossa marca dias pulados; clique numa cena
+para abri-la.
+
+**Escrita:** conta quantas palavras você escreve por dia nas cenas do manuscrito (apagar não
+desconta o que já foi escrito). Mostra as palavras de hoje, a **meta diária** (opcional, com
+barra de progresso), os **dias seguidos** escrevendo, os totais dos últimos 7 e 30 dias e um
+**mapa** dos últimos seis meses (passe o mouse num dia para ver as palavras). Fica em
+`.talia/escrita.json` e vai junto no sync.
+
+**Datas de teste:** numa linha do tempo vazia, **Preencher com datas de teste** dá datas
+fictícias às cenas (com um flashback), locais, idades aos personagens, tempos de viagem e dois
+acontecimentos; na Escrita sem registros, **Preencher com dias de teste** cria seis semanas de
+escrita fictícia. O projeto de exemplo da prévia já vem com essas datas.
 
 **Continuidade (idades e viagens):**
 

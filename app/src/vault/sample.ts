@@ -3,6 +3,9 @@ import type { Project } from "../manuscript/types";
 import { addChapter, addNote, addScene, renameChapter, renameScene } from "../manuscript/tree";
 import type { NoteKind } from "../manuscript/types";
 import { createVault, saveProject, writeSceneMarkdown } from "./vault";
+import { EMPTY_TIMELINE, writeTimeline } from "../timeline/timeline";
+import { exampleTimeline, exampleWriting } from "../timeline/example";
+import { writeLog } from "../writing/writing";
 
 /** Projeto de exemplo criado na primeira visita à prévia no navegador. */
 export async function createSampleVault(fs: VaultFs): Promise<Project> {
@@ -75,5 +78,8 @@ export async function createSampleVault(fs: VaultFs): Promise<Project> {
   }
   for (const [id, md] of texts) await writeSceneMarkdown(fs, p, id, md);
   await saveProject(fs, p);
+  // Datas fictícias, para a linha do tempo e o calendário de escrita já mostrarem algo.
+  await writeTimeline(fs, exampleTimeline(p, EMPTY_TIMELINE));
+  await writeLog(fs, exampleWriting(new Date()));
   return p;
 }

@@ -4,6 +4,7 @@ import { createSampleVault } from "../vault/sample";
 import {
   EMPTY_TIMELINE,
   ageOn,
+  buildLanes,
   continuity,
   sanitizeTimeline,
   setTravel,
@@ -106,5 +107,49 @@ describe("continuidade", () => {
       place: capital,
       auto: false,
     });
+  });
+});
+
+describe("faixas por personagem", () => {
+  it("põe cada personagem numa linha, nos dias em que aparece", async () => {
+    const { project, scenes, hero } = await setup();
+    const other = project.notes.find((n) => n.kind === "personagens" && n.id !== hero)!.id;
+    const linksOf = new Map([
+      [scenes[0]!, [hero]],
+      [scenes[1]!, [hero, other]],
+    ]);
+    const data: TimelineData = {
+      ...EMPTY_TIMELINE,
+      scenes: { [scenes[0]!]: { day: 1, days: 2 }, [scenes[1]!]: { day: 10, days: 1 } },
+      events: [{ id: "e", title: "Festa", day: 5, days: 1, notes: [other] }],
+    };
+    const l = buildLanes(project, data, linksOf);
+    expect(l.days).toEqual([1, 2, 5, 10]);
+    const row = (id: string) => l.rows.find((r) => r.noteId === id)!;
+    expect([...row(hero).cells.keys()]).toEqual([1, 2, 10]);
+    expect(row(other).cells.get(5)).toEqual([{ id: "e", title: "Festa", kind: "event" }]);
+  });
+});
+
+describe("datas fictícias de teste", () => {
+  it("preenchem a linha do tempo de um jeito que mostra tudo", async () => {
+    const { project } = await setup();
+    const { exampleTimeline } = await import("./example");
+    const data = exampleTimeline(project, EMPTY_TIMELINE);
+    const scenes = project.chapters.flatMap((c) => c.scenes.map((s) => s.id));
+    expect(scenes.every((id) => data.scenes[id])).toBe(true);
+    expect(Object.keys(data.births).length).toBeGreaterThan(0);
+    expect(data.events).toHaveLength(2);
+    // A terceira cena volta no tempo.
+    const { buildTimeline } = await import("./timeline");
+    expect(buildTimeline(project, data).outOfOrder.size).toBe(1);
+  });
+
+  it("geram semanas de escrita com meta", async () => {
+    const { exampleWriting } = await import("./example");
+    const log = exampleWriting(new Date(2026, 10, 9));
+    expect(log.dailyGoal).toBe(500);
+    expect(Object.keys(log.days).length).toBeGreaterThan(20);
+    expect(log.days["2026-11-09"]).toBeUndefined(); // hoje fica para escrever de verdade
   });
 });

@@ -30,6 +30,7 @@ A Casa das Marés/                       ← raiz do projeto (nome legível, com
     comentarios/
       sc_3f9a1c2b7d4e.json              ← comentários de uma cena/nota (só se houver)
     linha-do-tempo.json                 ← dias da história das cenas e acontecimentos
+    escrita.json                        ← palavras escritas por dia e meta diária
     versoes/
       indice.json                       ← índice do histórico (só neste computador)
       v-2026-11-02T20-17-05-123Z.json   ← uma versão do projeto inteiro
@@ -304,6 +305,21 @@ bissextos. Valores fora da faixa voltam ao padrão.
   descartados; arquivo danificado é lido como vazio (não é apagado).
 - Vai para o Drive como qualquer arquivo (em conflito, fica a versão local e a remota vai para a
   lixeira).
+
+---
+
+## `.talia/escrita.json`
+
+Calendário de escrita (`writing/writing.ts`).
+
+```json
+{ "format": 1, "dailyGoal": 500, "days": { "2026-11-09": 640 } }
+```
+
+- `dailyGoal`: meta de palavras por dia (inteiro > 0) ou `null`.
+- `days`: palavras escritas por dia, chave `AAAA-MM-DD` (data local). Só conta o que entra
+  digitando nas cenas do manuscrito; palavras apagadas não descontam.
+- Lido com `sanitizeLog`; vai para o Drive como qualquer arquivo.
 
 ---
 

@@ -1,11 +1,127 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { useTimeline } from "../state/timeline";
-import { buildTimeline, continuity, gapLabel, type TimelineItem } from "../timeline/timeline";
+import {
+  buildLanes,
+  buildTimeline,
+  continuity,
+  gapLabel,
+  type Lanes,
+  type TimelineItem,
+} from "../timeline/timeline";
+import type { NoteKind } from "../manuscript/types";
 import { useYearLength } from "./ContinuityEditors";
+import { exampleTimeline } from "../timeline/example";
 import { dayToDate, formatDate, holidaysOn, seasonOf } from "../timeline/calendar";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
+
+const LAYOUT_KEY = "talia.timelineLayout";
+const LANE_KINDS: NoteKind[] = ["personagens", "lugares", "organizacoes"];
+
+/**
+ * Faixas: uma linha por personagem (ou lugar, organização), uma coluna por
+ * dia com alguma coisa. Mostra quem está onde ao mesmo tempo.
+ */
+function LanesGrid({
+  lanes,
+  kinds,
+  onKinds,
+  titleOf,
+  dayLabel,
+  onOpen,
+}: {
+  lanes: Lanes;
+  kinds: NoteKind[];
+  onKinds(k: NoteKind[]): void;
+  titleOf(id: string): string;
+  dayLabel(day: number): { top: string; bottom: string };
+  onOpen(id: string): void;
+}) {
+  return (
+    <section className="lanes">
+      <div className="lanes-kinds" role="group" aria-label="Linhas das faixas">
+        {LANE_KINDS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            className="chip"
+            aria-pressed={kinds.includes(k)}
+            onClick={() =>
+              onKinds(kinds.includes(k) ? kinds.filter((x) => x !== k) : [...kinds, k])
+            }
+          >
+            <Icon name={DOC_ICON[k]} size={13} /> {KIND_LABEL[k].many}
+          </button>
+        ))}
+      </div>
+      {lanes.rows.length === 0 ? (
+        <p className="muted">
+          Ninguém aparece em cenas com data ainda. Dê datas às cenas (na Lista) e cite os
+          personagens no texto, ou ligue notas aos acontecimentos.
+        </p>
+      ) : (
+        <div className="lanes-scroll">
+          <table className="lanes-table">
+            <thead>
+              <tr>
+                <th scope="col" className="lanes-name" />
+                {lanes.days.map((d, i) => {
+                  const l = dayLabel(d);
+                  const skip = i > 0 && d - lanes.days[i - 1]! > 1;
+                  return (
+                    <th key={d} scope="col" className={skip ? "skip" : undefined}>
+                      <span>{l.top}</span>
+                      {l.bottom && <small>{l.bottom}</small>}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {lanes.rows.map((r) => (
+                <tr key={r.noteId}>
+                  <th scope="row" className="lanes-name">
+                    {titleOf(r.noteId)}
+                  </th>
+                  {lanes.days.map((d, i) => {
+                    const items = r.cells.get(d) ?? [];
+                    const skip = i > 0 && d - lanes.days[i - 1]! > 1;
+                    return (
+                      <td key={d} className={skip ? "skip" : undefined}>
+                        {items.map((it) =>
+                          it.kind === "scene" ? (
+                            <button
+                              key={it.id}
+                              type="button"
+                              className="lane-pill"
+                              title={`Abrir “${it.title}”`}
+                              onClick={() => onOpen(it.id)}
+                            >
+                              {it.title}
+                            </button>
+                          ) : (
+                            <span key={it.id} className="lane-pill event" title="Acontecimento">
+                              {it.title}
+                            </span>
+                          ),
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="muted small">
+        Cada coluna é um dia com alguma coisa; a linha mais grossa marca dias pulados. Uma cena que
+        dura vários dias aparece em todos eles.
+      </p>
+    </section>
+  );
+}
 
 /** Campo de número inteiro que só grava ao sair ou com Enter (não a cada tecla). */
 function NumberField({
@@ -79,6 +195,21 @@ export function TimelineView({
   const data = useTimeline((s) => s.data);
   const { setScene, addEvent, updateEvent, removeEvent } = useTimeline.getState();
   const [filter, setFilter] = useState("");
+  const [layout, setLayoutState] = useState<"list" | "lanes">(() => {
+    try {
+      return localStorage.getItem(LAYOUT_KEY) === "lanes" ? "lanes" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const setLayout = (v: "list" | "lanes") => {
+    setLayoutState(v);
+    try {
+      localStorage.setItem(LAYOUT_KEY, v);
+    } catch {
+      // sem armazenamento: vale só agora
+    }
+  };
   const [confirming, setConfirming] = useState<string | null>(null);
   const { project } = session;
 
@@ -103,6 +234,7 @@ export function TimelineView({
   const defined = calendarNotes.filter((n) => data.calendars[n.id]);
   /** Data do mundo de um dia da história, por extenso. */
   const { yearLen } = useYearLength();
+  const [laneKinds, setLaneKinds] = useState<NoteKind[]>(["personagens"]);
   /** Idades, locais e avisos de viagem (calculados sobre a linha inteira, sem filtro). */
   const checks = useMemo(
     () => continuity({ project, data, linksOf, yearLength: yearLen }),
@@ -381,6 +513,16 @@ export function TimelineView({
           <button type="button" className="btn sm" onClick={newEvent}>
             <Icon name="plus" size={14} /> Acontecimento
           </button>
+          {Object.keys(data.scenes).length === 0 && data.events.length === 0 && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              title="Dá datas fictícias às cenas, idades aos personagens e distâncias aos lugares, para você ver como tudo funciona"
+              onClick={() => void useTimeline.getState().replace(exampleTimeline(project, data))}
+            >
+              Preencher com datas de teste
+            </button>
+          )}
         </div>
       </header>
       {(warningCount > 0 || ignoredCount > 0) && (
@@ -413,7 +555,42 @@ export function TimelineView({
         </p>
       )}
 
-      {timeline.groups.length === 0 ? (
+      <div className="segmented wide tl-layout" role="radiogroup" aria-label="Forma de mostrar">
+        {(
+          [
+            ["list", "Lista"],
+            ["lanes", "Faixas por personagem"],
+          ] as const
+        ).map(([v, text]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={layout === v}
+            onClick={() => setLayout(v)}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+
+      {layout === "lanes" ? (
+        <LanesGrid
+          lanes={buildLanes(project, data, linksOf, laneKinds)}
+          kinds={laneKinds}
+          onKinds={setLaneKinds}
+          titleOf={title}
+          dayLabel={(day) => {
+            if (!calendar) return { top: `Dia ${day}`, bottom: "" };
+            const d = dayToDate(calendar, day);
+            return {
+              top: `${d.day} ${calendar.months[d.month]!.name.slice(0, 3)}.`,
+              bottom: String(d.year),
+            };
+          }}
+          onOpen={openDoc}
+        />
+      ) : timeline.groups.length === 0 ? (
         <p className="muted">
           Nada na linha do tempo ainda. Dê um dia às cenas em “Sem data”, abaixo, ou crie um
           acontecimento.

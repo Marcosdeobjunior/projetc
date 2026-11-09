@@ -17,7 +17,9 @@ import { registerFlush, serial } from "../state/writes";
 import { registerOpenEditor, setActiveEditor } from "../state/openEditors";
 import { insertAttachments } from "./attachments";
 import { linkEdits } from "../links/links";
-import { allDocs, findDoc } from "../manuscript/tree";
+import { allDocs, findDoc, findScene } from "../manuscript/tree";
+import { countWords } from "../manuscript/wordCount";
+import { useWriting } from "../state/writing";
 import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
@@ -94,6 +96,17 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
   const diskText = useRef(loaded.diskText);
   const textTimer = useRef<number | undefined>(undefined);
+  /** Palavras do texto na última contagem, para o calendário de escrita. */
+  const lastWords = useRef<number | null>(null);
+  /** Soma ao calendário de escrita as palavras novas (só em cenas do manuscrito). */
+  const countWritten = (text: string) => {
+    const n = countWords(text);
+    const before = lastWords.current;
+    lastWords.current = n;
+    const project = useApp.getState().session?.project;
+    if (before === null || !project || !findScene(project, sceneId)) return;
+    useWriting.getState().add(n - before);
+  };
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const minimap = useSettings((s) => s.minimap);
@@ -175,7 +188,10 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         if (!editor.isInitialized) return;
         window.clearTimeout(textTimer.current);
         textTimer.current = window.setTimeout(() => {
-          if (!editor.isDestroyed) setDocText(sceneId, editor.getText());
+          if (editor.isDestroyed) return;
+          const text = editor.getText();
+          setDocText(sceneId, text);
+          countWritten(text);
         }, TEXT_DELAY_MS);
       },
     },
@@ -206,6 +222,7 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   useEffect(() => {
     if (!editor) return;
     setDocText(sceneId, editor.getText());
+    lastWords.current = countWords(editor.getText());
     // Ao sair do texto, a contagem fica com o que foi digitado por último.
     const timer = textTimer;
     return () => {

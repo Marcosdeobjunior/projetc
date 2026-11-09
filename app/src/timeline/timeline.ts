@@ -380,3 +380,69 @@ export function continuity({ project, data, linksOf, yearLength }: ContinuityInp
   }
   return { ages, warnings, places };
 }
+
+// ---------------------------------------------------------------- faixas
+
+export interface LaneRow {
+  noteId: string;
+  /** Por dia: cenas e acontecimentos em que a nota aparece naquele dia. */
+  cells: Map<number, { id: string; title: string; kind: "scene" | "event" }[]>;
+}
+
+export interface Lanes {
+  /** Dias com alguma coisa, em ordem (as faixas pulam os dias vazios). */
+  days: number[];
+  rows: LaneRow[];
+}
+
+/**
+ * Faixas por personagem (ou outro tipo de nota): uma linha para cada um, com
+ * as cenas em que aparece, dia a dia, lado a lado com os outros. A cena entra
+ * em todos os dias que dura.
+ */
+export function buildLanes(
+  project: Project,
+  data: TimelineData,
+  linksOf: Map<string, string[]>,
+  kinds: readonly string[] = ["personagens"],
+): Lanes {
+  const want = new Set(project.notes.filter((n) => kinds.includes(n.kind)).map((n) => n.id));
+  const rows = new Map<string, LaneRow>();
+  const days = new Set<number>();
+  type Cell = { id: string; title: string; kind: "scene" | "event" };
+  const put = (noteId: string, day: number, item: Cell) => {
+    let row = rows.get(noteId);
+    if (!row) rows.set(noteId, (row = { noteId, cells: new Map() }));
+    const list = row.cells.get(day) ?? [];
+    list.push(item);
+    row.cells.set(day, list);
+    days.add(day);
+  };
+  const MAX_SPAN = 366; // uma cena muito longa não enche a tela de colunas
+  for (const c of project.chapters)
+    for (const s of c.scenes) {
+      const d = data.scenes[s.id];
+      if (!d) continue;
+      for (const n of linksOf.get(s.id) ?? []) {
+        if (!want.has(n)) continue;
+        for (let k = 0; k < Math.min(d.days, MAX_SPAN); k++)
+          put(n, d.day + k, { id: s.id, title: s.title, kind: "scene" });
+      }
+    }
+  for (const e of data.events)
+    for (const n of e.notes) {
+      if (!want.has(n)) continue;
+      for (let k = 0; k < Math.min(e.days, MAX_SPAN); k++)
+        put(n, e.day + k, { id: e.id, title: e.title, kind: "event" });
+    }
+  const order = new Map(project.notes.map((n, i) => [n.id, i]));
+  const title = new Map(project.notes.map((n) => [n.id, n.title]));
+  return {
+    days: [...days].sort((a, b) => a - b),
+    rows: [...rows.values()].sort(
+      (a, b) =>
+        (title.get(a.noteId) ?? "").localeCompare(title.get(b.noteId) ?? "", "pt-BR") ||
+        (order.get(a.noteId) ?? 0) - (order.get(b.noteId) ?? 0),
+    ),
+  };
+}

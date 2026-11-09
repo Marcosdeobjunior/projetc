@@ -7,6 +7,7 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
 import { NoteProfile, useAttachmentImage } from "./NoteProfile";
 import { TimelineView } from "./TimelineView";
+import { WritingView } from "./WritingView";
 
 const KIND_ICON = DOC_ICON;
 
@@ -16,7 +17,7 @@ const TAB_KEY = "talia.worldTab";
 type WorldTab = NoteKind;
 const TABS: WorldTab[] = [...NOTE_KINDS];
 const SUB_KEY = "talia.calendarView";
-type CalendarView = "timeline" | "calendars";
+type CalendarView = "timeline" | "calendars" | "writing";
 
 function readTab(): WorldTab {
   try {
@@ -31,7 +32,8 @@ function readTab(): WorldTab {
 
 function readSub(): CalendarView {
   try {
-    return localStorage.getItem(SUB_KEY) === "calendars" ? "calendars" : "timeline";
+    const v = localStorage.getItem(SUB_KEY);
+    return v === "calendars" || v === "writing" ? v : "timeline";
   } catch {
     return "timeline";
   }
@@ -171,6 +173,7 @@ export function WorldView({ session }: { session: Session }) {
               [
                 ["timeline", "clock", "Linha do tempo"],
                 ["calendars", "calendar", "Calendários do mundo"],
+                ["writing", "edit", "Escrita"],
               ] as const
             ).map(([v, icon, text]) => (
               <button
@@ -185,7 +188,9 @@ export function WorldView({ session }: { session: Session }) {
             ))}
           </div>
         )}
-        {tab === "calendarios" && sub === "timeline" && !opened ? (
+        {tab === "calendarios" && sub === "writing" && !opened ? (
+          <WritingView />
+        ) : tab === "calendarios" && sub === "timeline" && !opened ? (
           <TimelineView
             session={session}
             linksOf={linksOf}

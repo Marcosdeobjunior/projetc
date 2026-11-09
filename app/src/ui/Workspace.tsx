@@ -17,6 +17,7 @@ import { TrashView } from "./TrashView";
 import { useSearch } from "../state/search";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
+import { useWriting } from "../state/writing";
 import { Icon } from "./Icon";
 import { MusicFloating } from "./Music";
 import { shortcut } from "../editor/formatting";
@@ -78,6 +79,11 @@ export function Workspace({ session }: { session: Session }) {
       // sem armazenamento: vale só nesta sessão
     }
   }, [collapsed]);
+
+  // Calendário de escrita: começa a contar assim que o projeto abre.
+  useEffect(() => {
+    void useWriting.getState().load();
+  }, [session.root]);
 
   // Sincronização com o Drive: ao abrir o projeto e de tempos em tempos.
   const syncEvery = useSettings((s) => s.syncEvery);
