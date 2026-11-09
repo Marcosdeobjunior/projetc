@@ -50,6 +50,10 @@ export function Workspace({ session }: { session: Session }) {
   /** Painel do Manuscrito, ao lado da barra (lembrado entre aberturas). */
   const panelOpen = !useSettings((s) => s.collapsed.includes("manuscrito"));
   const toggleSection = useSettings((s) => s.toggleSection);
+  /** Os outros botões da barra recolhem o painel do Manuscrito. */
+  const closePanel = () => {
+    if (panelOpen) toggleSection("manuscrito");
+  };
   const active = activeDocId ? findDoc(project, activeDocId) : null;
   const scene = activeDocId ? findScene(project, activeDocId) : null;
   // Soma só as cenas que estão no manuscrito (notas e cenas excluídas ficam fora).
@@ -175,6 +179,7 @@ export function Workspace({ session }: { session: Session }) {
               title="Elo: grafo de conexões entre os textos"
               aria-label="Elo"
               onClick={() => {
+                closePanel();
                 setView(view === "graph" ? "editor" : "graph");
                 closeNav();
               }}
@@ -210,6 +215,7 @@ export function Workspace({ session }: { session: Session }) {
                 aria-pressed={view === v}
                 title={title}
                 onClick={() => {
+                  closePanel();
                   setView(view === v ? "editor" : v);
                   closeNav();
                 }}
@@ -229,6 +235,7 @@ export function Workspace({ session }: { session: Session }) {
                 className={"foot-btn" + (view === v ? " on" : "")}
                 aria-pressed={view === v}
                 onClick={() => {
+                  closePanel();
                   setSettingsTab(null);
                   setView(view === v ? "editor" : v);
                   closeNav();

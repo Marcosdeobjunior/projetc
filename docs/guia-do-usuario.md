@@ -224,7 +224,8 @@ arquivo para a Lixeira. Veja também [Anexos](#5-anexos-imagens-vídeos-áudios-
 
 ### 3.4 Painel do Manuscrito e a barra inteira
 
-- **Manuscrito** no trilho abre ou fecha o painel de capítulos. O app lembra a escolha.
+- **Manuscrito** no trilho abre ou fecha o painel de capítulos. Clicar em qualquer outro botão
+  da barra (Anexos, Mundo, Elo, Configurações, Lixeira) recolhe o painel. O app lembra a escolha.
 - O botão de **setas duplas** no painel recolhe todos os capítulos de uma vez (ou expande todos,
   se já estiverem recolhidos).
 - **Ctrl + \\** esconde ou mostra a **barra lateral inteira**, para escrever com a tela livre.
