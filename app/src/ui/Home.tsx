@@ -161,6 +161,8 @@ export function Home() {
               </div>
             </header>
 
+            <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+
             {!desktop && (
               <p className="notice">
                 {platform?.persistent === false
@@ -269,10 +271,7 @@ export function Home() {
               onCreate={() => setCreating(true)}
             />
 
-            <div className="home-row">
-              <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
-              <DriveProjects />
-            </div>
+            <DriveProjects />
           </div>
         </main>
       </div>
