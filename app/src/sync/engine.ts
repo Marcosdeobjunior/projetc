@@ -66,7 +66,6 @@ export function excluded(path: string): boolean {
     path === VERSION_INDEX ||
     path.startsWith(TRASH_DIR + "/") ||
     path.endsWith(".talia-tmp") ||
-    path.endsWith(".inkflow-tmp") ||
     /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini)$/i.test(path)
   );
 }

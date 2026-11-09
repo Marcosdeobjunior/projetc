@@ -7,7 +7,7 @@ import { MusicPlayer } from "./Music";
 import { useMusic } from "../state/music";
 import { coverHue } from "./library";
 
-const COLLAPSED_KEY = "inkflow.homeNavCollapsed";
+const COLLAPSED_KEY = "talia.homeNavCollapsed";
 export const isNarrow = () => window.matchMedia("(max-width: 760px)").matches;
 
 /**

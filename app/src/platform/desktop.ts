@@ -4,9 +4,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type { Platform, VaultFs, VaultRef } from "./types";
 import { PlatformError } from "./types";
-import { LEGACY_PROJECT_FILE, PROJECT_FILE } from "../vault/paths";
+import { PROJECT_FILE } from "../vault/paths";
 
-const RECENT_KEY = "inkflow.recentVaults";
+const RECENT_KEY = "talia.recentVaults";
 
 function readRecent(): VaultRef[] {
   try {
@@ -97,11 +97,10 @@ export function createDesktopPlatform(): Platform {
     async chooseFolder() {
       const root = await open({ directory: true, title: "Abrir projeto existente" });
       if (typeof root !== "string") return null;
-      const fs = new TauriFs(root);
       return {
         root,
         name: await basename(root),
-        isProject: (await fs.exists(PROJECT_FILE)) || (await fs.exists(LEGACY_PROJECT_FILE)),
+        isProject: await new TauriFs(root).exists(PROJECT_FILE),
       };
     },
 

@@ -97,7 +97,7 @@ describe("preferências salvas", () => {
       source: { url: "https://open.spotify.com/playlist/37i9dQZF1DX8NTLI2TtZa6" },
       recent: [{ url: "https://music.youtube.com/playlist?list=PLabc" }],
     };
-    const store = new Map([["inkflow.music", JSON.stringify(old)]]);
+    const store = new Map([["talia.music", JSON.stringify(old)]]);
     vi.stubGlobal("localStorage", {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),

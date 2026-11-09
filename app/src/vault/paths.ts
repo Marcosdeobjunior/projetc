@@ -1,8 +1,5 @@
 /** Pasta interna do app dentro de cada vault. */
-export const META_DIR = ".talia";
-/** Nome da pasta interna quando o app se chamava InkFlow (migrada ao abrir). */
-export const LEGACY_META_DIR = ".inkflow";
-export const LEGACY_PROJECT_FILE = `${LEGACY_META_DIR}/project.json`;
+const META_DIR = ".talia";
 export const PROJECT_FILE = `${META_DIR}/project.json`;
 /** Estado Yjs de cada cena (usado para mesclar edições no sync). */
 const YDOC_DIR = `${META_DIR}/ydoc`;

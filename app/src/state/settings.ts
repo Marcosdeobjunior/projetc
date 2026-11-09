@@ -99,9 +99,9 @@ interface SettingsState extends Prefs {
   setHomeBgImage(image: string | null): boolean;
 }
 
-const KEY = "inkflow.settings";
-const OLD_THEME_KEY = "inkflow.theme";
-const BG_IMAGE_KEY = "inkflow.homeBgImage";
+const KEY = "talia.settings";
+const OLD_THEME_KEY = "talia.theme";
+const BG_IMAGE_KEY = "talia.homeBgImage";
 
 const DEFAULTS: Prefs = {
   palette: "ambar",

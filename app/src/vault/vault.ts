@@ -10,7 +10,6 @@ import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { renameLinksInText } from "../links/links";
 import { PROJECT_FILE, ydocPath } from "./paths";
-import { migrateLegacyMeta } from "./legacy";
 import { moveToTrash } from "./trash";
 
 /*
@@ -49,7 +48,6 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
 }
 
 export async function loadProject(fs: VaultFs): Promise<Project> {
-  await migrateLegacyMeta(fs);
   const raw = await fs.readText(PROJECT_FILE);
   if (raw === null) throw new VaultError("Essa pasta não é um projeto da Tália.");
   let data: Project;

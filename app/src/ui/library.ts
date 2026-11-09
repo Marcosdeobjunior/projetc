@@ -68,7 +68,7 @@ export function useLibraryStats(platform: Platform | null, vaults: VaultRef[]) {
  * Metas de palavras de cada projeto. Ficam no armazenamento local da janela,
  * como as outras preferências do app.
  */
-const GOALS_KEY = "inkflow.goals";
+const GOALS_KEY = "talia.goals";
 
 function loadGoals(): Record<string, number> {
   try {

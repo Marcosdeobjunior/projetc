@@ -21,7 +21,7 @@ import { Icon } from "./Icon";
 import { MusicFloating } from "./Music";
 import { shortcut } from "../editor/formatting";
 
-const COLLAPSED_KEY = "inkflow.sidebarCollapsed";
+const COLLAPSED_KEY = "talia.sidebarCollapsed";
 const VERSION_EVERY_MS = 10 * 60 * 1000;
 const isPhone = () => window.matchMedia("(max-width: 760px)").matches;
 

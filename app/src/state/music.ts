@@ -162,7 +162,7 @@ interface MusicState extends Saved {
   setRadioOpen(open: boolean): void;
 }
 
-const KEY = "inkflow.music";
+const KEY = "talia.music";
 
 const DEFAULT_PREFS: MusicPrefs = {
   volume: 0.7,

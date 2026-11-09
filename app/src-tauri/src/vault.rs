@@ -181,7 +181,7 @@ fn walk(root: &str) -> CmdResult<Vec<FileInfo>> {
                 stack.push(entry.path());
             } else if kind.is_file() {
                 let name = entry.file_name().to_string_lossy().into_owned();
-                if name.ends_with(".talia-tmp") || name.ends_with(".inkflow-tmp") {
+                if name.ends_with(".talia-tmp") {
                     continue;
                 }
                 let meta = entry.metadata().map_err(err)?;

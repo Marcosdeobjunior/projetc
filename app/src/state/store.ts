@@ -129,9 +129,9 @@ interface AppState {
   showMessage(message: string | null, tone?: "info" | "error"): void;
 }
 
-const SAMPLE_FLAG = "inkflow.sampleCreated";
-const LAST_KEY = "inkflow.lastVault";
-const ACTIVE_KEY = "inkflow.activeFolder";
+const SAMPLE_FLAG = "talia.sampleCreated";
+const LAST_KEY = "talia.lastVault";
+const ACTIVE_KEY = "talia.activeFolder";
 let initOnce: Promise<void> | undefined;
 
 function storageGet(key: string) {

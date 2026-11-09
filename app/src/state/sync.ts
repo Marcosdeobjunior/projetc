@@ -12,8 +12,8 @@ import { folderName } from "../vault/paths";
  * sincronização é escolha de cada projeto (`.talia/sync.json`).
  */
 
-const ACCOUNT_KEY = "inkflow.google";
-const CLIENT_KEY = "inkflow.googleClient";
+const ACCOUNT_KEY = "talia.google";
+const CLIENT_KEY = "talia.googleClient";
 
 interface Account {
   email: string;

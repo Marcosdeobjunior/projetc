@@ -44,7 +44,7 @@ const TABS: { id: SettingsTab; label: string; icon: string; project?: boolean }[
 ];
 
 /** Aba aberta por último (volta nela ao reabrir as Configurações). */
-const TAB_KEY = "inkflow.settingsTab";
+const TAB_KEY = "talia.settingsTab";
 function lastTab(): SettingsTab {
   try {
     return (sessionStorage.getItem(TAB_KEY) as SettingsTab | null) ?? "geral";

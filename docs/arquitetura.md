@@ -110,7 +110,7 @@ app/
       desktop.ts          TauriFs (invoke dos comandos Rust), diálogos, recentes no localStorage
       browser.ts          Projetos no IndexedDB (ou memória), download no lugar de "Salvar como"
       kvFs.ts             KeyValueFs: sistema de arquivos simulado sobre chave-valor; MemoryStore
-      idbStore.ts         KeyValueStore sobre IndexedDB ("inkflow" / "files")
+      idbStore.ts         KeyValueStore sobre IndexedDB ("talia" / "files")
     vault/
       paths.ts            Constantes de caminho, slugify, uniqueName, folderName
       vault.ts            createVault, loadProject, saveProject, applyOps, loadSceneDoc, saveScene,
@@ -261,7 +261,7 @@ Caminhos são sempre relativos à raiz do projeto e usam `/`.
 | Arquivos          | Comandos Rust (`invoke`)                               | `KeyValueFs` sobre IndexedDB (chave `raiz + "\0" + caminho`); memória se o IndexedDB falhar (`persistent: false`) |
 | Pastas            | Reais                                                  | Implícitas (existem enquanto há arquivos dentro)                                                                  |
 | `mtime` no `walk` | ms desde 1970                                          | `null` (o MD5 é recalculado sempre)                                                                               |
-| Recentes          | `localStorage["inkflow.recentVaults"]` (até 12)        | Derivados das chaves `…\0.talia/project.json`                                                                   |
+| Recentes          | `localStorage["talia.recentVaults"]` (até 12)        | Derivados das chaves `…\0.talia/project.json`                                                                   |
 | `forgetVault`     | Só tira da lista                                       | **Apaga os arquivos** do projeto                                                                                  |
 | `saveFile`        | Diálogo "Salvar como" + `export_write`                 | Download (`<a download>`)                                                                                         |
 | `openFile`        | `vault_open` (programa padrão)                         | Download                                                                                                          |
@@ -487,14 +487,14 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 - **Credenciais do app** (ID e segredo do cliente OAuth "App para computador"): vêm de
   `VITE_GOOGLE_CLIENT_ID`/`VITE_GOOGLE_CLIENT_SECRET` na compilação (`app/.env.local`, fora do
-  Git) ou do formulário em Configurações (`localStorage["inkflow.googleClient"]`).
+  Git) ou do formulário em Configurações (`localStorage["talia.googleClient"]`).
 - **Login** (`google_sign_in`): abre `TcpListener` em `127.0.0.1:0` (porta aleatória), gera
   `state` (16 bytes) e verificador PKCE (48 bytes, desafio S256), abre o navegador em
   `accounts.google.com/o/oauth2/v2/auth` com `scope=drive.file`, `access_type=offline` e
   `prompt=consent`, espera até 5 min o redirecionamento com o `state` certo (ignora outros
   pedidos, como o favicon), responde uma página HTML e troca o `code` por tokens em
   `oauth2.googleapis.com/token`.
-- O **refresh token** e o e-mail ficam em `localStorage["inkflow.google"]`. O access token fica
+- O **refresh token** e o e-mail ficam em `localStorage["talia.google"]`. O access token fica
   só em memória e é renovado (`google_refresh`) quando falta menos de 1 min para vencer, ou
   quando o Drive responde 401.
 - **Desconectar** apaga a conta local e chama `google_revoke`.
@@ -503,10 +503,10 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 `src/sync/drive.ts` (`GoogleDrive`, REST v3 via `fetch`):
 
-- Pasta raiz `Tália` marcada com `appProperties.inkflowRoot = "1"` (é a marcação que identifica a pasta,
-  não o nome: quem já sincronizava quando o app se chamava InkFlow continua com a pasta "InkFlow").
+- Pasta raiz `Tália` marcada com `appProperties.taliaRoot = "1"` (é a marcação que identifica a pasta,
+  não o nome).
 - Cada projeto: pasta com o **título no momento em que a sync foi ligada**, marcada com
-  `appProperties.inkflowProject = <project.id>` (é o id que identifica, não o nome). As subpastas
+  `appProperties.taliaProject = <project.id>` (é o id que identifica, não o nome). As subpastas
   espelham o caminho dos arquivos.
 - `list(folderId)` percorre a árvore (BFS) e devolve `caminho → { id, md5Checksum }`.
 - Envio: até 5 MB em `multipart` (novo) ou `media` (substituir); acima, `resumable`.
@@ -639,7 +639,7 @@ flowchart LR
   sem compressão; capa = `renderPart("front")` a 1600 px de largura se houver design.
 - **Markdown/Texto** (`text.ts`): um arquivo; título/autor no topo se "Folha de rosto".
 - Nome do arquivo: `folderName(título).<ext>`.
-- As opções são guardadas por projeto em `localStorage["inkflow.export.<projectId>"]`
+- As opções são guardadas por projeto em `localStorage["talia.export.<projectId>"]`
   (capítulos desmarcados ficam em `uncheckedIds`, para capítulos novos entrarem marcados). O
   autor vai para `project.author`.
 
@@ -735,7 +735,7 @@ Windows; `dmg`/`app` no Mac; `deb`/`AppImage`/`rpm` no Linux — `targets: "all"
 
 - **Versão**: `0.1.0` está repetida em `app/package.json`, `app/src-tauri/tauri.conf.json` e
   `app/src-tauri/Cargo.toml`; atualize as três juntas.
-- **Identificador**: `app.inkflow.desktop`. Ícones em `src-tauri/icons/`.
+- **Identificador**: `app.talia.desktop`. Ícones em `src-tauri/icons/`.
 - **CI**: o job "Instalador do Windows" (`.github/workflows/app.yml`) gera o `.exe` e o `.msi` em
   cada push que mexe em `app/` e publica o artefato **Talia-Windows** (guardado por 30 dias).
 - Ainda **não há** assinatura de código, atualização automática nem empacotamento para as lojas
@@ -847,18 +847,18 @@ Chaves no `localStorage` do WebView (por computador, não vão para o projeto ne
 
 | Chave                        | Conteúdo                                                                      |
 | ---------------------------- | ----------------------------------------------------------------------------- |
-| `inkflow.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                         |
-| `inkflow.lastVault`          | Raiz do último projeto aberto                                                 |
-| `inkflow.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)        |
-| `inkflow.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `syncEvery` |
-| `inkflow.theme`              | Formato antigo (só o tema), lido na migração                                  |
-| `inkflow.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                       |
-| `inkflow.export.<projectId>` | Opções de exportação daquele projeto                                          |
-| `inkflow.googleClient`       | `{ id, secret }` do cliente OAuth                                             |
-| `inkflow.google`             | `{ email, refreshToken }` da conta conectada                                  |
-| `inkflow.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                        |
+| `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                         |
+| `talia.lastVault`          | Raiz do último projeto aberto                                                 |
+| `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)        |
+| `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `syncEvery` |
+| `talia.theme`              | Formato antigo (só o tema), lido na migração                                  |
+| `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                       |
+| `talia.export.<projectId>` | Opções de exportação daquele projeto                                          |
+| `talia.googleClient`       | `{ id, secret }` do cliente OAuth                                             |
+| `talia.google`             | `{ email, refreshToken }` da conta conectada                                  |
+| `talia.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                        |
 
-`sessionStorage["inkflow.settingsTab"]` lembra a última aba das Configurações.
+`sessionStorage["talia.settingsTab"]` lembra a última aba das Configurações.
 
 ---
 

@@ -50,12 +50,6 @@ Regras gerais:
   gravar através deles. A própria pasta do projeto pode ser um atalho.
 - **Nada é apagado** ao excluir pela interface: vai para `.talia/lixeira/`.
 - A ordem de capítulos e cenas vem de `project.json`, nunca do nome dos arquivos.
-- **Projetos antigos**: quando o app se chamava InkFlow, a pasta interna era `.inkflow/`. Ao abrir
-  um projeto assim, `loadProject` (via `vault/legacy.ts`) renomeia `.inkflow/` para `.talia/` uma
-  única vez. Na próxima sync, os arquivos em `.inkflow/` no Drive são apagados e os de `.talia/`
-  enviados. As chaves do `localStorage`, o IndexedDB, o identificador `app.inkflow.desktop` e as
-  marcações `inkflowRoot`/`inkflowProject` no Drive continuam com o nome antigo de propósito:
-  trocá-las faria o app perder configurações, a conta conectada e a ligação com o Drive.
 
 ### Nomes de arquivos e pastas
 
