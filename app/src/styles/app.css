@@ -3994,9 +3994,9 @@ div.row-title {
    projeto ativo, num cartão próprio ao lado. */
 .home-hero {
   display: grid;
-  /* O cartão "Continuar escrevendo" tem largura limitada; o par livro + cartão fica centrado. */
+  /* Livro encostado à esquerda e o cartão "Continuar escrevendo" (largura limitada) à direita. */
   grid-template-columns: auto minmax(0, 460px);
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   gap: 48px;
   padding: 20px 0 12px 8px;
