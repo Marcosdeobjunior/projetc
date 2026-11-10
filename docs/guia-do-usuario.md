@@ -209,8 +209,8 @@ famílias, ordens).
 Elas ficam no **Mundo** (no trilho, abaixo de Anexos), organizadas em **abas** no alto da tela
 (**Personagens**, **Lugares**, **Ideias**, **Calendários**, **Idiomas** e **Organizações**, cada
 uma com a quantidade; as setas ← → do teclado
-também trocam de aba, e o app lembra a última). Cada aba mostra cartões em ordem alfabética: o nome, o começo do texto e em quantas cenas cada uma aparece (links `[[…]]` e
-menções do nome).
+também trocam de aba, e o app lembra a última). Cada aba mostra cartões em ordem alfabética,
+com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
 
 - **Nova nota:** o botão de cada aba (**Novo personagem**, **Novo lugar**, **Nova ideia**, **Novo
   calendário**, **Novo idioma**, **Nova organização**) cria a nota e abre a ficha. Cada tipo fica

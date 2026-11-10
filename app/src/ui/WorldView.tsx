@@ -40,26 +40,20 @@ function readSub(): CalendarView {
   }
 }
 
-/** Início do texto da nota, para o cartão. */
-function excerpt(text: string): string {
-  // [[Link]] e [[Link|apelido]] aparecem só como o nome.
-  const t = text
-    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, a: string, b?: string) => b ?? a)
-    .replace(/\s+/g, " ")
-    .trim();
-  return t.length > 160 ? t.slice(0, 160).trimEnd() + "…" : t;
-}
-
 /** Miniatura da imagem da ficha no cartão. */
-function CardImage({ src }: { src: string }) {
+/** Imagem da ficha no cartão; sem imagem, o ícone do tipo no lugar. */
+function CardImage({ src, icon }: { src?: string; icon: string }) {
   const url = useAttachmentImage(src);
-  return <span className="world-card-image">{url && <img src={url} alt="" />}</span>;
+  return (
+    <span className={"world-card-image" + (url ? "" : " empty")}>
+      {url ? <img src={url} alt="" /> : <Icon name={icon} size={34} />}
+    </span>
+  );
 }
 
 /**
  * Mundo: o universo do projeto num lugar só. Personagens, lugares e ideias
- * em cartões, com o começo da nota e em quantas cenas cada um aparece
- * (links [[…]] e menções do nome).
+ * em cartões (imagem e nome); clicar abre a ficha completa.
  */
 export function WorldView({ session }: { session: Session }) {
   const change = useApp((s) => s.change);
@@ -76,20 +70,16 @@ export function WorldView({ session }: { session: Session }) {
   };
   const count = (k: NoteKind) => project.notes.filter((n) => n.kind === k).length;
 
-  /** Textos ligados a cada nota (links [[…]] e menções), e quantos são cenas. */
-  const { linksOf, scenesOf } = useMemo(() => {
+  /** Textos ligados a cada nota (links [[…]], menções e campos da ficha). */
+  const linksOf = useMemo(() => {
     const g = buildGraph(project, texts, { mentions: true });
-    const type = new Map(g.nodes.map((n) => [n.id, n.type]));
     const linksOf = new Map<string, string[]>();
     const add = (a: string, b: string) => linksOf.set(a, [...(linksOf.get(a) ?? []), b]);
     for (const e of g.edges) {
       add(e.source, e.target);
       add(e.target, e.source);
     }
-    const scenesOf = new Map<string, number>();
-    for (const [id, list] of linksOf)
-      scenesOf.set(id, list.filter((x) => type.get(x) === "scene").length);
-    return { linksOf, scenesOf };
+    return linksOf;
   }, [project, texts]);
   /** Nota aberta na sua página própria (null = lista da aba). */
   // A ficha aberta mora num estado compartilhado: o cartão de uma menção no
@@ -232,19 +222,17 @@ export function WorldView({ session }: { session: Session }) {
             ) : (
               <ul className="world-cards">
                 {notes.map((n) => {
-                  const text = excerpt(texts[n.id] ?? "");
-                  const scenes = scenesOf.get(n.id) ?? 0;
                   return (
                     <li key={n.id}>
-                      <button type="button" className="world-card" onClick={() => setOpenId(n.id)}>
-                        {n.image && <CardImage src={n.image} />}
+                      {/* Cartão: só a imagem e o nome; o resto está na ficha. */}
+                      <button
+                        type="button"
+                        className="world-card"
+                        title={`Abrir a ficha de ${n.title}`}
+                        onClick={() => setOpenId(n.id)}
+                      >
+                        <CardImage src={n.image} icon={KIND_ICON[n.kind]} />
                         <b>{n.title}</b>
-                        <span className="world-excerpt">{text || "Sem descrição ainda."}</span>
-                        <small>
-                          {scenes === 0
-                            ? "Não aparece em nenhuma cena"
-                            : `Aparece em ${scenes} ${scenes === 1 ? "cena" : "cenas"}`}
-                        </small>
                       </button>
                     </li>
                   );
