@@ -3994,13 +3994,18 @@ div.row-title {
    projeto ativo, num cartão próprio ao lado. */
 .home-hero {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /* O cartão "Continuar escrevendo" tem largura limitada; o par livro + cartão fica centrado. */
+  grid-template-columns: auto minmax(0, 460px);
+  justify-content: center;
   align-items: center;
   gap: 48px;
   padding: 20px 0 12px 8px;
 }
 .home-hero .selected.panel {
   padding: 26px 28px;
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
 }
 .home-hero .book-preview figcaption {
   justify-self: center;
