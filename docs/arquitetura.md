@@ -409,6 +409,10 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   transação (o mapeamento do Yjs ainda não foi atualizado ali); são recalculadas pelas âncoras
   quando chega uma transação do `ySyncPluginKey` (abrir, desfazer, Yjs) ou `REFRESH_COMMENTS`.
 - UI em `editor/Comments.tsx` (`CommentComposer`, `CommentsPanel`); atalho Ctrl/⌘+Alt+M.
+- Campos da ficha: `manuscript/fields.ts` (`NOTE_FIELDS` por tipo, `sanitizeFields`,
+  `mergeFields` campo a campo no `mergeProject`, `fieldRefs`); gravados em `notes[].fields` por
+  `setNoteFields` (pela `change`); campos de referência viram arestas "link" em `buildGraph`. A tela
+  é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida).
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

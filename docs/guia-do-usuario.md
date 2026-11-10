@@ -219,8 +219,20 @@ menções do nome).
   - a **imagem** (retrato do personagem, foto do lugar): **Escolher imagem**, ou arraste uma
     imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
     remove da ficha (o arquivo continua em Anexos);
-  - o nome, o tipo e o texto da ficha; **Editar a ficha** abre o texto no editor (renomeie pelo
-    nome no alto do texto);
+  - o nome, o tipo e os **campos da ficha**, que mudam conforme o tipo:
+    - **personagem:** nome completo, apelidos, idade, gênero, ocupação, onde vive, organização,
+      aparência, personalidade, objetivo, medos e conflitos, background;
+    - **lugar:** tipo, onde fica, quem governa, população, clima, descrição, história;
+    - **organização:** tipo, líder, sede, objetivo, membros, história;
+    - **idioma:** falado por, onde se fala, escrita, palavras e frases, regras;
+    - **ideia:** tipo e situação.
+
+    Cada campo grava ao sair dele. Campos como **Onde vive**, **Organização**, **Líder** e **Sede**
+    escolhem outra nota (com **abrir** ao lado) e passam a ligar as duas no Elo. Se o personagem
+    tem nascimento na linha do tempo, a idade calculada aparece embaixo do campo Idade.
+
+  - **Anotações:** o texto livre da nota, para o que não cabe nos campos; **Editar anotações** abre
+    no editor (renomeie pelo nome no alto do texto);
   - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);
   - **Ligado a**: as outras notas ligadas a ela (clique para abrir a ficha delas).
 - **Voltar** pela seta no alto da ficha ou por qualquer aba.
@@ -434,7 +446,7 @@ outra palavra no lugar do nome, use uma barra: `[[Helena|a amiga]]`.
   Lugar, Ideia… ou a cena e o capítulo). Leve o mouse até o cartão para usá-lo:
   - **clique no nome** para abrir a ficha da nota no Mundo (ou a cena);
   - o **lápis** abre a **edição rápida**: o texto da ficha num quadro por cima do manuscrito, para
-    corrigir sem sair da cena. **Salvar** (ou Ctrl+Enter) grava; **Esc** ou **Cancelar** fecha
+    corrigir os campos da ficha e as anotações sem sair da cena (os campos gravam ao sair de cada um). **Salvar** (ou Ctrl+Enter) grava; **Esc** ou **Cancelar** fecha
     (o app pergunta antes de descartar mudanças); **Abrir ficha** leva à página completa.
 - Ao **renomear** uma cena ou nota, todos os `[[Nome antigo]]` do projeto viram `[[Nome novo]]`
   automaticamente (o texto depois da barra é mantido) e o app avisa quantos links mudaram.

@@ -90,28 +90,29 @@ O app não lê esse arquivo.
 
 A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tália.
 
-| Campo               | Tipo    | Descrição                                                                                                           |
-| ------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `format`            | `1`     | Versão do formato. Outro valor: o app recusa abrir ("criado por uma versão mais nova")                              |
-| `id`                | string  | `prj_` + 12 hex. Identifica o projeto (também no Google Drive)                                                      |
-| `title`             | string  | Título do projeto (até 120 caracteres pela interface)                                                               |
-| `createdAt`         | number  | Criação, em ms desde 1970                                                                                           |
-| `updatedAt`         | number  | Última mudança na estrutura, em ms                                                                                  |
-| `author`            | string? | Nome do autor (Exportar / Diagramação). Opcional                                                                    |
-| `chapters`          | array   | Capítulos, **na ordem do livro**                                                                                    |
-| `chapters[].id`     | string  | `ch_` + 12 hex                                                                                                      |
-| `chapters[].title`  | string  | Título do capítulo                                                                                                  |
-| `chapters[].dir`    | string  | Nome da pasta em `manuscrito/`                                                                                      |
-| `chapters[].scenes` | array   | Cenas, **na ordem**                                                                                                 |
-| `…scenes[].id`      | string  | `sc_` + 12 hex                                                                                                      |
-| `…scenes[].title`   | string  | Título da cena                                                                                                      |
-| `…scenes[].file`    | string  | Nome do `.md` dentro da pasta do capítulo                                                                           |
-| `notes`             | array   | Notas (sem ordem; a interface ordena por título). Projetos antigos podem não ter: lido como `[]`                    |
-| `notes[].id`        | string  | `nt_` + 12 hex                                                                                                      |
-| `notes[].title`     | string  | Título da nota (também usado para as menções no texto)                                                              |
-| `notes[].kind`      | string  | `"personagens"`, `"lugares"`, `"ideias"`, `"calendarios"`, `"idiomas"` ou `"organizacoes"` (a subpasta em `notas/`) |
-| `notes[].file`      | string  | Nome do `.md` dentro de `notas/<kind>/`                                                                             |
-| `notes[].image`     | string  | Opcional. Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Outro valor é ignorado ao abrir             |
+| Campo               | Tipo    | Descrição                                                                                                                                                                                                              |
+| ------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`            | `1`     | Versão do formato. Outro valor: o app recusa abrir ("criado por uma versão mais nova")                                                                                                                                 |
+| `id`                | string  | `prj_` + 12 hex. Identifica o projeto (também no Google Drive)                                                                                                                                                         |
+| `title`             | string  | Título do projeto (até 120 caracteres pela interface)                                                                                                                                                                  |
+| `createdAt`         | number  | Criação, em ms desde 1970                                                                                                                                                                                              |
+| `updatedAt`         | number  | Última mudança na estrutura, em ms                                                                                                                                                                                     |
+| `author`            | string? | Nome do autor (Exportar / Diagramação). Opcional                                                                                                                                                                       |
+| `chapters`          | array   | Capítulos, **na ordem do livro**                                                                                                                                                                                       |
+| `chapters[].id`     | string  | `ch_` + 12 hex                                                                                                                                                                                                         |
+| `chapters[].title`  | string  | Título do capítulo                                                                                                                                                                                                     |
+| `chapters[].dir`    | string  | Nome da pasta em `manuscrito/`                                                                                                                                                                                         |
+| `chapters[].scenes` | array   | Cenas, **na ordem**                                                                                                                                                                                                    |
+| `…scenes[].id`      | string  | `sc_` + 12 hex                                                                                                                                                                                                         |
+| `…scenes[].title`   | string  | Título da cena                                                                                                                                                                                                         |
+| `…scenes[].file`    | string  | Nome do `.md` dentro da pasta do capítulo                                                                                                                                                                              |
+| `notes`             | array   | Notas (sem ordem; a interface ordena por título). Projetos antigos podem não ter: lido como `[]`                                                                                                                       |
+| `notes[].id`        | string  | `nt_` + 12 hex                                                                                                                                                                                                         |
+| `notes[].title`     | string  | Título da nota (também usado para as menções no texto)                                                                                                                                                                 |
+| `notes[].kind`      | string  | `"personagens"`, `"lugares"`, `"ideias"`, `"calendarios"`, `"idiomas"` ou `"organizacoes"` (a subpasta em `notas/`)                                                                                                    |
+| `notes[].file`      | string  | Nome do `.md` dentro de `notas/<kind>/`                                                                                                                                                                                |
+| `notes[].image`     | string  | Opcional. Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Outro valor é ignorado ao abrir                                                                                                                |
+| `notes[].fields`    | objeto  | Opcional. Campos da ficha (`manuscript/fields.ts`): chave → texto; campos de referência guardam o id de outra nota. Chaves inválidas ou valores que não são texto são ignorados ao abrir; no sync, junta campo a campo |
 
 Exemplo:
 

@@ -6,6 +6,7 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
 import { CalendarEditor } from "./CalendarEditor";
+import { NoteFields } from "./NoteFields";
 import { BirthEditor, TravelEditor, useYearLength } from "./ContinuityEditors";
 import { useTimeline } from "../state/timeline";
 import { ageOn } from "../timeline/timeline";
@@ -166,16 +167,22 @@ export function NoteProfile({
               <b>{related.length}</b> {related.length === 1 ? "nota ligada" : "notas ligadas"}
             </span>
           </div>
-          <div className="profile-text">
-            {paragraphs.length ? (
-              paragraphs.map((p, i) => <p key={i}>{p}</p>)
-            ) : (
-              <p className="muted">A ficha ainda está vazia.</p>
-            )}
-          </div>
-          <button type="button" className="btn sm" onClick={() => openDoc(note.id)}>
-            <Icon name="edit" size={14} /> Editar a ficha
-          </button>
+          <NoteFields note={note} project={project} onOpenNote={onOpenNote} />
+          <section className="profile-notes">
+            <div className="profile-notes-head">
+              <h3>Anotações</h3>
+              <button type="button" className="btn ghost sm" onClick={() => openDoc(note.id)}>
+                <Icon name="edit" size={14} /> Editar anotações
+              </button>
+            </div>
+            <div className="profile-text">
+              {paragraphs.length ? (
+                paragraphs.map((p, i) => <p key={i}>{p}</p>)
+              ) : (
+                <p className="muted">Sem anotações. Use para o que não cabe nos campos.</p>
+              )}
+            </div>
+          </section>
         </div>
       </div>
 

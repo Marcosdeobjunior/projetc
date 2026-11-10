@@ -10,6 +10,7 @@ import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { renameLinksInText } from "../links/links";
 import { PROJECT_FILE, ydocPath } from "./paths";
+import { sanitizeFields } from "../manuscript/fields";
 import { moveToTrash } from "./trash";
 
 /*
@@ -64,9 +65,11 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
   const project = {
     ...data,
     notes: (data.notes ?? []).map((n) => {
-      if (n.image === undefined || validNoteImage(n.image)) return n;
       const rest = { ...n };
-      delete rest.image;
+      if (n.image !== undefined && !validNoteImage(n.image)) delete rest.image;
+      const fields = sanitizeFields(n.fields);
+      if (fields) rest.fields = fields;
+      else delete rest.fields;
       return rest;
     }),
   };

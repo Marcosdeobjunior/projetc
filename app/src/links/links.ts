@@ -1,3 +1,4 @@
+import { fieldRefs } from "../manuscript/fields";
 import type { DocRef, NoteKind, Project } from "../manuscript/types";
 import { allDocs } from "../manuscript/tree";
 
@@ -133,6 +134,10 @@ export function buildGraph(
     }
     for (const m of findMentions(project, text, matcher)) add(d.id, m.noteId, "mention");
   }
+  // Campos de referência da ficha (onde vive, organização…) também ligam as notas.
+  const ids = new Set(docs.map((d) => d.id));
+  for (const n of project.notes)
+    for (const ref of fieldRefs(n)) if (ids.has(ref)) add(n.id, ref, "link");
 
   const degree = new Map<string, number>();
   for (const e of edges.values()) {

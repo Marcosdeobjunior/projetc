@@ -49,6 +49,8 @@ export interface Note {
   file: string;
   /** Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Opcional. */
   image?: string;
+  /** Campos da ficha (veja manuscript/fields.ts). Opcional. */
+  fields?: Record<string, string>;
 }
 
 /** Qualquer texto do projeto que abre no editor: uma cena ou uma nota. */
