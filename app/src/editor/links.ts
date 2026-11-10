@@ -33,7 +33,7 @@ export interface LinkContext {
   createNote(title: string, kind: NoteKind): Promise<string | null>;
   suggest(query: string): LinkSuggestion[];
   /** Nome e tipo de um texto ("Helena", "Personagem"), para a dica ao passar o mouse. */
-  describe(id: string): { title: string; label: string; icon: string } | null;
+  describe(id: string): { title: string; label: string; icon: string; note: boolean } | null;
 }
 
 /** Meta de transação para redesenhar os links quando títulos mudam. */

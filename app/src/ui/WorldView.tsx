@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApp, type Session } from "../state/store";
 import { addNote } from "../manuscript/tree";
 import { NOTE_KINDS, type NoteKind } from "../manuscript/types";
@@ -7,6 +7,7 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
 import { NoteProfile, useAttachmentImage } from "./NoteProfile";
 import { TimelineView } from "./TimelineView";
+import { useWorldNav } from "../state/worldNav";
 import { WritingView } from "./WritingView";
 
 const KIND_ICON = DOC_ICON;
@@ -91,8 +92,13 @@ export function WorldView({ session }: { session: Session }) {
     return { linksOf, scenesOf };
   }, [project, texts]);
   /** Nota aberta na sua página própria (null = lista da aba). */
-  const [openId, setOpenId] = useState<string | null>(null);
+  // A ficha aberta mora num estado compartilhado: o cartão de uma menção no
+  // editor também pode pedir para abrir uma ficha.
+  const openId = useWorldNav((s) => s.openId);
+  const setOpenId = useWorldNav((s) => s.setOpenId);
   const opened = openId ? project.notes.find((n) => n.id === openId) : undefined;
+  // Saindo do Mundo, a próxima visita começa pela lista.
+  useEffect(() => () => setOpenId(null), [setOpenId]);
 
   const create = (kind: NoteKind) => {
     let id: string | null = null;
@@ -108,7 +114,9 @@ export function WorldView({ session }: { session: Session }) {
     );
   };
 
-  const kind: NoteKind = tab;
+  // Uma ficha aberta de fora (cartão da menção) mostra a aba do tipo dela.
+  const shownTab: NoteKind = opened ? opened.kind : tab;
+  const kind: NoteKind = shownTab;
   /** Dentro de Calendários: a Linha do tempo ou os calendários do mundo. */
   const [sub, setSubState] = useState<CalendarView>(readSub);
   const setSub = (v: CalendarView) => {
@@ -133,7 +141,7 @@ export function WorldView({ session }: { session: Session }) {
         onKeyDown={(e) => {
           // Setas trocam de aba, como em qualquer lista de abas.
           if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-          const i = TABS.indexOf(tab);
+          const i = TABS.indexOf(shownTab);
           const next = TABS[(i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length]!;
           setTab(next);
           setOpenId(null);
@@ -146,9 +154,9 @@ export function WorldView({ session }: { session: Session }) {
             id={`world-tab-${k}`}
             type="button"
             role="tab"
-            aria-selected={tab === k}
+            aria-selected={shownTab === k}
             aria-controls="world-panel"
-            tabIndex={tab === k ? 0 : -1}
+            tabIndex={shownTab === k ? 0 : -1}
             onClick={() => {
               setTab(k);
               setOpenId(null);

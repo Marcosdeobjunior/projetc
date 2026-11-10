@@ -406,6 +406,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   transação (o mapeamento do Yjs ainda não foi atualizado ali); são recalculadas pelas âncoras
   quando chega uma transação do `ySyncPluginKey` (abrir, desfazer, Yjs) ou `REFRESH_COMMENTS`.
 - UI em `editor/Comments.tsx` (`CommentComposer`, `CommentsPanel`); atalho Ctrl/⌘+Alt+M.
+- Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
+  (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
+  `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença
+  do `.md` é aplicada como edição (o mesmo caminho de uma mudança feita fora do app). A ficha
+  aberta no Mundo vive em `state/worldNav.ts`, para o cartão poder pedir uma ficha.
 
 ---
 

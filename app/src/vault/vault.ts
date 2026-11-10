@@ -179,6 +179,13 @@ export async function writeSceneMarkdown(
   if (doc) await fs.writeText(doc.path, sceneFile(doc, markdown));
 }
 
+/** O texto (Markdown, sem o cabeçalho) de uma cena ou nota, para a edição rápida. */
+export async function readDocBody(fs: VaultFs, project: Project, id: string): Promise<string> {
+  const doc = requireDoc(project, id);
+  const md = await fs.readText(doc.path);
+  return md ? splitFrontmatter(md).body.replace(/\r\n?/g, "\n").replace(/^\n/, "") : "";
+}
+
 /** O .md da cena mudou no disco desde a última vez que o app leu ou gravou. */
 export class ExternalChangeError extends Error {
   constructor(readonly diskText: string) {

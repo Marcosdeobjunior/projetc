@@ -428,7 +428,11 @@ outra palavra no lugar do nome, use uma barra: `[[Helena|a amiga]]`.
   Maiúsculas não importam ("Lucas", "lucas" e "LUCAS" contam); só contam palavras inteiras.
   Ctrl + clique numa menção também abre a nota.
 - **Passe o mouse** numa menção ou num link para ver um cartão com o nome e o tipo (Personagem,
-  Lugar, Ideia… ou a cena e o capítulo).
+  Lugar, Ideia… ou a cena e o capítulo). Leve o mouse até o cartão para usá-lo:
+  - **clique no nome** para abrir a ficha da nota no Mundo (ou a cena);
+  - o **lápis** abre a **edição rápida**: o texto da ficha num quadro por cima do manuscrito, para
+    corrigir sem sair da cena. **Salvar** (ou Ctrl+Enter) grava; **Esc** ou **Cancelar** fecha
+    (o app pergunta antes de descartar mudanças); **Abrir ficha** leva à página completa.
 - Ao **renomear** uma cena ou nota, todos os `[[Nome antigo]]` do projeto viram `[[Nome novo]]`
   automaticamente (o texto depois da barra é mantido) e o app avisa quantos links mudaram.
 - Na exportação, os links viram texto comum: `[[Helena]]` sai como "Helena" e

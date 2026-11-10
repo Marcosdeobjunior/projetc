@@ -7411,3 +7411,60 @@ div.row-title {
   font: 11px var(--font-ui);
   white-space: nowrap;
 }
+.mention-card {
+  pointer-events: auto;
+  gap: 6px;
+}
+.mention-card-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mention-card-main:hover b {
+  color: var(--accent-hi);
+}
+.mention-card-main svg {
+  flex: none;
+  color: var(--accent);
+}
+.quick-edit {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.quick-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.quick-edit textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--page);
+  color: var(--fg);
+  font: 14px/1.5 var(--font-text);
+}
+.quick-edit .comment-actions {
+  align-items: center;
+}
+.quick-edit .comment-actions small {
+  margin-right: auto;
+}

@@ -22,6 +22,8 @@ import { countWords } from "../manuscript/wordCount";
 import { useWriting } from "../state/writing";
 import { createLinksExtension, OPEN_HINT, REFRESH_LINKS } from "./links";
 import { Icon } from "../ui/Icon";
+import { NoteQuickEdit } from "./NoteQuickEdit";
+import { useWorldNav } from "../state/worldNav";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
 import { textStyleVars } from "./textStyle";
@@ -124,12 +126,33 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const [draft, setDraft] = useState<Draft | null>(null);
   /** Cartão de nome e tipo ao passar o mouse numa menção ou link. */
   const [hoverCard, setHoverCard] = useState<{
+    id: string;
     title: string;
     label: string;
     icon: string;
+    note: boolean;
     x: number;
     y: number;
   } | null>(null);
+  /** O cartão espera um pouco antes de sumir, para o mouse chegar até ele. */
+  const cardTimer = useRef<number | undefined>(undefined);
+  const hideCardSoon = () => {
+    window.clearTimeout(cardTimer.current);
+    cardTimer.current = window.setTimeout(() => setHoverCard(null), 250);
+  };
+  /** Nota aberta na edição rápida (sem sair do texto). */
+  const [quick, setQuick] = useState<{ id: string; title: string; x: number; y: number } | null>(
+    null,
+  );
+  const closeQuick = useCallback(() => setQuick(null), []);
+  /** Abre a ficha da nota no Mundo (ou a cena, se for cena). */
+  const openProfile = (id: string, note: boolean) => {
+    setHoverCard(null);
+    setQuick(null);
+    if (!note) return useApp.getState().openDoc(id);
+    useWorldNav.getState().setOpenId(id);
+    useApp.getState().setView("world");
+  };
   const closeDraft = useCallback(() => setDraft(null), []);
   const commentsOpen = useComments((s) => s.panelOpen);
 
@@ -165,14 +188,15 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
             if (!el || !el.dataset.doc) return false;
             const info = linkContext.describe(el.dataset.doc);
             if (!info) return false;
+            window.clearTimeout(cardTimer.current);
             const r = el.getBoundingClientRect();
-            setHoverCard({ ...info, x: r.left, y: r.bottom });
+            setHoverCard({ ...info, id: el.dataset.doc, x: r.left, y: r.bottom });
             return false;
           },
           mouseout: (_view, event) => {
             const to = event.relatedTarget as HTMLElement | null;
-            if (to?.closest?.(".mention, .wikilink")) return false;
-            setHoverCard(null);
+            if (to?.closest?.(".mention, .wikilink, .mention-card")) return false;
+            hideCardSoon();
             return false;
           },
         },
@@ -439,19 +463,58 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
       {hoverCard && (
         <div
           className="mention-card"
-          role="tooltip"
+          role="dialog"
+          aria-label={hoverCard.title}
           style={{
-            left: Math.min(hoverCard.x, window.innerWidth - 260),
+            left: Math.min(hoverCard.x, window.innerWidth - 300),
             top: hoverCard.y + 6,
           }}
+          onMouseEnter={() => window.clearTimeout(cardTimer.current)}
+          onMouseLeave={hideCardSoon}
         >
-          <Icon name={hoverCard.icon} size={15} />
-          <span>
-            <b>{hoverCard.title}</b>
-            <small>{hoverCard.label}</small>
-          </span>
+          <button
+            type="button"
+            className="mention-card-main"
+            title={hoverCard.note ? "Abrir a ficha" : "Abrir a cena"}
+            onClick={() => openProfile(hoverCard.id, hoverCard.note)}
+          >
+            <Icon name={hoverCard.icon} size={15} />
+            <span>
+              <b>{hoverCard.title}</b>
+              <small>{hoverCard.label}</small>
+            </span>
+          </button>
+          {hoverCard.note && (
+            <button
+              type="button"
+              className="icon-btn sm"
+              title="Edição rápida, sem sair do texto"
+              aria-label={`Editar ${hoverCard.title} aqui`}
+              onClick={() => {
+                setQuick({
+                  id: hoverCard.id,
+                  title: hoverCard.title,
+                  x: hoverCard.x,
+                  y: hoverCard.y,
+                });
+                setHoverCard(null);
+              }}
+            >
+              <Icon name="edit" size={14} />
+            </button>
+          )}
           <kbd>{OPEN_HINT}</kbd>
         </div>
+      )}
+      {quick && (
+        <NoteQuickEdit
+          noteId={quick.id}
+          title={quick.title}
+          x={quick.x}
+          y={quick.y}
+          onClose={closeQuick}
+          onOpenProfile={() => openProfile(quick.id, true)}
+        />
       )}
       {menu && editor && (
         <ContextMenu
