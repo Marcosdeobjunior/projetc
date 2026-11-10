@@ -58,6 +58,11 @@ export interface Platform {
    * editor grava ao esconder a página.
    */
   onClose?(beforeClose: () => Promise<boolean>): void;
+  /**
+   * Renomeia a pasta do projeto no mesmo lugar e devolve a raiz nova. Só existe
+   * no desktop (no navegador o nome da "pasta" não aparece em lugar nenhum).
+   */
+  renameVaultFolder?(root: string, name: string): Promise<string>;
 }
 
 export interface ChosenFolder {

@@ -316,6 +316,13 @@ outro projeto quanto para uma pasta comum) passa por `leaveSession`: `flushPendi
 `saveVersion("Ao fechar o projeto", auto)` → `runBeforeClose` → troca. Se a gravação falhar, o
 projeto continua aberto. Escolher a pasta do próprio projeto aberto não faz nada.
 
+Renomear o projeto (`renameProject` no store) muda o título com `change` e, no desktop, renomeia
+a pasta só se o nome dela era `folderName(título antigo)`: `closeEditor` (grava e fecha o texto) →
+`runBeforeClose` (sincroniza) → `serial(renameVaultFolder)` (comando `vault_rename_root`) → tira a
+raiz antiga dos recentes → `open(raiz nova)` sem versão de abertura → devolve o texto e a tela
+que estavam abertos. Se o Rust recusar (pasta em uso, nome já existe), o título fica mudado, a
+pasta não, e o app mostra o motivo.
+
 ---
 
 ## 6. Editor: carregar, salvar e mudanças externas
@@ -554,9 +561,11 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 - Pasta raiz `Tália` marcada com `appProperties.taliaRoot = "1"` (é a marcação que identifica a pasta,
   não o nome).
-- Cada projeto: pasta com o **título no momento em que a sync foi ligada**, marcada com
+- Cada projeto: pasta com o título do projeto, marcada com
   `appProperties.taliaProject = <project.id>` (é o id que identifica, não o nome). As subpastas
-  espelham o caminho dos arquivos.
+  espelham o caminho dos arquivos. Quando o projeto muda de nome, `ensureFolderTitle` (no começo
+  de cada sync do projeto aberto) chama `renameFolder` (`PATCH { name }`) e guarda o nome em
+  `sync.json` (`folderTitle`).
 - `list(folderId)` percorre a árvore (BFS) e devolve `caminho → { id, md5Checksum }`.
 - Envio: até 5 MB em `multipart` (novo) ou `media` (substituir); acima, `resumable`.
 - Remover = `PATCH { trashed: true }` (lixeira do Drive, 30 dias).
@@ -566,7 +575,7 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 ### 11.3 Algoritmo (três vias por MD5)
 
 `src/sync/engine.ts`. Estado em `.talia/sync.json` (`folderId`, `base`, `cache`,
-`projectBase`, `lastSync`).
+`projectBase`, `lastSync`, `folderTitle`).
 
 Ficam **fora** da sincronização: `.talia/sync.json`, `.talia/versoes/indice.json`,
 `.talia/lixeira/**`, `*.talia-tmp`, `.DS_Store`, `Thumbs.db`, `desktop.ini`.
@@ -747,6 +756,7 @@ em texto. `root` é sempre um caminho absoluto e `path`/`from`/`to` são relativ
 | `vault_list`        | `root`, `path`                               | `string[]`                                     | Só arquivos (não pastas) direto na pasta, em ordem; `[]` se a pasta não existe                              |
 | `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.talia-tmp`; em ordem                          |
 | `vault_rename`      | `root`, `from`, `to`                         | `()`                                           | Recusa se o destino existe; cria as pastas do destino                                                       |
+| `vault_rename_root` | `root`, `name`                               | `string` (raiz nova)                           | Renomeia a própria pasta do projeto no mesmo lugar; só projetos; nunca por cima; nome simples               |
 | `vault_remove`      | `root`, `path`                               | `()`                                           | Pasta: remove tudo; inexistente: ok; recusa apagar a própria raiz                                           |
 | `vault_open`        | `root`, `path`                               | `()`                                           | Abre no programa padrão (`tauri-plugin-opener`); só `anexos/` com extensão permitida; erro se não é arquivo |
 | `export_write`      | corpo binário; cabeçalho `x-path` (absoluto) | `()`                                           | Grava fora do vault, no caminho escolhido no diálogo "Salvar como"                                          |
@@ -925,7 +935,6 @@ Chaves no `localStorage` do WebView (por computador, não vão para o projeto ne
   versão não tem a ordem das cenas (não há `project.json` nela), então elas voltam em ordem
   alfabética; arquivos técnicos (`.yjs`, `.json`) só saem da lixeira à mão.
 - **Quarta capa sem sinopse** imprime o texto de exemplo (com 50% de opacidade) no PDF da capa.
-- **Renomear o projeto** não renomeia a pasta no computador nem a pasta no Drive.
 - **Credenciais Google em modo "Teste"**: o refresh token expira em 7 dias.
 - **Mesclagem Yjs** de textos editados em dois lados pode intercalar trechos; a rede de segurança
   compara as palavras e guarda o lado afetado na Lixeira, mas não mostra a diferença.

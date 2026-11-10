@@ -133,6 +133,10 @@ export function createDesktopPlatform(): Platform {
       return invoke<void>("vault_open", { root, path });
     },
 
+    renameVaultFolder(root: string, name: string) {
+      return invoke<string>("vault_rename_root", { root, name });
+    },
+
     onClose(beforeClose) {
       void getCurrentWindow().onCloseRequested(async (event) => {
         if (!(await beforeClose())) event.preventDefault();

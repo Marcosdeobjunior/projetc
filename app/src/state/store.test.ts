@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyValueFs, MemoryStore } from "../platform/kvFs";
 import type { ChosenFolder, Platform } from "../platform/types";
 import { createVault } from "../vault/vault";
@@ -129,5 +129,73 @@ describe("restaurar cópia de segurança", () => {
     expect(left.map((e) => e.id)).toEqual([entry!.id]);
     const files = (await fs.walk()).map((f) => f.path).filter((p) => p.startsWith(entry!.path));
     expect(files).toEqual([`${entry!.path}/estado.yjs`]);
+  });
+});
+
+describe("renomear o projeto", () => {
+  const SEP = "\u0000";
+  /** No desktop o nome da pasta aparece no caminho; aqui, em "/docs/<nome>". */
+  const desktopLike = {
+    chooseNewVaultRoot: async (name: string) => `/docs/${name}`,
+    renameVaultFolder: async (root: string, name: string) => {
+      const next = `/docs/${name}`;
+      for (const key of await store.keys(root + SEP)) {
+        await store.set(next + key.slice(root.length), (await store.get(key))!);
+        await store.delete([key]);
+      }
+      return next;
+    },
+  };
+  const original = { ...platform };
+
+  beforeEach(() => {
+    store = new MemoryStore();
+    Object.assign(platform, desktopLike);
+  });
+  afterEach(() => {
+    Object.assign(platform, original);
+    delete platform.renameVaultFolder;
+  });
+
+  async function openBook(useApp: Awaited<ReturnType<typeof freshStore>>, title: string) {
+    const r = await useApp.getState().createVault(title);
+    if (!r.ok) throw new Error("não criou");
+    return r.root;
+  }
+
+  it("renomeia a pasta que tinha o nome do projeto e reabre no caminho novo", async () => {
+    const useApp = await freshStore();
+    const root = await openBook(useApp, "Livro");
+    expect(root).toBe("/docs/Livro");
+    await useApp.getState().renameProject("A casa: das marés");
+    const session = useApp.getState().session!;
+    expect(session.root).toBe("/docs/A casa das marés");
+    expect(session.project.title).toBe("A casa: das marés");
+    expect(await platform.fs("/docs/Livro").exists(".talia/project.json")).toBe(false);
+    expect(useApp.getState().message).toContain("A casa das marés");
+  });
+
+  it("não mexe numa pasta com outro nome", async () => {
+    const useApp = await freshStore();
+    await openBook(useApp, "Livro");
+    // A pasta "Livro" passa a ter um título diferente, como num projeto aberto de uma pasta qualquer.
+    await useApp.getState().change((p) => ({ project: { ...p, title: "Outro" }, ops: [] }));
+    await useApp.getState().renameProject("Terceiro");
+    expect(useApp.getState().session!.root).toBe("/docs/Livro");
+    expect(useApp.getState().session!.project.title).toBe("Terceiro");
+  });
+
+  it("se não der para renomear a pasta, o nome muda e a pasta fica", async () => {
+    const useApp = await freshStore();
+    await openBook(useApp, "Livro");
+    platform.renameVaultFolder = async () => {
+      throw 'já existe uma pasta chamada "Novo" nesse local';
+    };
+    await useApp.getState().renameProject("Novo");
+    const state = useApp.getState();
+    expect(state.session!.root).toBe("/docs/Livro");
+    expect(state.session!.project.title).toBe("Novo");
+    expect(state.messageTone).toBe("error");
+    expect(state.message).toContain("já existe uma pasta");
   });
 });
