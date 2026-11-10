@@ -95,13 +95,13 @@ export function Home() {
       className={
         "projects bg-" +
         background.kind +
-        (nav.collapsed ? " nav-collapsed" : "") +
-        (nav.peeking ? " nav-peek" : "")
+        // Espiando, a barra abre como sempre (mesmo visual e animação), sem fixar.
+        (nav.collapsed && !nav.peeking ? " nav-collapsed" : "")
       }
       style={background.style}
     >
       <AppBar
-        collapsed={nav.collapsed}
+        collapsed={nav.collapsed && !nav.peeking}
         onToggle={nav.toggle}
         folder={current ? folderName(current, desktop) : null}
         folderTitle={current?.location}

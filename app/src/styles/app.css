@@ -3761,35 +3761,6 @@ p {
 .nav-collapsed .nav-label {
   opacity: 0;
 }
-/* Espiar a barra recolhida: abre por cima do conteúdo (a coluna continua estreita). */
-@media (min-width: 761px) {
-  .nav-collapsed.nav-peek .home-nav {
-    width: var(--nav-w);
-    background: var(--p-bg);
-    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.35);
-    z-index: 26;
-  }
-  .nav-collapsed.nav-peek .nav-label {
-    opacity: 1;
-  }
-  .nav-collapsed.nav-peek .home-nav-head {
-    justify-content: space-between;
-    padding-left: 11px;
-  }
-  .nav-collapsed.nav-peek .home-nav-head .nav-heading {
-    display: block;
-  }
-  .nav-collapsed.nav-peek .nav-heading {
-    height: 26px;
-    padding: 8px 11px 0;
-    margin: 0;
-    border-top: 0;
-    color: var(--p-faint);
-  }
-  .nav-collapsed.nav-peek .nav-empty {
-    display: block;
-  }
-}
 .nav-empty {
   padding: 4px 11px;
   font-size: 12px;
