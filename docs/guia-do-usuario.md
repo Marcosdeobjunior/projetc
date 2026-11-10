@@ -324,6 +324,10 @@ arquivo para a Lixeira. Veja também [Anexos](#5-anexos-imagens-vídeos-áudios-
 - **Ctrl + \\** esconde ou mostra a **barra lateral inteira**, para escrever com a tela livre.
   O mesmo vale para o botão de painel no alto da barra (e no alto do texto, quando ela está
   escondida). O app lembra a escolha.
+- Com a barra escondida, **passe o mouse** sobre o botão de mostrar a barra (no alto do texto): ela
+  abre por cima do texto só enquanto o mouse estiver nela e fecha quando ele sai da barra. Para
+  deixá-la aberta, clique no botão de painel no alto dela (**Fixar a barra lateral**) ou no próprio
+  botão de mostrar.
 - Em telas estreitas (celular, janela pequena), a barra vira uma gaveta que abre pelo botão de
   menu.
 

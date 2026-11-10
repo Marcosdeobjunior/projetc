@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import { findDoc, findScene, renameDoc, renameProject } from "../manuscript/tree";
 import { formatCount } from "../manuscript/wordCount";
@@ -70,6 +70,25 @@ export function Workspace({ session }: { session: Session }) {
   );
   const chapterTotal = scene ? scene.chapter.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0) : 0;
   const closeNav = () => setNavOpen(false);
+  /**
+   * Barra recolhida: passar o mouse no botão de mostrar abre a barra por cima
+   * do texto, sem fixar; ela fecha quando o mouse sai da barra (não só do botão).
+   */
+  const [peek, setPeek] = useState(false);
+  const peekTimer = useRef<number | undefined>(undefined);
+  const hoverable = () => window.matchMedia("(hover: hover) and (min-width: 761px)").matches;
+  const startPeek = () => {
+    window.clearTimeout(peekTimer.current);
+    if (collapsed && hoverable()) setPeek(true);
+  };
+  const keepPeek = () => window.clearTimeout(peekTimer.current);
+  /** A barra está aberta só por espiar (recolhida, com o mouse em cima). */
+  const peeking = collapsed && peek;
+  const endPeek = () => {
+    window.clearTimeout(peekTimer.current);
+    // Uma folga curta para o mouse atravessar do botão para a barra.
+    peekTimer.current = window.setTimeout(() => setPeek(false), 300);
+  };
   const showNav = () => (isPhone() ? setNavOpen(true) : setCollapsed(false));
 
   useEffect(() => {
@@ -135,9 +154,14 @@ export function Workspace({ session }: { session: Session }) {
 
   return (
     <div
-      className={"workspace" + (navOpen ? " nav-open" : "") + (collapsed ? " nav-collapsed" : "")}
+      className={
+        "workspace" +
+        (navOpen ? " nav-open" : "") +
+        (collapsed ? " nav-collapsed" : "") +
+        (collapsed && peek ? " nav-peek" : "")
+      }
     >
-      <aside className="sidebar">
+      <aside className="sidebar" onMouseEnter={keepPeek} onMouseLeave={endPeek}>
         <div className="rail">
           <div className="side-top">
             {editingProject ? (
@@ -165,9 +189,18 @@ export function Workspace({ session }: { session: Session }) {
             <button
               type="button"
               className="icon-btn nav-collapse"
-              aria-label="Recolher a barra lateral"
-              title={`Recolher a barra lateral (${shortcut("Mod+\\")})`}
-              onClick={() => setCollapsed(true)}
+              aria-label={peeking ? "Fixar a barra lateral" : "Recolher a barra lateral"}
+              title={
+                peeking
+                  ? "Fixar a barra lateral aberta"
+                  : `Recolher a barra lateral (${shortcut("Mod+\\")})`
+              }
+              onClick={() => {
+                if (peeking) {
+                  setPeek(false);
+                  setCollapsed(false);
+                } else setCollapsed(true);
+              }}
             >
               <Icon name="sidebar" />
             </button>
@@ -297,8 +330,13 @@ export function Workspace({ session }: { session: Session }) {
             type="button"
             className="icon-btn nav-toggle"
             aria-label="Mostrar a barra lateral"
-            title={`Mostrar a barra lateral (${shortcut("Mod+\\")})`}
-            onClick={showNav}
+            title={`Mostrar a barra lateral (${shortcut("Mod+\\")}). Passe o mouse para espiar.`}
+            onMouseEnter={startPeek}
+            onMouseLeave={endPeek}
+            onClick={() => {
+              setPeek(false);
+              showNav();
+            }}
           >
             <Icon name="sidebar" />
           </button>
