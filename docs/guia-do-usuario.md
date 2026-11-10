@@ -327,7 +327,8 @@ arquivo para a Lixeira. Veja também [Anexos](#5-anexos-imagens-vídeos-áudios-
 - Com a barra escondida, **passe o mouse** sobre o botão de mostrar a barra (no alto do texto): ela
   abre por cima do texto só enquanto o mouse estiver nela e fecha quando ele sai da barra. Para
   deixá-la aberta, clique no botão de painel no alto dela (**Fixar a barra lateral**) ou no próprio
-  botão de mostrar.
+  botão de mostrar. Na tela de projetos vale o mesmo: com o menu recolhido (só ícones), passar o mouse na
+  seta do alto abre o menu inteiro por cima, até o mouse sair dele.
 - Em telas estreitas (celular, janela pequena), a barra vira uma gaveta que abre pelo botão de
   menu.
 

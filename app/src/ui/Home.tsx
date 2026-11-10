@@ -92,7 +92,12 @@ export function Home() {
 
   return (
     <div
-      className={"projects bg-" + background.kind + (nav.collapsed ? " nav-collapsed" : "")}
+      className={
+        "projects bg-" +
+        background.kind +
+        (nav.collapsed ? " nav-collapsed" : "") +
+        (nav.peeking ? " nav-peek" : "")
+      }
       style={background.style}
     >
       <AppBar
@@ -107,6 +112,10 @@ export function Home() {
         <HomeSidebar
           collapsed={nav.collapsed}
           onToggle={nav.toggle}
+          peeking={nav.peeking}
+          onPeekStart={nav.peekStart}
+          onPeekKeep={nav.peekKeep}
+          onPeekEnd={nav.peekEnd}
           desktop={desktop}
           busy={busy}
           vaults={filtered}

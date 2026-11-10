@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { VaultRef } from "../platform";
 import { useSettings } from "../state/settings";
 import type { SyncStatus } from "../state/syncStatus";
@@ -49,7 +49,35 @@ export function useHomeNav() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  return { collapsed, toggle: () => setCollapsed((c) => !c), setCollapsed };
+  /**
+   * Recolhida, passar o mouse no botão de mostrar abre a barra por cima do
+   * conteúdo (sem fixar); ela fecha quando o mouse sai da barra.
+   */
+  const [peek, setPeek] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  const peekStart = () => {
+    window.clearTimeout(timer.current);
+    if (collapsed && !isNarrow() && window.matchMedia("(hover: hover)").matches) setPeek(true);
+  };
+  const peekKeep = () => window.clearTimeout(timer.current);
+  const peekEnd = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setPeek(false), 300);
+  };
+
+  return {
+    collapsed,
+    /** Aberta só por espiar (recolhida, com o mouse em cima). */
+    peeking: collapsed && peek,
+    peekStart,
+    peekKeep,
+    peekEnd,
+    toggle: () => {
+      setPeek(false);
+      setCollapsed((c) => !c);
+    },
+    setCollapsed,
+  };
 }
 
 /** Nome da pasta do projeto: o último trecho do caminho no desktop. */
@@ -141,6 +169,11 @@ function SyncIndicator({ status }: { status: SyncStatus }) {
 export function HomeSidebar(props: {
   collapsed: boolean;
   onToggle(): void;
+  /** Aberta por cima, só enquanto o mouse está nela. */
+  peeking?: boolean;
+  onPeekStart?(): void;
+  onPeekKeep?(): void;
+  onPeekEnd?(): void;
   desktop: boolean;
   busy: boolean;
   vaults: VaultRef[];
@@ -157,7 +190,8 @@ export function HomeSidebar(props: {
   /** Abre as Configurações na seção de música. */
   onMusicSettings?(): void;
 }) {
-  const { collapsed } = props;
+  // Espiando, a barra mostra tudo como se estivesse aberta.
+  const collapsed = props.collapsed && !props.peeking;
   // Recolhida, a barra mostra só ícones: o nome vira dica (title).
   const tip = (label: string) => (collapsed ? label : undefined);
   const after = (fn: () => void) => () => {
@@ -174,20 +208,38 @@ export function HomeSidebar(props: {
   const setPanelOpen = useMusic((s) => s.setPanelOpen);
 
   return (
-    <nav id="home-nav" className="home-nav" aria-label="Navegação">
+    <nav
+      id="home-nav"
+      className="home-nav"
+      aria-label="Navegação"
+      onMouseEnter={props.onPeekKeep}
+      onMouseLeave={props.onPeekEnd}
+    >
       {/* Recolher/mostrar: primeira linha da própria barra, sem sobrepor nada. */}
       <div className="home-nav-head">
         <span className="nav-heading nav-label">Menu</span>
         <button
           type="button"
           className="home-nav-toggle"
-          aria-label={collapsed ? "Mostrar barra lateral" : "Recolher barra lateral"}
-          title={`${collapsed ? "Mostrar" : "Recolher"} barra lateral (Ctrl+\\)`}
-          aria-expanded={!collapsed}
+          aria-label={
+            props.peeking
+              ? "Fixar barra lateral"
+              : collapsed
+                ? "Mostrar barra lateral"
+                : "Recolher barra lateral"
+          }
+          title={
+            props.peeking
+              ? "Fixar a barra lateral aberta"
+              : `${collapsed ? "Mostrar" : "Recolher"} barra lateral (Ctrl+\\)` +
+                (collapsed ? ". Passe o mouse para espiar." : "")
+          }
+          aria-expanded={!props.collapsed}
           aria-controls="home-nav"
+          onMouseEnter={props.onPeekStart}
           onClick={props.onToggle}
         >
-          <Icon name={collapsed ? "chevron" : "chevron-left"} size={15} />
+          <Icon name={props.collapsed ? "chevron" : "chevron-left"} size={15} />
         </button>
       </div>
       <div className="home-nav-scroll">
