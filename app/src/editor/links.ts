@@ -40,7 +40,6 @@ export interface LinkContext {
 export const REFRESH_LINKS = "taliaRefreshLinks";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-export const OPEN_HINT = `${isMac ? "⌘" : "Ctrl"}+clique para abrir`;
 
 /** Marcações de links e menções de um parágrafo (ou título) que começa em `pos`. */
 function decorateBlock(node: PMNode, pos: number, ctx: LinkContext): Decoration[] {

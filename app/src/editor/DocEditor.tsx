@@ -20,7 +20,7 @@ import { linkEdits } from "../links/links";
 import { allDocs, findDoc, findScene } from "../manuscript/tree";
 import { countWords } from "../manuscript/wordCount";
 import { useWriting } from "../state/writing";
-import { createLinksExtension, OPEN_HINT, REFRESH_LINKS } from "./links";
+import { createLinksExtension, REFRESH_LINKS } from "./links";
 import { Icon } from "../ui/Icon";
 import { NoteQuickEdit } from "./NoteQuickEdit";
 import { useWorldNav } from "../state/worldNav";
@@ -503,7 +503,6 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
               <Icon name="edit" size={14} />
             </button>
           )}
-          <kbd>{OPEN_HINT}</kbd>
         </div>
       )}
       {quick && (

@@ -7405,12 +7405,6 @@ div.row-title {
 .mention-card small {
   color: var(--muted);
 }
-.mention-card kbd {
-  margin-left: auto;
-  color: var(--faint);
-  font: 11px var(--font-ui);
-  white-space: nowrap;
-}
 .mention-card {
   pointer-events: auto;
   gap: 6px;
