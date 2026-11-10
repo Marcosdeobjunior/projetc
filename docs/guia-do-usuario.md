@@ -350,22 +350,23 @@ até conseguir gravar.
 
 Da esquerda para a direita:
 
-| Ferramenta                   | O que faz                                                                                                 |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Estilo do parágrafo          | **Texto** (parágrafo comum), **Título 1**, **Título 2**, **Título 3**                                     |
-| **T** (Aparência do texto)   | Fonte, tamanho e espaçamento entre letras, palavras e linhas (veja abaixo)                                |
-| Negrito, Itálico, Tachado    | Formatação do trecho selecionado (Ctrl+B, Ctrl+I, Ctrl+Shift+S)                                           |
-| Marca-texto                  | Marca-texto amarelo (Ctrl+Shift+H). **Não sai no livro exportado**                                        |
-| Lista, Lista numerada        | Lista com marcadores ou numerada                                                                          |
-| Aumentar / diminuir recuo    | Recua um item da lista para dentro do anterior (sublista) ou volta. **Tab** e **Shift+Tab** fazem o mesmo |
-| Citação                      | Parágrafo recuado, para epígrafes, cartas, citações                                                       |
-| Separador de cena (\* \* \*) | Linha que separa duas partes da mesma cena                                                                |
-| Limpar formatação            | Tira negrito, itálico etc. e volta o bloco a parágrafo comum                                              |
-| Imagem                       | Inserir uma ou mais imagens no texto (copiadas para `anexos/`)                                            |
-| Clipe                        | Anexar arquivo (veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos))                                |
-| Desfazer / Refazer           | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y também refaz)                                                               |
-| Relógio                      | Abre o [Histórico de versões](#8-histórico-de-versões)                                                    |
-| Grafo pequeno                | Mostra ou esconde o [minimapa](#72-minimapa)                                                              |
+| Ferramenta                   | O que faz                                                                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Estilo do parágrafo          | **Texto** (parágrafo comum), **Título 1**, **Título 2**, **Título 3**                                                                                                    |
+| **T** (Aparência do texto)   | Fonte, tamanho e espaçamento entre letras, palavras e linhas (veja abaixo)                                                                                               |
+| Negrito, Itálico, Tachado    | Formatação do trecho selecionado (Ctrl+B, Ctrl+I, Ctrl+Shift+S)                                                                                                          |
+| Marca-texto                  | Marca-texto amarelo (Ctrl+Shift+H). **Não sai no livro exportado**                                                                                                       |
+| Lista, Lista numerada        | Lista com marcadores ou numerada                                                                                                                                         |
+| Alinhamento                  | À esquerda, centralizado, justificado ou à direita, no parágrafo ou título (ou em todos os selecionados). Ctrl+Shift+L / E / J / R. Vale no arquivo e no livro exportado |
+| Aumentar / diminuir recuo    | Recua um item da lista para dentro do anterior (sublista) ou volta. **Tab** e **Shift+Tab** fazem o mesmo                                                                |
+| Citação                      | Parágrafo recuado, para epígrafes, cartas, citações                                                                                                                      |
+| Separador de cena (\* \* \*) | Linha que separa duas partes da mesma cena                                                                                                                               |
+| Limpar formatação            | Tira negrito, itálico etc. e volta o bloco a parágrafo comum                                                                                                             |
+| Imagem                       | Inserir uma ou mais imagens no texto (copiadas para `anexos/`)                                                                                                           |
+| Clipe                        | Anexar arquivo (veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos))                                                                                               |
+| Desfazer / Refazer           | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y também refaz)                                                                                                                              |
+| Relógio                      | Abre o [Histórico de versões](#8-histórico-de-versões)                                                                                                                   |
+| Grafo pequeno                | Mostra ou esconde o [minimapa](#72-minimapa)                                                                                                                             |
 
 **Comentários:** selecione o trecho exato que quer comentar e clique em **Comentar** na barra
 (ou **Ctrl+Alt+M**). Escreva e confirme (**Ctrl+Enter** também salva). O trecho fica marcado no

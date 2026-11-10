@@ -80,7 +80,27 @@ function inline(nodes: PMNode[] = []): string {
   return out;
 }
 
+/** Alinhamento salvo no .md como comentário HTML, invisível em outros programas. */
+const ALIGN_WORD: Record<string, string> = {
+  center: "centro",
+  right: "direita",
+  justify: "justificado",
+};
+export const ALIGN_FROM_WORD: Record<string, string> = Object.fromEntries(
+  Object.entries(ALIGN_WORD).map(([k, v]) => [v, k]),
+);
+const alignMark = (node: PMNode) => {
+  const word = ALIGN_WORD[String(node.attrs?.textAlign ?? "")];
+  return word ? `<!-- alinhar: ${word} -->\n` : "";
+};
+
 function block(node: PMNode, prefix = ""): string[] {
+  const out = blockBody(node, prefix);
+  const mark = alignMark(node);
+  return mark && out.length ? [mark + out[0], ...out.slice(1)] : out;
+}
+
+function blockBody(node: PMNode, prefix = ""): string[] {
   const c = node.content ?? [];
   switch (node.type) {
     case "paragraph": {

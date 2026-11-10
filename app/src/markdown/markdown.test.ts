@@ -21,6 +21,20 @@ describe("toMarkdown", () => {
     );
   });
 
+  it("guarda o alinhamento como comentário invisível antes do bloco", () => {
+    const md =
+      "<!-- alinhar: centro -->\n# Parte um\n\nTexto normal.\n\n<!-- alinhar: justificado -->\nTexto justificado.\n\n> <!-- alinhar: direita -->\n> Assinado, o pai.\n";
+    const doc = parseMarkdown(md);
+    const [h, p1, p2, q] = doc.content!;
+    expect(h!.attrs).toMatchObject({ level: 1, textAlign: "center" });
+    expect(p1!.attrs?.textAlign).toBeUndefined();
+    expect(p2!.attrs?.textAlign).toBe("justify");
+    expect(q!.content![0]!.attrs?.textAlign).toBe("right");
+    expect(toMarkdown(doc)).toBe(md);
+    // O comentário não vira texto.
+    expect(toPlainText(doc)).not.toContain("alinhar");
+  });
+
   it("mantém listas com itens recuados (aninhadas)", () => {
     const md = "- Personagens\n  - Helena\n  - Lucas\n- Lugares\n";
     const doc = parseMarkdown(md);

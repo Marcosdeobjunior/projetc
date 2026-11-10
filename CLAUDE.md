@@ -68,7 +68,8 @@ dentro de `app/`).
 - **Markdown:** `markdown/parse.ts` e `serialize.ts` convertem um subconjunto entre Markdown e o
   JSON do ProseMirror; o schema do editor (`editor/extensions.ts`) e esse conversor precisam
   andar juntos (ida e volta coberta por `markdown.test.ts`). Extras: `==destaque==`, `[[links]]`
-  estilo Obsidian, anexos `![nome](anexos/arq.ext)` numa linha própria.
+  estilo Obsidian, anexos `![nome](anexos/arq.ext)` numa linha própria, alinhamento como
+  `<!-- alinhar: centro|direita|justificado -->` antes do bloco (`editor/textAlign.ts`).
 - **Sync (`sync/engine.ts`):** decisão de três vias por MD5 (local × Drive × base em
   `.talia/sync.json`); `planSync` só lê, `applySync` escreve; conflitos em `.yjs` são mesclados
   via Yjs, `project.json` é juntado por id (`mergeProject.ts`), o resto fica com a versão local e a

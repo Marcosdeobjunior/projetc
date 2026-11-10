@@ -190,21 +190,23 @@ _Não procure por mim_, dizia a última linha. Ele leu [[Helena]] de novo.
 
 Markdown aceito e gerado (`markdown/serialize.ts` e `parse.ts`):
 
-| Elemento               | Sintaxe                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Parágrafo              | Linhas separadas por uma linha em branco (linhas seguidas são juntadas)                                         |
-| Quebra de linha        | `\` no fim da linha                                                                                             |
-| Títulos                | `# `, `## `, `### ` (o editor usa 1 a 3; o leitor aceita até 6)                                                 |
-| Citação                | `> ` no começo de cada linha                                                                                    |
-| Lista                  | `- ` (lê também `+` e `*`)                                                                                      |
-| Lista numerada         | `1. ` (lê também `1)`), respeitando o número inicial                                                            |
-| Separador de cena      | `* * *` (lê também `***`, `---`, `___`)                                                                         |
-| Negrito                | `**texto**` (lê também `__texto__`)                                                                             |
-| Itálico                | `*texto*` (lê também `_texto_`)                                                                                 |
-| Tachado                | `~~texto~~`                                                                                                     |
-| Destaque (marca-texto) | `==texto==` (como no Obsidian)                                                                                  |
-| Link entre textos      | `[[Título]]` ou `[[Título\|texto que aparece]]` — texto comum no `.md`, sem escape                              |
-| Anexo                  | `![nome](anexos/arquivo.ext)` numa linha própria; com espaço ou parênteses: `![nome](<anexos/meu arquivo.png>)` |
+| Elemento               | Sintaxe                                                                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parágrafo              | Linhas separadas por uma linha em branco (linhas seguidas são juntadas)                                                                                                         |
+| Quebra de linha        | `\` no fim da linha                                                                                                                                                             |
+| Títulos                | `# `, `## `, `### ` (o editor usa 1 a 3; o leitor aceita até 6)                                                                                                                 |
+| Citação                | `> ` no começo de cada linha                                                                                                                                                    |
+| Lista                  | `- ` (lê também `+` e `*`)                                                                                                                                                      |
+| Lista numerada         | `1. ` (lê também `1)`), respeitando o número inicial                                                                                                                            |
+| Separador de cena      | `* * *` (lê também `***`, `---`, `___`)                                                                                                                                         |
+| Negrito                | `**texto**` (lê também `__texto__`)                                                                                                                                             |
+| Itálico                | `*texto*` (lê também `_texto_`)                                                                                                                                                 |
+| Tachado                | `~~texto~~`                                                                                                                                                                     |
+| Destaque (marca-texto) | `==texto==` (como no Obsidian)                                                                                                                                                  |
+| Link entre textos      | `[[Título]]` ou `[[Título\|texto que aparece]]` — texto comum no `.md`, sem escape                                                                                              |
+| Anexo                  | `![nome](anexos/arquivo.ext)` numa linha própria; com espaço ou parênteses: `![nome](<anexos/meu arquivo.png>)`                                                                 |
+| Lista dentro de lista  | Item recuado com 2 espaços (ou o tamanho do marcador) sob o item de cima, sem linha em branco                                                                                   |
+| Alinhamento            | `<!-- alinhar: centro -->` (ou `direita`, `justificado`) numa linha própria logo antes do parágrafo ou título; invisível em outros programas. À esquerda é o padrão (sem marca) |
 
 Caracteres que virariam formatação são escapados com `\` (`\*`, `\_`, `` \` ``, `\~`, `\=` antes
 de outro `=`, e `#`, `>`, `-`, `1.` no começo da linha). Links, sublinhado, código e blocos de

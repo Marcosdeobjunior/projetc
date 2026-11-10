@@ -56,12 +56,12 @@ export function blocksHtml(blocks: PMNode[], image: (src: string) => string): st
           const dialogue = /^[—–\-"“«']/.test(c[0]?.text ?? "");
           const cls = [first && "first", dialogue && "dialogue"].filter(Boolean).join(" ");
           first = false;
-          return `<p${cls ? ` class="${cls}"` : ""}>${inline(c)}</p>`;
+          return `<p${cls ? ` class="${cls}"` : ""}${alignStyle(b)}>${inline(c)}</p>`;
         }
         case "heading": {
           first = true;
           const level = Math.min(5, 2 + Number(b.attrs?.level ?? 1));
-          return `<h${level}>${inline(c)}</h${level}>`;
+          return `<h${level}${alignStyle(b)}>${inline(c)}</h${level}>`;
         }
         case "blockquote":
           return `<blockquote>${blocksHtml(c, image)}</blockquote>`;
@@ -176,4 +176,10 @@ figure img { max-width: 100%; max-height: 70vh; }
 .toc li { margin: .4em 0; }
 .toc a { color: inherit; text-decoration: none; }
 `;
+}
+
+/** Alinhamento do bloco (só valores conhecidos: o texto vem de fora). */
+function alignStyle(b: { attrs?: Record<string, unknown> }): string {
+  const a = b.attrs?.textAlign;
+  return a === "center" || a === "right" || a === "justify" ? ` style="text-align:${a}"` : "";
 }

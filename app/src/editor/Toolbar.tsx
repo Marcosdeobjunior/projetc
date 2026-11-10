@@ -41,6 +41,9 @@ export function Toolbar({
             ordered: e.isActive("orderedList"),
             quote: e.isActive("blockquote"),
             selected: !e.state.selection.empty,
+            align:
+              (["center", "right", "justify"] as const).find((a) => e.isActive({ textAlign: a })) ??
+              ("left" as const),
             canIndent: e.can().sinkListItem("listItem"),
             canOutdent: e.can().liftListItem("listItem"),
           }
@@ -123,6 +126,23 @@ export function Toolbar({
           icon={m.icon}
           on={state[m.id]}
           run={() => toggleMark(editor, m.id)}
+        />
+      ))}
+      <span className="toolbar-sep" />
+      {(
+        [
+          ["left", "alignLeft", "Alinhar à esquerda", "Mod+Shift+L"],
+          ["center", "alignCenter", "Centralizar", "Mod+Shift+E"],
+          ["justify", "alignJustify", "Justificar", "Mod+Shift+J"],
+          ["right", "alignRight", "Alinhar à direita", "Mod+Shift+R"],
+        ] as const
+      ).map(([a, icon, label, keys]) => (
+        <ToolButton
+          key={a}
+          label={`${label} (${shortcut(keys)})`}
+          icon={icon}
+          on={state.align === a}
+          run={() => chain().setTextAlign(a).run()}
         />
       ))}
       <span className="toolbar-sep" />

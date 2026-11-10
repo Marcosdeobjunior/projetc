@@ -373,7 +373,10 @@ Detalhes:
 Subconjunto de Markdown (`markdown/serialize.ts` e `parse.ts`): parágrafos, títulos 1–3 (o parser
 aceita até 6), citação, listas com marcador e numeradas (com `start`), `* * *` (separador),
 quebra de linha (`\` no fim da linha), `**negrito**`, `*itálico*`, `~~tachado~~`, `==destaque==`
-e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíveis.
+e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíveis. Listas dentro de
+itens de lista são lidas e gravadas coladas. O alinhamento (`editor/textAlign.ts`, atributo
+`textAlign` de parágrafo/título) vira `<!-- alinhar: … -->` antes do bloco e é respeitado na
+prévia e nas exportações (HTML/EPUB e DOCX).
 
 ### 6.0 Linha do tempo
 

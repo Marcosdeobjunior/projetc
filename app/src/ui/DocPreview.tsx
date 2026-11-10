@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { ReactNode } from "react";
 import { parseMarkdown } from "../markdown/parse";
 import type { PMNode } from "../markdown/types";
@@ -16,11 +17,19 @@ function render(nodes: PMNode[] = []): ReactNode[] {
 function node(n: PMNode, key: number): ReactNode {
   switch (n.type) {
     case "paragraph":
-      return <p key={key}>{render(n.content)}</p>;
+      return (
+        <p key={key} style={alignOf(n)}>
+          {render(n.content)}
+        </p>
+      );
     case "heading": {
       const level = Math.min(3, Number(n.attrs?.level ?? 1));
       const H = `h${level}` as "h1" | "h2" | "h3";
-      return <H key={key}>{render(n.content)}</H>;
+      return (
+        <H key={key} style={alignOf(n)}>
+          {render(n.content)}
+        </H>
+      );
     }
     case "blockquote":
       return <blockquote key={key}>{render(n.content)}</blockquote>;
@@ -57,4 +66,9 @@ function node(n: PMNode, key: number): ReactNode {
     default:
       return <div key={key}>{render(n.content)}</div>;
   }
+}
+
+function alignOf(n: { attrs?: Record<string, unknown> }): CSSProperties | undefined {
+  const a = n.attrs?.textAlign;
+  return a === "center" || a === "right" || a === "justify" ? { textAlign: a } : undefined;
 }
