@@ -1207,11 +1207,30 @@ p {
   overflow-y: auto;
   background: var(--page);
   cursor: text;
-  padding: 48px max(24px, calc((100% - 68ch) / 2)) 30vh;
+  padding: 32px 24px;
+  /* A folha cresce até o fim da área, mesmo com pouco texto. */
+  display: flex;
+  flex-direction: column;
 }
+/* A folha: a coluna do texto tem um tom levemente diferente do fundo em volta. */
 .page-body {
-  max-width: 68ch;
+  width: 100%;
+  max-width: calc(68ch + 112px);
+  flex: 1 0 auto;
   margin: 0 auto;
+  /* Folga embaixo (dentro da folha) para o fim do texto subir até o meio da tela. */
+  padding: 48px 56px 30vh;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--page) 95%, var(--fg) 5%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 6%, transparent);
+}
+@media (max-width: 600px) {
+  .page {
+    padding: 12px 8px;
+  }
+  .page-body {
+    padding: 28px 20px 30vh;
+  }
 }
 .editor-state {
   flex: 1;
