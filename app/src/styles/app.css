@@ -7370,3 +7370,44 @@ div.row-title {
   gap: 4px;
   margin: 0;
 }
+
+/* Cartão ao passar o mouse numa menção ou link: nome e tipo. */
+.mention-card {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 260px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--fg);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  font-size: 13px;
+}
+.mention-card svg {
+  flex: none;
+  color: var(--accent);
+}
+.mention-card span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.mention-card b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mention-card small {
+  color: var(--muted);
+}
+.mention-card kbd {
+  margin-left: auto;
+  color: var(--faint);
+  font: 11px var(--font-ui);
+  white-space: nowrap;
+}

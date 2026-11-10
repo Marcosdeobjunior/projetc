@@ -78,6 +78,17 @@ export function createLinkContext(currentId: string): LinkContext {
       const p = project();
       return p ? findMentions(p, text, indexes(p).matcher) : [];
     },
+    describe(id) {
+      const p = project();
+      if (!p) return null;
+      const scene = p.chapters.find((c) => c.scenes.some((s) => s.id === id));
+      if (scene) {
+        const s = scene.scenes.find((x) => x.id === id)!;
+        return { title: s.title, label: `Cena · ${scene.title}`, icon: DOC_ICON.scene };
+      }
+      const n = p.notes.find((x) => x.id === id);
+      return n ? { title: n.title, label: KIND_LABEL[n.kind].one, icon: DOC_ICON[n.kind] } : null;
+    },
     open: (id) => useApp.getState().openDoc(id),
     createNote: (title, kind) => useApp.getState().createNote(kind, title),
     suggest(query) {

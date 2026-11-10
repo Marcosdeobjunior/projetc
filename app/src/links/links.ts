@@ -43,8 +43,8 @@ export function resolveLink(index: Map<string, DocRef>, target: string): DocRef 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Procura onde os nomes das notas aparecem no texto. Diferencia maiúsculas
- * ("Rosa" a personagem, não "rosa" a cor) e só conta palavras inteiras.
+ * Procura onde os nomes das notas aparecem no texto, sem diferenciar
+ * maiúsculas ("Lucas", "lucas" e "LUCAS" contam), e só palavras inteiras.
  */
 export function mentionMatcher(project: Project): RegExp | null {
   const titles = project.notes
@@ -55,7 +55,7 @@ export function mentionMatcher(project: Project): RegExp | null {
   // Sem lookbehind: o macOS antes da versão 13.3 não suporta.
   return new RegExp(
     `(^|[^\\p{L}\\p{N}])(${titles.map(escapeRegex).join("|")})(?![\\p{L}\\p{N}])`,
-    "gu",
+    "giu",
   );
 }
 
@@ -71,12 +71,12 @@ export function findMentions(project: Project, text: string, matcher = mentionMa
   if (!matcher) return [];
   let byTitle = titlesCache.get(project);
   if (!byTitle) {
-    byTitle = new Map(project.notes.map((n) => [n.title.trim(), n.id]));
+    byTitle = new Map(project.notes.map((n) => [n.title.trim().toLocaleLowerCase("pt-BR"), n.id]));
     titlesCache.set(project, byTitle);
   }
   const out: Mention[] = [];
   for (const m of text.matchAll(matcher)) {
-    const noteId = byTitle.get(m[2]!);
+    const noteId = byTitle.get(m[2]!.toLocaleLowerCase("pt-BR"));
     const from = m.index + m[1]!.length;
     if (noteId) out.push({ noteId, from, to: from + m[2]!.length });
   }

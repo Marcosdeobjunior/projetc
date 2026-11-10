@@ -424,9 +424,11 @@ outra palavra no lugar do nome, use uma barra: `[[Helena|a amiga]]`.
   nota do tipo Ideia** com esse nome e abre.
 - O nome é procurado sem diferenciar maiúsculas e minúsculas.
 - **Menções:** sempre que o nome de uma **nota** aparece no texto, mesmo sem colchetes, ele
-  ganha um sublinhado leve e conta como ligação no grafo. Menções diferenciam maiúsculas
-  ("Rosa" a personagem não é "rosa" a cor) e só contam palavras inteiras. Ctrl + clique numa
-  menção também abre a nota.
+  ganha um sublinhado leve e conta como ligação no grafo, automaticamente, enquanto você digita.
+  Maiúsculas não importam ("Lucas", "lucas" e "LUCAS" contam); só contam palavras inteiras.
+  Ctrl + clique numa menção também abre a nota.
+- **Passe o mouse** numa menção ou num link para ver um cartão com o nome e o tipo (Personagem,
+  Lugar, Ideia… ou a cena e o capítulo).
 - Ao **renomear** uma cena ou nota, todos os `[[Nome antigo]]` do projeto viram `[[Nome novo]]`
   automaticamente (o texto depois da barra é mantido) e o app avisa quantos links mudaram.
 - Na exportação, os links viram texto comum: `[[Helena]]` sai como "Helena" e

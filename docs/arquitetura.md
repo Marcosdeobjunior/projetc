@@ -419,7 +419,8 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   `allDocs().reverse()` e o último `set` vence, **numa colisão de títulos a cena vence a nota**
   (verificado). As sugestões de `[[` (`suggestLinks`) mostram as notas primeiro.
 - **Menções** (`mentionMatcher`): uma regex com os títulos das notas (≥ 2 caracteres, os mais
-  longos primeiro), **diferenciando maiúsculas** e exigindo fronteira de palavra Unicode
+  longos primeiro), **sem diferenciar maiúsculas** (flag `i`; o título é achado em minúsculas
+  `pt-BR`) e exigindo fronteira de palavra Unicode
   (sem lookbehind, por compatibilidade com macOS < 13.3).
 - **Grafo** (`buildGraph`): um nó por cena/nota; arestas não direcionadas, deduplicadas; um link
   escrito prevalece sobre uma menção entre os mesmos dois textos. `degree` define o tamanho do

@@ -16,6 +16,7 @@ const ctx: LinkContext = {
   open: () => undefined,
   createNote: async () => null,
   suggest: () => [],
+  describe: () => null,
 };
 
 const specs = (set: DecorationSet) =>

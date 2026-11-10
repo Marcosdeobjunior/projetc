@@ -24,11 +24,12 @@ describe("links", () => {
     ]);
   });
 
-  it("encontra menções só de palavras inteiras e com a mesma maiúscula", () => {
+  it("encontra menções só de palavras inteiras, sem diferenciar maiúsculas", () => {
     const { p, helena } = sample();
-    const found = findMentions(p, "Helena chegou. Helenas não. helena não. (Helena) sim.");
-    expect(found.map((m) => m.noteId)).toEqual([helena.id, helena.id]);
-    expect(found[1]!.from).toBe("Helena chegou. Helenas não. helena não. (".length);
+    const found = findMentions(p, "Helena chegou. Helenas não. helena sim. (HELENA) sim.");
+    expect(found.map((m) => m.noteId)).toEqual([helena.id, helena.id, helena.id]);
+    expect(found[1]!.from).toBe("Helena chegou. Helenas não. ".length);
+    expect(found[2]!.from).toBe("Helena chegou. Helenas não. helena sim. (".length);
   });
 
   it("monta o grafo com links e menções, sem repetir ligações", () => {

@@ -20,7 +20,8 @@ import { linkEdits } from "../links/links";
 import { allDocs, findDoc, findScene } from "../manuscript/tree";
 import { countWords } from "../manuscript/wordCount";
 import { useWriting } from "../state/writing";
-import { createLinksExtension, REFRESH_LINKS } from "./links";
+import { createLinksExtension, OPEN_HINT, REFRESH_LINKS } from "./links";
+import { Icon } from "../ui/Icon";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
 import { textStyleVars } from "./textStyle";
@@ -121,6 +122,14 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   const textStyle = useSettings((s) => s.textStyle);
   const textVars = useMemo(() => textStyleVars(textStyle), [textStyle]);
   const [draft, setDraft] = useState<Draft | null>(null);
+  /** Cartão de nome e tipo ao passar o mouse numa menção ou link. */
+  const [hoverCard, setHoverCard] = useState<{
+    title: string;
+    label: string;
+    icon: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const closeDraft = useCallback(() => setDraft(null), []);
   const commentsOpen = useComments((s) => s.panelOpen);
 
@@ -146,6 +155,26 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
           const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
           void attach(files, at);
           return true;
+        },
+        // Passar o mouse numa menção ou link mostra nome e tipo (Personagem, Lugar…).
+        handleDOMEvents: {
+          mouseover: (_view, event) => {
+            const el = (event.target as HTMLElement).closest?.<HTMLElement>(
+              ".mention[data-doc], .wikilink[data-doc]:not(.unresolved)",
+            );
+            if (!el || !el.dataset.doc) return false;
+            const info = linkContext.describe(el.dataset.doc);
+            if (!info) return false;
+            const r = el.getBoundingClientRect();
+            setHoverCard({ ...info, x: r.left, y: r.bottom });
+            return false;
+          },
+          mouseout: (_view, event) => {
+            const to = event.relatedTarget as HTMLElement | null;
+            if (to?.closest?.(".mention, .wikilink")) return false;
+            setHoverCard(null);
+            return false;
+          },
         },
         // Clicar num trecho comentado mostra o comentário na lista.
         handleClick: (_view, _pos, event) => {
@@ -407,6 +436,23 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         {commentsOpen && <CommentsPanel editor={editor} />}
       </div>
       {draft && <CommentComposer draft={draft} onClose={closeDraft} />}
+      {hoverCard && (
+        <div
+          className="mention-card"
+          role="tooltip"
+          style={{
+            left: Math.min(hoverCard.x, window.innerWidth - 260),
+            top: hoverCard.y + 6,
+          }}
+        >
+          <Icon name={hoverCard.icon} size={15} />
+          <span>
+            <b>{hoverCard.title}</b>
+            <small>{hoverCard.label}</small>
+          </span>
+          <kbd>{OPEN_HINT}</kbd>
+        </div>
+      )}
       {menu && editor && (
         <ContextMenu
           editor={editor}
