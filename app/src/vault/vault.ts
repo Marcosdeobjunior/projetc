@@ -10,12 +10,13 @@ import { countWords } from "../manuscript/wordCount";
 import { textSchema, YDOC_FIELD } from "../editor/extensions";
 import { renameLinksInText } from "../links/links";
 import { PROJECT_FILE, ydocPath } from "./paths";
+import { sanitizeFields } from "../manuscript/fields";
 import { moveToTrash } from "./trash";
 
 /*
  * Leitura e gravação de um vault. Cada cena é guardada em dois formatos:
  *  - manuscrito/<capítulo>/<cena>.md  → texto legível, a fonte da verdade para o usuário
- *  - .inkflow/ydoc/<id>.yjs           → estado do editor, usado para mesclar edições no sync
+ *  - .talia/ydoc/<id>.yjs           → estado do editor, usado para mesclar edições no sync
  */
 
 export class VaultError extends Error {}
@@ -41,7 +42,7 @@ export async function createVault(fs: VaultFs, title: string): Promise<Project> 
       "- `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.\n" +
       "- `notas/` guarda os personagens, lugares e ideias.\n" +
       "- `anexos/` guarda as imagens, vídeos, áudios e outros arquivos usados nos textos.\n" +
-      "- `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.\n",
+      "- `.talia/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.\n",
   );
   await saveProject(fs, project);
   return project;
@@ -54,15 +55,31 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
   try {
     data = JSON.parse(raw) as Project;
   } catch {
-    throw new VaultError("O arquivo .inkflow/project.json está corrompido.");
+    throw new VaultError("O arquivo .talia/project.json está corrompido.");
   }
   if (data.format !== 1) {
     throw new VaultError("Este projeto foi criado por uma versão mais nova da Tália.");
   }
-  // Projetos criados antes das notas existirem.
-  const project = { ...data, notes: data.notes ?? [] };
+  // Projetos criados antes das notas existirem. Imagem de ficha só se apontar
+  // para um arquivo de anexos/ (o project.json pode ter sido editado por fora).
+  const project = {
+    ...data,
+    notes: (data.notes ?? []).map((n) => {
+      const rest = { ...n };
+      if (n.image !== undefined && !validNoteImage(n.image)) delete rest.image;
+      const fields = sanitizeFields(n.fields);
+      if (fields) rest.fields = fields;
+      else delete rest.fields;
+      return rest;
+    }),
+  };
   validateProject(project);
   return project;
+}
+
+/** Imagem de ficha válida: `anexos/<arquivo>`, sem subir de pasta. */
+export function validNoteImage(v: unknown): v is string {
+  return typeof v === "string" && v.startsWith("anexos/") && safeName(v.slice("anexos/".length));
 }
 
 /** Nome de pasta ou arquivo que não sai do lugar (sem "/", "\\", ":", "..", controle). */
@@ -77,7 +94,7 @@ const safeName = (n: unknown) =>
 export function validateProject(p: Project): void {
   const bad = (what: string) => {
     throw new VaultError(
-      `Não foi possível abrir o projeto: a lista de capítulos e notas está danificada (${what}). Restaure uma cópia da pasta .inkflow ou fale com o suporte.`,
+      `Não foi possível abrir o projeto: a lista de capítulos e notas está danificada (${what}). Restaure uma cópia da pasta .talia ou fale com o suporte.`,
     );
   };
   if (!p || typeof p !== "object" || !Array.isArray(p.chapters) || !Array.isArray(p.notes ?? []))
@@ -163,6 +180,13 @@ export async function writeSceneMarkdown(
 ) {
   const doc = findDoc(project, sceneId);
   if (doc) await fs.writeText(doc.path, sceneFile(doc, markdown));
+}
+
+/** O texto (Markdown, sem o cabeçalho) de uma cena ou nota, para a edição rápida. */
+export async function readDocBody(fs: VaultFs, project: Project, id: string): Promise<string> {
+  const doc = requireDoc(project, id);
+  const md = await fs.readText(doc.path);
+  return md ? splitFrontmatter(md).body.replace(/\r\n?/g, "\n").replace(/^\n/, "") : "";
 }
 
 /** O .md da cena mudou no disco desde a última vez que o app leu ou gravou. */

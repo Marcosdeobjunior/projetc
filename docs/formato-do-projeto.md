@@ -23,10 +23,14 @@ A Casa das Marés/                       ← raiz do projeto (nome legível, com
     ideias/o-segredo-do-pai.md
   anexos/
     mapa-da-vila.png                    ← imagens, vídeos, áudios e outros arquivos
-  .inkflow/
+  .talia/
     project.json                        ← estrutura: título, capítulos, cenas, notas, autor
     ydoc/
       sc_3f9a1c2b7d4e.yjs               ← estado do editor (Yjs) de cada cena/nota
+    comentarios/
+      sc_3f9a1c2b7d4e.json              ← comentários de uma cena/nota (só se houver)
+    linha-do-tempo.json                 ← dias da história das cenas e acontecimentos
+    escrita.json                        ← palavras escritas por dia e meta diária
     versoes/
       indice.json                       ← índice do histórico (só neste computador)
       v-2026-11-02T20-17-05-123Z.json   ← uma versão do projeto inteiro
@@ -43,12 +47,12 @@ Regras gerais:
 - Caminhos dentro do projeto usam `/` em qualquer sistema e são sempre relativos à raiz.
 - Arquivos de texto em **UTF-8**. JSON com indentação de 2 espaços (`project.json`, `livro.json`)
   ou 1 espaço (índices), com exceção de `sync.json` e das versões, que são compactos.
-- No desktop, toda gravação é atômica: o app grava `.<nome>.<aleatório>.inkflow-tmp` na mesma
-  pasta e renomeia por cima. Um `*.inkflow-tmp` que sobrar (queda de energia no meio) pode ser
+- No desktop, toda gravação é atômica: o app grava `.<nome>.<aleatório>.talia-tmp` na mesma
+  pasta e renomeia por cima. Um `*.talia-tmp` que sobrar (queda de energia no meio) pode ser
   apagado; o app e a sincronização o ignoram.
 - **Links simbólicos (atalhos) dentro do projeto não são aceitos**: o app desktop recusa ler ou
   gravar através deles. A própria pasta do projeto pode ser um atalho.
-- **Nada é apagado** ao excluir pela interface: vai para `.inkflow/lixeira/`.
+- **Nada é apagado** ao excluir pela interface: vai para `.talia/lixeira/`.
 - A ordem de capítulos e cenas vem de `project.json`, nunca do nome dos arquivos.
 
 ### Nomes de arquivos e pastas
@@ -75,38 +79,40 @@ Criado ao criar o projeto, só se ainda não existir:
 Este é um projeto da Tália.
 
 - `manuscrito/` guarda os capítulos e as cenas em Markdown, legíveis em qualquer editor de texto.
-- `.inkflow/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.
+- `.talia/` guarda a ordem dos capítulos, o histórico e os dados do app. Não apague essa pasta.
 ```
 
 O app não lê esse arquivo.
 
 ---
 
-## `.inkflow/project.json`
+## `.talia/project.json`
 
 A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tália.
 
-| Campo               | Tipo    | Descrição                                                                                        |
-| ------------------- | ------- | ------------------------------------------------------------------------------------------------ |
-| `format`            | `1`     | Versão do formato. Outro valor: o app recusa abrir ("criado por uma versão mais nova")           |
-| `id`                | string  | `prj_` + 12 hex. Identifica o projeto (também no Google Drive)                                   |
-| `title`             | string  | Título do projeto (até 120 caracteres pela interface)                                            |
-| `createdAt`         | number  | Criação, em ms desde 1970                                                                        |
-| `updatedAt`         | number  | Última mudança na estrutura, em ms                                                               |
-| `author`            | string? | Nome do autor (Exportar / Diagramação). Opcional                                                 |
-| `chapters`          | array   | Capítulos, **na ordem do livro**                                                                 |
-| `chapters[].id`     | string  | `ch_` + 12 hex                                                                                   |
-| `chapters[].title`  | string  | Título do capítulo                                                                               |
-| `chapters[].dir`    | string  | Nome da pasta em `manuscrito/`                                                                   |
-| `chapters[].scenes` | array   | Cenas, **na ordem**                                                                              |
-| `…scenes[].id`      | string  | `sc_` + 12 hex                                                                                   |
-| `…scenes[].title`   | string  | Título da cena                                                                                   |
-| `…scenes[].file`    | string  | Nome do `.md` dentro da pasta do capítulo                                                        |
-| `notes`             | array   | Notas (sem ordem; a interface ordena por título). Projetos antigos podem não ter: lido como `[]` |
-| `notes[].id`        | string  | `nt_` + 12 hex                                                                                   |
-| `notes[].title`     | string  | Título da nota (também usado para as menções no texto)                                           |
-| `notes[].kind`      | string  | `"personagens"`, `"lugares"` ou `"ideias"` (a subpasta em `notas/`)                              |
-| `notes[].file`      | string  | Nome do `.md` dentro de `notas/<kind>/`                                                          |
+| Campo               | Tipo    | Descrição                                                                                                                                                                                                              |
+| ------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`            | `1`     | Versão do formato. Outro valor: o app recusa abrir ("criado por uma versão mais nova")                                                                                                                                 |
+| `id`                | string  | `prj_` + 12 hex. Identifica o projeto (também no Google Drive)                                                                                                                                                         |
+| `title`             | string  | Título do projeto (até 120 caracteres pela interface)                                                                                                                                                                  |
+| `createdAt`         | number  | Criação, em ms desde 1970                                                                                                                                                                                              |
+| `updatedAt`         | number  | Última mudança na estrutura, em ms                                                                                                                                                                                     |
+| `author`            | string? | Nome do autor (Exportar / Diagramação). Opcional                                                                                                                                                                       |
+| `chapters`          | array   | Capítulos, **na ordem do livro**                                                                                                                                                                                       |
+| `chapters[].id`     | string  | `ch_` + 12 hex                                                                                                                                                                                                         |
+| `chapters[].title`  | string  | Título do capítulo                                                                                                                                                                                                     |
+| `chapters[].dir`    | string  | Nome da pasta em `manuscrito/`                                                                                                                                                                                         |
+| `chapters[].scenes` | array   | Cenas, **na ordem**                                                                                                                                                                                                    |
+| `…scenes[].id`      | string  | `sc_` + 12 hex                                                                                                                                                                                                         |
+| `…scenes[].title`   | string  | Título da cena                                                                                                                                                                                                         |
+| `…scenes[].file`    | string  | Nome do `.md` dentro da pasta do capítulo                                                                                                                                                                              |
+| `notes`             | array   | Notas (sem ordem; a interface ordena por título). Projetos antigos podem não ter: lido como `[]`                                                                                                                       |
+| `notes[].id`        | string  | `nt_` + 12 hex                                                                                                                                                                                                         |
+| `notes[].title`     | string  | Título da nota (também usado para as menções no texto)                                                                                                                                                                 |
+| `notes[].kind`      | string  | `"personagens"`, `"lugares"`, `"ideias"`, `"calendarios"`, `"idiomas"` ou `"organizacoes"` (a subpasta em `notas/`)                                                                                                    |
+| `notes[].file`      | string  | Nome do `.md` dentro de `notas/<kind>/`                                                                                                                                                                                |
+| `notes[].image`     | string  | Opcional. Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Outro valor é ignorado ao abrir                                                                                                                |
+| `notes[].fields`    | objeto  | Opcional. Campos da ficha (`manuscript/fields.ts`): chave → texto; campos de referência guardam o id de outra nota. Chaves inválidas ou valores que não são texto são ignorados ao abrir; no sync, junta campo a campo |
 
 Exemplo:
 
@@ -148,10 +154,10 @@ Caminho de uma cena: `manuscrito/<chapter.dir>/<scene.file>`. De uma nota:
 `notas/<note.kind>/<note.file>`.
 
 Ao abrir, o app confere o arquivo e recusa abrir o projeto (mensagem "O arquivo
-.inkflow/project.json tem um problema (…)") se: `chapters` ou `notes` não forem listas; algum
+.talia/project.json tem um problema (…)") se: `chapters` ou `notes` não forem listas; algum
 `id` ou `title` não for texto; algum `dir` ou `file` for vazio, `.`, `..` ou tiver `/`, `\`, `:`
 ou caracteres de controle; algum `file` de cena não terminar em `.md`; ou algum `kind` não for um
-dos três tipos. JSON inválido dá "O arquivo .inkflow/project.json está corrompido.".
+dos três tipos. JSON inválido dá "O arquivo .talia/project.json está corrompido.".
 
 ---
 
@@ -185,21 +191,23 @@ _Não procure por mim_, dizia a última linha. Ele leu [[Helena]] de novo.
 
 Markdown aceito e gerado (`markdown/serialize.ts` e `parse.ts`):
 
-| Elemento               | Sintaxe                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Parágrafo              | Linhas separadas por uma linha em branco (linhas seguidas são juntadas)                                         |
-| Quebra de linha        | `\` no fim da linha                                                                                             |
-| Títulos                | `# `, `## `, `### ` (o editor usa 1 a 3; o leitor aceita até 6)                                                 |
-| Citação                | `> ` no começo de cada linha                                                                                    |
-| Lista                  | `- ` (lê também `+` e `*`)                                                                                      |
-| Lista numerada         | `1. ` (lê também `1)`), respeitando o número inicial                                                            |
-| Separador de cena      | `* * *` (lê também `***`, `---`, `___`)                                                                         |
-| Negrito                | `**texto**` (lê também `__texto__`)                                                                             |
-| Itálico                | `*texto*` (lê também `_texto_`)                                                                                 |
-| Tachado                | `~~texto~~`                                                                                                     |
-| Destaque (marca-texto) | `==texto==` (como no Obsidian)                                                                                  |
-| Link entre textos      | `[[Título]]` ou `[[Título\|texto que aparece]]` — texto comum no `.md`, sem escape                              |
-| Anexo                  | `![nome](anexos/arquivo.ext)` numa linha própria; com espaço ou parênteses: `![nome](<anexos/meu arquivo.png>)` |
+| Elemento               | Sintaxe                                                                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parágrafo              | Linhas separadas por uma linha em branco (linhas seguidas são juntadas)                                                                                                         |
+| Quebra de linha        | `\` no fim da linha                                                                                                                                                             |
+| Títulos                | `# `, `## `, `### ` (o editor usa 1 a 3; o leitor aceita até 6)                                                                                                                 |
+| Citação                | `> ` no começo de cada linha                                                                                                                                                    |
+| Lista                  | `- ` (lê também `+` e `*`)                                                                                                                                                      |
+| Lista numerada         | `1. ` (lê também `1)`), respeitando o número inicial                                                                                                                            |
+| Separador de cena      | `* * *` (lê também `***`, `---`, `___`)                                                                                                                                         |
+| Negrito                | `**texto**` (lê também `__texto__`)                                                                                                                                             |
+| Itálico                | `*texto*` (lê também `_texto_`)                                                                                                                                                 |
+| Tachado                | `~~texto~~`                                                                                                                                                                     |
+| Destaque (marca-texto) | `==texto==` (como no Obsidian)                                                                                                                                                  |
+| Link entre textos      | `[[Título]]` ou `[[Título\|texto que aparece]]` — texto comum no `.md`, sem escape                                                                                              |
+| Anexo                  | `![nome](anexos/arquivo.ext)` numa linha própria; com espaço ou parênteses: `![nome](<anexos/meu arquivo.png>)`                                                                 |
+| Lista dentro de lista  | Item recuado com 2 espaços (ou o tamanho do marcador) sob o item de cima, sem linha em branco                                                                                   |
+| Alinhamento            | `<!-- alinhar: centro -->` (ou `direita`, `justificado`) numa linha própria logo antes do parágrafo ou título; invisível em outros programas. À esquerda é o padrão (sem marca) |
 
 Caracteres que virariam formatação são escapados com `\` (`\*`, `\_`, `` \` ``, `\~`, `\=` antes
 de outro `=`, e `#`, `>`, `-`, `1.` no começo da linha). Links, sublinhado, código e blocos de
@@ -207,7 +215,7 @@ código **não** existem no editor.
 
 ---
 
-## `.inkflow/ydoc/<id>.yjs`
+## `.talia/ydoc/<id>.yjs`
 
 Estado do editor de cada cena ou nota, em binário: `Y.encodeStateAsUpdate(doc)` de um `Y.Doc`
 cujo `Y.XmlFragment` `"default"` contém o documento ProseMirror (via `@tiptap/y-tiptap`, com o
@@ -221,6 +229,103 @@ esquema de `editor/extensions.ts`).
 
 ---
 
+## `.talia/comentarios/<id>.json`
+
+Comentários de uma cena ou nota (`comments/comments.ts`). O arquivo só existe enquanto houver
+comentário; ao excluir o último, ele é removido.
+
+```json
+{
+  "format": 1,
+  "comments": [
+    {
+      "id": "6f1c…",
+      "text": "Trocar por \"gelado\"?",
+      "quote": "frio",
+      "from": "AZ7x…",
+      "to": "AZ7x…",
+      "createdAt": 1794230000000,
+      "resolved": false
+    }
+  ]
+}
+```
+
+- `from`/`to`: posições **relativas do Yjs** (`Y.encodeRelativePosition`, em base64) no
+  `Y.XmlFragment` do `.yjs` da mesma cena. Elas acompanham o texto quando ele é editado e
+  quando edições de dois computadores são mescladas.
+- `quote`: o trecho no momento do comentário, para mostrar o comentário mesmo que o trecho seja
+  apagado (o app avisa "(trecho apagado)").
+- Se o `.yjs` da cena for **recriado do zero** a partir do `.md` (arquivo apagado ou vindo de
+  outro programa), as âncoras deixam de achar o trecho; o comentário continua na lista.
+- Lido com `sanitizeComments`: entradas sem `id`, `from` ou `to`, ou repetidas, são ignoradas;
+  arquivo danificado é lido como sem comentários (não é apagado).
+- Vai para o Drive como qualquer arquivo (em conflito, fica a versão local e a remota vai para a
+  lixeira).
+
+---
+
+## `.talia/linha-do-tempo.json`
+
+Datas da história (`timeline/timeline.ts`). As datas são sempre do autor; o app só ordena e
+calcula intervalos.
+
+```json
+{
+  "format": 1,
+  "scenes": { "sc_3f9a1c2b7d4e": { "day": 1, "days": 3 } },
+  "events": [
+    {
+      "id": "6f1c…",
+      "title": "O pai some",
+      "day": -2555,
+      "days": 1,
+      "notes": ["nt_…"]
+    }
+  ]
+}
+```
+
+| Campo               | Tipo           | Descrição                                                                                        |
+| ------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `scenes`            | objeto         | Por id de cena: `day` (dia da história, inteiro) e `days` (duração, ≥ 1)                         |
+| `events[]`          | array          | Acontecimentos que não são cenas: `id`, `title`, `day`, `days`, `notes` (ids)                    |
+| `calendars`         | objeto         | Por id de nota de calendário: definição do calendário do mundo (abaixo)                          |
+| `activeCalendar`    | string ou null | Calendário usado para mostrar as datas (precisa existir em `calendars`)                          |
+| `scenes[id].place`  | string         | Opcional. Id do lugar onde a cena se passa                                                       |
+| `scenes[id].ignore` | boolean        | Opcional. `true` = ignorar os avisos de viagem desta cena                                        |
+| `births`            | objeto         | Por id de personagem: dia da história em que nasceu (inteiro; negativo = antes do dia 1)         |
+| `travel[]`          | array          | Tempos de viagem: `from`, `to` (ids de lugares), `days` (≥ 0). Vale nos dois sentidos; um par só |
+
+Definição de um calendário (`timeline/calendar.ts`, lida com `sanitizeCalendar`):
+`months[]` (`name`, `days` 1–1000), `weekdays[]` (nomes; vazio = sem semana), `yearSuffix`,
+`start` (`year`, `month` índice, `day`) = a data do dia 1 da história, `startWeekday` (índice),
+`holidays[]` (`name`, `month`, `day`) e `seasons[]` (`name`, `month` em que começa). Sem anos
+bissextos. Valores fora da faixa voltam ao padrão.
+
+- Cena sem entrada em `scenes` = sem data. Ids de cenas excluídas são ignorados.
+- Lido com `sanitizeTimeline`: valores não inteiros, fora da faixa ou ids repetidos são
+  descartados; arquivo danificado é lido como vazio (não é apagado).
+- Vai para o Drive como qualquer arquivo (em conflito, fica a versão local e a remota vai para a
+  lixeira).
+
+---
+
+## `.talia/escrita.json`
+
+Calendário de escrita (`writing/writing.ts`).
+
+```json
+{ "format": 1, "dailyGoal": 500, "days": { "2026-11-09": 640 } }
+```
+
+- `dailyGoal`: meta de palavras por dia (inteiro > 0) ou `null`.
+- `days`: palavras escritas por dia, chave `AAAA-MM-DD` (data local). Só conta o que entra
+  digitando nas cenas do manuscrito; palavras apagadas não descontam.
+- Lido com `sanitizeLog`; vai para o Drive como qualquer arquivo.
+
+---
+
 ## `anexos/`
 
 Arquivos copiados para o projeto (imagens, vídeos, áudios, documentos). Sem índice: a lista é o
@@ -230,7 +335,7 @@ entram na sincronização.
 
 ---
 
-## `.inkflow/versoes/` (histórico)
+## `.talia/versoes/` (histórico)
 
 ### `<id>.json` — uma versão
 
@@ -283,7 +388,7 @@ cada dia. Versões manuais nunca são podadas.
 
 ---
 
-## `.inkflow/lixeira/`
+## `.talia/lixeira/`
 
 O conteúdo excluído fica aqui com o nome `<stamp>-<nome original>`, onde `stamp` é a data ISO
 com `:` e `.` trocados por `-` (por exemplo `2026-11-02T20-30-00-000Z-a-carta.md`, ou uma pasta
@@ -331,9 +436,9 @@ Exemplo:
       "chapter": { "id": "ch_1a2b3c4d5e6f", "title": "O começo" },
       "index": 0
     },
-    "path": ".inkflow/lixeira/2026-11-02T20-30-00-000Z-a-carta.md",
+    "path": ".talia/lixeira/2026-11-02T20-30-00-000Z-a-carta.md",
     "ydocs": {
-      "sc_3f9a1c2b7d4e": ".inkflow/lixeira/2026-11-02T20-30-00-000Z-sc_3f9a1c2b7d4e.yjs"
+      "sc_3f9a1c2b7d4e": ".talia/lixeira/2026-11-02T20-30-00-000Z-sc_3f9a1c2b7d4e.yjs"
     }
   }
 ]
@@ -350,11 +455,11 @@ Rótulos das cópias de segurança (`backup`) criadas pelo app:
 | `"<título>" — editado fora do app antes de sincronizar`                             | `.md` editado fora do app e refeito a partir do `.yjs` que chegou |
 | `project.json do Drive (com problema)`                                              | `project.json` do Drive corrompido ou inválido (fica o local)     |
 
-Esvaziar a lixeira apaga a pasta `.inkflow/lixeira/` inteira.
+Esvaziar a lixeira apaga a pasta `.talia/lixeira/` inteira.
 
 ---
 
-## `.inkflow/livro.json` (projeto gráfico)
+## `.talia/livro.json` (projeto gráfico)
 
 Criado pela aba Diagramação na primeira mudança. Sincronizado. Ao ler, cada campo é conferido e
 o que for inválido volta ao padrão.
@@ -403,7 +508,7 @@ Medidas derivadas (não gravadas): lombada = `páginas × espessura do papel + 1
 
 ---
 
-## `.inkflow/sync.json` (estado da sincronização)
+## `.talia/sync.json` (estado da sincronização)
 
 Existe só quando a sincronização do projeto está ligada **neste computador**. Não é
 sincronizado. Apagar o arquivo desliga a sincronização (a próxima vez que ligar, tudo é comparado
@@ -423,7 +528,7 @@ Exemplo (resumido):
 {
   "folderId": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
   "base": {
-    ".inkflow/project.json": "9e107d9d372bb6826bd81d3542a419d6",
+    ".talia/project.json": "9e107d9d372bb6826bd81d3542a419d6",
     "manuscrito/o-comeco/a-carta.md": "e4d909c290d0fb1ca068ffaddf22cbd0"
   },
   "cache": {
@@ -440,11 +545,11 @@ Exemplo (resumido):
 
 ### O que vai para o Drive
 
-Tudo da pasta do projeto, **exceto**: `.inkflow/sync.json`, `.inkflow/versoes/indice.json`,
-`.inkflow/lixeira/**`, `*.inkflow-tmp`, `.DS_Store`, `Thumbs.db` e `desktop.ini`.
+Tudo da pasta do projeto, **exceto**: `.talia/sync.json`, `.talia/versoes/indice.json`,
+`.talia/lixeira/**`, `*.talia-tmp`, `.DS_Store`, `Thumbs.db` e `desktop.ini`.
 
 No Drive, a estrutura é espelhada dentro de `Tália/<título do projeto>/`. A pasta `Tália` tem
-a propriedade de app `inkflowRoot = "1"` e a pasta do projeto `inkflowProject = <project.id>` — é
+a propriedade de app `taliaRoot = "1"` e a pasta do projeto `taliaProject = <project.id>` — é
 por ela (e não pelo nome) que o app encontra o projeto.
 
 ---
@@ -459,7 +564,7 @@ lista completa de chaves está em
 
 ## Prévia no navegador
 
-Na prévia, cada arquivo é uma entrada do IndexedDB `inkflow` / `files` com a chave
+Na prévia, cada arquivo é uma entrada do IndexedDB `talia` / `files` com a chave
 `browser:<uuid>` + `\0` + caminho relativo, e o valor é o texto ou os bytes. As pastas não
 existem de fato: valem enquanto houver arquivos com aquele prefixo. O formato dos arquivos é o
 mesmo descrito acima.

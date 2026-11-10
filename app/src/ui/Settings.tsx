@@ -1,11 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  PALETTES,
-  THEME_BACKGROUNDS,
-  themeBackgroundUrl,
-  useSettings,
-  type MinimapPos,
-} from "../state/settings";
+import { PALETTES, useSettings, type MinimapPos } from "../state/settings";
 import { useSync } from "../state/sync";
 import { SERVICE_LABEL, parseMusicLink, useMusic, type MusicService } from "../state/music";
 import { PLAYLISTS } from "../music/library";
@@ -50,7 +44,7 @@ const TABS: { id: SettingsTab; label: string; icon: string; project?: boolean }[
 ];
 
 /** Aba aberta por último (volta nela ao reabrir as Configurações). */
-const TAB_KEY = "inkflow.settingsTab";
+const TAB_KEY = "talia.settingsTab";
 function lastTab(): SettingsTab {
   try {
     return (sessionStorage.getItem(TAB_KEY) as SettingsTab | null) ?? "geral";
@@ -140,7 +134,7 @@ function MusicSettings() {
           </div>
         </Field>
         <Field label="Ordem das faixas">
-          <div className="segmented" role="radiogroup" aria-label="Ordem das faixas">
+          <div className="segmented wide" role="radiogroup" aria-label="Ordem das faixas">
             {(
               [
                 [false, "Em sequência"],
@@ -160,7 +154,7 @@ function MusicSettings() {
           </div>
         </Field>
         <Field label="Ao terminar">
-          <div className="segmented" role="radiogroup" aria-label="Ao terminar">
+          <div className="segmented wide" role="radiogroup" aria-label="Ao terminar">
             {(
               [
                 ["off", "Parar"],
@@ -214,6 +208,16 @@ function MusicSettings() {
   );
 }
 
+/** Explica por que o link colado não serve, com a dica certa para cada caso. */
+function linkError(value: string, service: MusicService): string {
+  const v = value.trim().toLowerCase();
+  if (/(^|\/\/)(spotify\.link|spoti\.fi)\//.test(v))
+    return "Links curtos do Spotify não funcionam aqui. Abra o link e copie o endereço completo (open.spotify.com/…).";
+  if (service === "youtube" && /music\.youtube\.com\/browse\//.test(v))
+    return "Esse é o link da página do álbum. Use Compartilhar → Copiar link no álbum ou na playlist.";
+  return "Esse link não é de uma playlist, álbum ou música.";
+}
+
 function LinkField({ service, placeholder }: { service: MusicService; placeholder: string }) {
   const source = useMusic((m) => m.links[service]);
   const link = useMusic((m) => m.link);
@@ -221,20 +225,20 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const label = SERVICE_LABEL[service];
+  // Sem <form>: em páginas com sandbox (a prévia publicada) o envio de
+  // formulário é bloqueado pelo navegador antes de chegar ao onSubmit.
+  const submit = () => {
+    if (!value.trim()) return;
+    const parsed = parseMusicLink(value);
+    if (!parsed) return setError(linkError(value, service));
+    if (parsed.service !== service)
+      return setError(`Esse link é do ${SERVICE_LABEL[parsed.service]}.`);
+    link(parsed);
+    setValue("");
+    setError(null);
+  };
   return (
-    <form
-      className="setting bg-url"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const parsed = parseMusicLink(value);
-        if (!parsed) return setError("Esse link não é de uma playlist, álbum ou música.");
-        if (parsed.service !== service)
-          return setError(`Esse link é do ${SERVICE_LABEL[parsed.service]}.`);
-        link(parsed);
-        setValue("");
-        setError(null);
-      }}
-    >
+    <div className="setting bg-url">
       <div className="setting-text">
         <span className="setting-label">
           <span className={"music-dot " + service} aria-hidden="true" /> {label}
@@ -251,10 +255,13 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
         )}
       </div>
       <div className="bg-url-row">
+        {/* type="text": o "url" do navegador recusa links colados sem https://. */}
         <input
           className="text-input"
-          type="url"
+          type="text"
           inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
           value={value}
           placeholder={placeholder}
           aria-label={`Link do ${label}`}
@@ -263,8 +270,14 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
             setValue(e.target.value);
             setError(null);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
         />
-        <button type="submit" className="btn ghost sm" disabled={!value.trim()}>
+        <button type="button" className="btn ghost sm" disabled={!value.trim()} onClick={submit}>
           {source ? "Trocar" : "Vincular"}
         </button>
         {source && (
@@ -273,7 +286,7 @@ function LinkField({ service, placeholder }: { service: MusicService; placeholde
           </button>
         )}
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -437,7 +450,7 @@ function HomeBackground() {
     <Section title="Tela de projetos">
       <Field
         label="Fundo"
-        hint="Cada paleta tem um fundo próprio, que troca junto com ela. Se você escolher o fundo liso ou uma imagem sua, ele fica em qualquer paleta. A barra lateral e o topo são de vidro e mostram o fundo."
+        hint="Fundo liso, na cor da paleta, ou uma imagem sua, que fica em qualquer paleta. A barra lateral e o topo são de vidro e mostram o fundo."
       >
         <div
           className={"bg-picker" + (over ? " over" : "")}
@@ -455,16 +468,6 @@ function HomeBackground() {
               setError("Solte um arquivo de imagem ou o endereço de uma imagem.");
           }}
         >
-          <button
-            type="button"
-            role="radio"
-            className="bg-swatch bg-tema"
-            aria-checked={s.homeBg === "tema"}
-            aria-label={`Fundo da paleta: ${THEME_BACKGROUNDS[s.palette].label}`}
-            title={`Fundo da paleta: ${THEME_BACKGROUNDS[s.palette].label} (troca junto com a paleta)`}
-            style={{ backgroundImage: cssUrl(themeBackgroundUrl(s.palette)) }}
-            onClick={() => s.set({ homeBg: "tema" })}
-          />
           <button
             type="button"
             role="radio"
@@ -563,7 +566,7 @@ function HomeBackground() {
               className="link-btn"
               onClick={() => {
                 s.setHomeBgImage(null);
-                s.set({ homeBg: "tema" });
+                s.set({ homeBg: "liso" });
               }}
             >
               Remover imagem

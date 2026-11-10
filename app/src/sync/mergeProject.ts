@@ -1,3 +1,4 @@
+import { mergeFields } from "../manuscript/fields";
 import type { Chapter, Note, Project, Scene } from "../manuscript/types";
 import { uniqueName } from "../vault/paths";
 
@@ -141,6 +142,13 @@ export function mergeProjects(
       title: pick(bn?.title, ln.title, rn.title),
       file: pick(bn?.file, ln.file, rn.file),
       kind: pick(bn?.kind, ln.kind, rn.kind),
+      // Opcional: "sem imagem" na base também conta como valor (pick ignora undefined).
+      fields: mergeFields(bn?.fields, ln.fields, rn.fields),
+      image: bn
+        ? JSON.stringify(ln.image) === JSON.stringify(bn.image)
+          ? rn.image
+          : ln.image
+        : (ln.image ?? rn.image),
     }),
     changed,
   );

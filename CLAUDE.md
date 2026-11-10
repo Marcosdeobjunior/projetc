@@ -59,18 +59,19 @@ dentro de `app/`).
   `manuscript/tree.ts` faz operações puras de estrutura que geram `FsOp`s aplicadas por
   `vault.applyOps`.
 - **Formato do vault:** o `.md` de cada cena/nota é a fonte da verdade para o usuário; o
-  `.inkflow/ydoc/<id>.yjs` é o estado do editor (TipTap + Yjs, campo `YDOC_FIELD = "default"`),
+  `.talia/ydoc/<id>.yjs` é o estado do editor (TipTap + Yjs, campo `YDOC_FIELD = "default"`),
   usado para mesclar no sync. Ao abrir, se o `.md` difere do `.yjs`, o texto de fora é aplicado
   como edição. Ao salvar, se o `.md` mudou por fora, `ExternalChangeError` → o app guarda uma
-  cópia "(versão externa)". A ordem de capítulos/cenas fica em `.inkflow/project.json` (reordenar
+  cópia "(versão externa)". A ordem de capítulos/cenas fica em `.talia/project.json` (reordenar
   não renomeia arquivos); renomear renomeia o arquivo. **Nada é apagado:** excluir move para
-  `.inkflow/lixeira/`.
+  `.talia/lixeira/`.
 - **Markdown:** `markdown/parse.ts` e `serialize.ts` convertem um subconjunto entre Markdown e o
   JSON do ProseMirror; o schema do editor (`editor/extensions.ts`) e esse conversor precisam
   andar juntos (ida e volta coberta por `markdown.test.ts`). Extras: `==destaque==`, `[[links]]`
-  estilo Obsidian, anexos `![nome](anexos/arq.ext)` numa linha própria.
+  estilo Obsidian, anexos `![nome](anexos/arq.ext)` numa linha própria, alinhamento como
+  `<!-- alinhar: centro|direita|justificado -->` antes do bloco (`editor/textAlign.ts`).
 - **Sync (`sync/engine.ts`):** decisão de três vias por MD5 (local × Drive × base em
-  `.inkflow/sync.json`); `planSync` só lê, `applySync` escreve; conflitos em `.yjs` são mesclados
+  `.talia/sync.json`); `planSync` só lê, `applySync` escreve; conflitos em `.yjs` são mesclados
   via Yjs, `project.json` é juntado por id (`mergeProject.ts`), o resto fica com a versão local e a
   remota vai para a lixeira. Login OAuth (loopback + PKCE, escopo `drive.file`) em
   `src-tauri/src/google.rs`; cliente REST v3 em `sync/drive.ts`.

@@ -4,7 +4,7 @@ import { serial } from "../state/writes";
 import { deleteFromTrash, emptyTrash, listTrash, type TrashEntry } from "../vault/trash";
 import { parseMarkdown, splitFrontmatter } from "../markdown/parse";
 import { toPlainText } from "../markdown/serialize";
-import { KIND_LABEL } from "../links/context";
+import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentKind, KIND_ICON as ATTACHMENT_ICON } from "../editor/attachments";
 import { readBackup, restorable, type BackupContents } from "../vault/backup";
 import { Icon } from "./Icon";
@@ -43,7 +43,7 @@ function describe(e: TrashEntry): { icon: string; what: string } {
     }
     case "note":
       return {
-        icon: { personagens: "person", lugares: "pin", ideias: "bulb" }[item.note.kind],
+        icon: DOC_ICON[item.note.kind],
         what: KIND_LABEL[item.note.kind].one,
       };
     case "attachment":

@@ -13,7 +13,7 @@ import { RadioButton } from "./Music";
 import { getMiniBook, peekMiniBook, prepareMiniBook } from "../book/miniBook";
 import { cssUrl } from "./bgImage";
 import { useSync } from "../state/sync";
-import { THEME_BACKGROUNDS, themeBackgroundUrl, useSettings } from "../state/settings";
+import { useSettings } from "../state/settings";
 import { useFolderSyncStatus } from "../state/syncStatus";
 import type { RemoteProject } from "../sync/drive";
 import {
@@ -92,11 +92,16 @@ export function Home() {
 
   return (
     <div
-      className={"projects bg-" + background.kind + (nav.collapsed ? " nav-collapsed" : "")}
+      className={
+        "projects bg-" +
+        background.kind +
+        // Espiando, a barra abre como sempre (mesmo visual e animação), sem fixar.
+        (nav.collapsed && !nav.peeking ? " nav-collapsed" : "")
+      }
       style={background.style}
     >
       <AppBar
-        collapsed={nav.collapsed}
+        collapsed={nav.collapsed && !nav.peeking}
         onToggle={nav.toggle}
         folder={current ? folderName(current, desktop) : null}
         folderTitle={current?.location}
@@ -107,6 +112,10 @@ export function Home() {
         <HomeSidebar
           collapsed={nav.collapsed}
           onToggle={nav.toggle}
+          peeking={nav.peeking}
+          onPeekStart={nav.peekStart}
+          onPeekKeep={nav.peekKeep}
+          onPeekEnd={nav.peekEnd}
           desktop={desktop}
           busy={busy}
           vaults={filtered}
@@ -161,6 +170,8 @@ export function Home() {
               </div>
             </header>
 
+            <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
+
             {!desktop && (
               <p className="notice">
                 {platform?.persistent === false
@@ -176,8 +187,8 @@ export function Home() {
                 </p>
                 <p className="muted">
                   Você pode transformá-la em um projeto: a Tália cria dentro dela as pastas{" "}
-                  <code>manuscrito</code> e <code>.inkflow</code> e o arquivo{" "}
-                  <code>LEIA-ME.md</code>. Os arquivos que já estão lá não são alterados.
+                  <code>manuscrito</code> e <code>.talia</code> e o arquivo <code>LEIA-ME.md</code>.
+                  Os arquivos que já estão lá não são alterados.
                 </p>
                 <div className="convert-actions">
                   <button
@@ -269,10 +280,7 @@ export function Home() {
               onCreate={() => setCreating(true)}
             />
 
-            <div className="home-row">
-              <Inspiration offset={quoteOffset} onNext={() => setQuoteOffset((n) => n + 1)} />
-              <DriveProjects />
-            </div>
+            <DriveProjects />
           </div>
         </main>
       </div>
@@ -366,7 +374,7 @@ function SelectedCard(props: {
         <Stat n={stats?.words} label="Palavras" />
         <Stat n={stats?.chapters} label="Capítulos" />
         <Stat n={stats?.scenes} label="Cenas" />
-        <Stat n={stats ? stats.characters + stats.places + stats.ideas : undefined} label="Notas" />
+        <Stat n={stats?.notes} label="Notas" />
       </div>
       {goal ? (
         <div className="hero-goal">
@@ -679,27 +687,17 @@ function DriveProjects() {
 }
 
 /**
- * Fundo da tela inicial. Por padrão é o da paleta (cada paleta tem o seu e ele
- * troca junto); a imagem do usuário ou o fundo liso, quando escolhidos, valem
- * em qualquer paleta.
+ * Fundo da tela inicial: liso (só a cor da paleta) ou a imagem do usuário,
+ * que vale em qualquer paleta.
  */
 function useHomeBackground(): { kind: string; style: CSSProperties | undefined } {
   const kind = useSettings((s) => s.homeBg);
   const dim = useSettings((s) => s.homeBgDim);
   const image = useSettings((s) => s.homeBgImage);
-  const palette = useSettings((s) => s.palette);
   if (kind === "imagem" && image)
     return {
       kind,
       style: { "--home-bg-dim": `${dim}%`, "--home-bg-image": cssUrl(image) } as CSSProperties,
     };
-  if (kind === "liso") return { kind: "paleta", style: undefined };
-  // "tema" (ou "imagem" sem imagem guardada): o fundo padrão da paleta.
-  return {
-    kind: "tema",
-    style: {
-      "--home-bg-dim": `${THEME_BACKGROUNDS[palette].dim}%`,
-      "--home-bg-image": cssUrl(themeBackgroundUrl(palette)),
-    } as CSSProperties,
-  };
+  return { kind: "paleta", style: undefined };
 }

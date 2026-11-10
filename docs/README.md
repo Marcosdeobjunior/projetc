@@ -31,4 +31,4 @@ Esta pasta reúne a documentação do app. Escolha pelo que você precisa:
 - "Texto" é qualquer coisa que abre no editor: uma **cena** do manuscrito ou uma **nota**
   (personagem, lugar ou ideia).
 - "Pasta do projeto" (no código, _vault_) é a pasta do computador onde o projeto fica guardado.
-- Caminhos como `.inkflow/lixeira/` são relativos à pasta do projeto.
+- Caminhos como `.talia/lixeira/` são relativos à pasta do projeto.

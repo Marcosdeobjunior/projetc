@@ -9,11 +9,11 @@ import { folderName } from "../vault/paths";
 /*
  * Conta Google e sincronização do projeto aberto com o Google Drive.
  * A conta vale para o app todo (fica neste computador); ligar ou não a
- * sincronização é escolha de cada projeto (`.inkflow/sync.json`).
+ * sincronização é escolha de cada projeto (`.talia/sync.json`).
  */
 
-const ACCOUNT_KEY = "inkflow.google";
-const CLIENT_KEY = "inkflow.googleClient";
+const ACCOUNT_KEY = "talia.google";
+const CLIENT_KEY = "talia.googleClient";
 
 interface Account {
   email: string;

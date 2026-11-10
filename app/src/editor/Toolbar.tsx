@@ -3,6 +3,8 @@ import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
 import { useSettings } from "../state/settings";
 import { useApp } from "../state/store";
+import { TextStyleButton } from "./TextStylePanel";
+import { useComments } from "../state/comments";
 import {
   BLOCK_STYLES,
   blockStyle,
@@ -17,11 +19,14 @@ import {
 export function Toolbar({
   editor,
   onAttach,
+  onComment,
 }: {
   editor: Editor | null;
   onAttach(files: File[]): void;
+  onComment(): void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) =>
@@ -35,10 +40,18 @@ export function Toolbar({
             bullet: e.isActive("bulletList"),
             ordered: e.isActive("orderedList"),
             quote: e.isActive("blockquote"),
+            selected: !e.state.selection.empty,
+            align:
+              (["center", "right", "justify"] as const).find((a) => e.isActive({ textAlign: a })) ??
+              ("left" as const),
+            canIndent: e.can().sinkListItem("listItem"),
+            canOutdent: e.can().liftListItem("listItem"),
           }
         : null,
   });
   const minimap = useSettings((s) => s.minimap);
+  const commentsOpen = useComments((s) => s.panelOpen);
+  const openComments = useComments((s) => s.comments.filter((c) => !c.resolved).length);
   const setSettings = useSettings((s) => s.set);
   if (!editor || !state) return <div className="toolbar" />;
   const chain = () => editor.chain().focus();
@@ -57,6 +70,22 @@ export function Toolbar({
       icon: "listOrdered",
       on: state.ordered,
       run: () => chain().toggleOrderedList().run(),
+    },
+    {
+      id: "indent",
+      label: "Aumentar recuo do item da lista (Tab)",
+      icon: "indent",
+      on: false,
+      disabled: !state.canIndent,
+      run: () => chain().sinkListItem("listItem").run(),
+    },
+    {
+      id: "outdent",
+      label: "Diminuir recuo do item da lista (Shift+Tab)",
+      icon: "outdent",
+      on: false,
+      disabled: !state.canOutdent,
+      run: () => chain().liftListItem("listItem").run(),
     },
     {
       id: "quote",
@@ -88,6 +117,7 @@ export function Toolbar({
           </option>
         ))}
       </select>
+      <TextStyleButton />
       <span className="toolbar-sep" />
       {MARKS.map((m) => (
         <ToolButton
@@ -99,11 +129,51 @@ export function Toolbar({
         />
       ))}
       <span className="toolbar-sep" />
+      {(
+        [
+          ["left", "alignLeft", "Alinhar à esquerda", "Mod+Shift+L"],
+          ["center", "alignCenter", "Centralizar", "Mod+Shift+E"],
+          ["justify", "alignJustify", "Justificar", "Mod+Shift+J"],
+          ["right", "alignRight", "Alinhar à direita", "Mod+Shift+R"],
+        ] as const
+      ).map(([a, icon, label, keys]) => (
+        <ToolButton
+          key={a}
+          label={`${label} (${shortcut(keys)})`}
+          icon={icon}
+          on={state.align === a}
+          run={() => chain().setTextAlign(a).run()}
+        />
+      ))}
+      <span className="toolbar-sep" />
       {blocks.map((t) => (
-        <ToolButton key={t.id} label={t.label} icon={t.icon} on={t.on} run={t.run} />
+        <ToolButton
+          key={t.id}
+          label={t.label}
+          icon={t.icon}
+          on={t.on}
+          disabled={"disabled" in t ? t.disabled : false}
+          run={t.run}
+        />
       ))}
       <ToolButton label="Limpar formatação" icon="clear" run={() => clearFormatting(editor)} />
       <span className="toolbar-sep" />
+      <ToolButton
+        label="Inserir imagem. Também dá para arrastar ou colar no texto."
+        icon="image"
+        run={() => imageInput.current?.click()}
+      />
+      <input
+        ref={imageInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/avif"
+        multiple
+        hidden
+        onChange={(e) => {
+          onAttach([...(e.target.files ?? [])]);
+          e.target.value = "";
+        }}
+      />
       <ToolButton
         label="Anexar arquivo (imagem, vídeo, áudio…). Também dá para arrastar ou colar no texto."
         icon="paperclip"
@@ -130,7 +200,30 @@ export function Toolbar({
         icon="redo"
         run={() => editor.commands.redo()}
       />
+      <span className="toolbar-sep" />
+      <button
+        type="button"
+        className="tool tool-text"
+        title={`Comentar o trecho selecionado (${shortcut("Mod+Alt+M")})`}
+        disabled={!state.selected}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onComment}
+      >
+        <Icon name="comment" /> Comentar
+      </button>
       <span className="toolbar-spacer" />
+      <button
+        type="button"
+        className="tool tool-count"
+        title={commentsOpen ? "Esconder comentários" : "Mostrar comentários"}
+        aria-label={`Comentários (${openComments})`}
+        aria-pressed={commentsOpen}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => useComments.getState().setPanel(!commentsOpen)}
+      >
+        <Icon name="comment" />
+        {openComments > 0 && <span className="tool-badge">{openComments}</span>}
+      </button>
       <ToolButton
         label="Histórico de versões"
         icon="history"
@@ -150,11 +243,13 @@ function ToolButton({
   label,
   icon,
   on,
+  disabled,
   run,
 }: {
   label: string;
   icon: string;
   on?: boolean;
+  disabled?: boolean;
   run: () => void;
 }) {
   return (
@@ -164,6 +259,7 @@ function ToolButton({
       title={label}
       aria-label={label}
       aria-pressed={on}
+      disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={run}
     >

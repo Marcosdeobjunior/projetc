@@ -8,6 +8,20 @@ export const KIND_LABEL: Record<NoteKind, { one: string; many: string; new: stri
   personagens: { one: "Personagem", many: "Personagens", new: "Novo personagem" },
   lugares: { one: "Lugar", many: "Lugares", new: "Novo lugar" },
   ideias: { one: "Ideia", many: "Ideias", new: "Nova ideia" },
+  calendarios: { one: "Calendário", many: "Calendários", new: "Novo calendário" },
+  idiomas: { one: "Idioma", many: "Idiomas", new: "Novo idioma" },
+  organizacoes: { one: "Organização", many: "Organizações", new: "Nova organização" },
+};
+
+/** Ícone de cada tipo de nota (e das cenas), usado em todas as telas. */
+export const DOC_ICON: Record<NoteKind | "scene", string> = {
+  scene: "file",
+  personagens: "person",
+  lugares: "pin",
+  ideias: "bulb",
+  calendarios: "calendar",
+  idiomas: "language",
+  organizacoes: "organization",
 };
 
 // Índices recalculados só quando o projeto muda (não a cada tecla).
@@ -63,6 +77,24 @@ export function createLinkContext(currentId: string): LinkContext {
     mentions(text) {
       const p = project();
       return p ? findMentions(p, text, indexes(p).matcher) : [];
+    },
+    describe(id) {
+      const p = project();
+      if (!p) return null;
+      const scene = p.chapters.find((c) => c.scenes.some((s) => s.id === id));
+      if (scene) {
+        const s = scene.scenes.find((x) => x.id === id)!;
+        return {
+          title: s.title,
+          label: `Cena · ${scene.title}`,
+          icon: DOC_ICON.scene,
+          note: false,
+        };
+      }
+      const n = p.notes.find((x) => x.id === id);
+      return n
+        ? { title: n.title, label: KIND_LABEL[n.kind].one, icon: DOC_ICON[n.kind], note: true }
+        : null;
     },
     open: (id) => useApp.getState().openDoc(id),
     createNote: (title, kind) => useApp.getState().createNote(kind, title),

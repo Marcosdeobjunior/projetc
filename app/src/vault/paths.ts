@@ -1,5 +1,5 @@
 /** Pasta interna do app dentro de cada vault. */
-const META_DIR = ".inkflow";
+const META_DIR = ".talia";
 export const PROJECT_FILE = `${META_DIR}/project.json`;
 /** Estado Yjs de cada cena (usado para mesclar edições no sync). */
 const YDOC_DIR = `${META_DIR}/ydoc`;
@@ -15,6 +15,9 @@ export const ATTACHMENTS_DIR = "anexos";
 export const NOTES_DIR = "notas";
 
 export const ydocPath = (sceneId: string) => `${YDOC_DIR}/${sceneId}.yjs`;
+/** Comentários de cada cena (ancorados no texto por posições do Yjs). */
+export const COMMENTS_DIR = `${META_DIR}/comentarios`;
+export const commentsPath = (sceneId: string) => `${COMMENTS_DIR}/${sceneId}.json`;
 
 /** Converte um título em nome de arquivo seguro em Windows, macOS e Linux. */
 export function slugify(title: string): string {

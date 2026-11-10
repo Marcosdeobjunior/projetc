@@ -151,7 +151,7 @@ function EloDialog({ vault, onClose }: { vault: VaultRef; onClose(): void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Clicar numa estrela abre o projeto já no texto dela.
+  // Clicar num ponto abre o projeto já no texto dela.
   const openText = (id: string) => {
     onClose();
     void openVault(vault.root).then(() => useApp.getState().openDoc(id));

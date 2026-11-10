@@ -1,12 +1,12 @@
 [package]
-name = "inkflow"
+name = "talia"
 version = "0.1.0"
 description = "Tália: app desktop para escritores"
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "inkflow_lib"
+name = "talia_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

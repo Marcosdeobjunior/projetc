@@ -1,3 +1,4 @@
+import { ALIGN_FROM_WORD } from "./serialize";
 import type { PMNode } from "./types";
 
 /*
@@ -110,7 +111,28 @@ export function parseMarkdown(markdown: string): PMNode {
   return { type: "doc", content: parseBlocks(lines) };
 }
 
-function parseBlocks(lines: string[]): PMNode[] {
+const ALIGN_MARK = /^<!--\s*alinhar:\s*(centro|direita|justificado)\s*-->\s*$/;
+const ALIGN_PLACEHOLDER = "__align";
+
+/** Passa o alinhamento marcado para o parágrafo ou título seguinte. */
+function applyAlign(nodes: PMNode[]): PMNode[] {
+  const out: PMNode[] = [];
+  let pending: string | null = null;
+  for (const n of nodes) {
+    if (n.type === ALIGN_PLACEHOLDER) {
+      pending = String(n.attrs?.textAlign ?? "") || null;
+      continue;
+    }
+    if (pending && (n.type === "paragraph" || n.type === "heading"))
+      out.push({ ...n, attrs: { ...n.attrs, textAlign: pending } });
+    else out.push(n);
+    pending = null;
+  }
+  return out;
+}
+
+/** `inList`: o conteúdo de um item de lista, onde um "- " no começo da linha abre uma sublista. */
+function parseBlocks(lines: string[], inList = false): PMNode[] {
   const out: PMNode[] = [];
   let i = 0;
   const isBlank = (l: string | undefined) => l === undefined || l.trim() === "";
@@ -118,6 +140,14 @@ function parseBlocks(lines: string[]): PMNode[] {
   while (i < lines.length) {
     const line = lines[i]!;
     if (isBlank(line)) {
+      i++;
+      continue;
+    }
+
+    // <!-- alinhar: centro --> vale para o parágrafo ou título logo abaixo.
+    const align = line.match(ALIGN_MARK);
+    if (align) {
+      out.push({ type: ALIGN_PLACEHOLDER, attrs: { textAlign: ALIGN_FROM_WORD[align[1]!] } });
       i++;
       continue;
     }
@@ -188,7 +218,7 @@ function parseBlocks(lines: string[]): PMNode[] {
           itemLines.push(l.replace(new RegExp(`^ {1,${Math.max(2, indent)}}`), ""));
           i++;
         }
-        const inner = parseBlocks(itemLines);
+        const inner = parseBlocks(itemLines, true);
         items.push({ type: "listItem", content: inner.length ? inner : [{ type: "paragraph" }] });
         while (isBlank(lines[i]) && lines[i + 1]?.match(/^([-+*]|\d+[.)])\s+/)) i++;
       }
@@ -201,11 +231,14 @@ function parseBlocks(lines: string[]): PMNode[] {
     const para: string[] = [];
     while (i < lines.length && !isBlank(lines[i])) {
       const l = lines[i]!;
-      if (para.length && (/^(#{1,6})\s/.test(l) || l.startsWith(">"))) break;
+      if (para.length && (/^(#{1,6})\s/.test(l) || l.startsWith(">") || ALIGN_MARK.test(l))) break;
+      // Dentro de um item, a linha recuada que começa com marcador é uma sublista
+      // (fora de listas não: um "- " no meio do texto pode ser fala de personagem).
+      if (inList && para.length && /^([-+*]|\d+[.)])\s+\S/.test(l)) break;
       para.push(l);
       i++;
     }
     out.push(paragraph(para.join("\n")));
   }
-  return out;
+  return applyAlign(out);
 }

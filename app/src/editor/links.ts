@@ -32,13 +32,14 @@ export interface LinkContext {
   open(id: string): void;
   createNote(title: string, kind: NoteKind): Promise<string | null>;
   suggest(query: string): LinkSuggestion[];
+  /** Nome e tipo de um texto ("Helena", "Personagem"), para a dica ao passar o mouse. */
+  describe(id: string): { title: string; label: string; icon: string; note: boolean } | null;
 }
 
 /** Meta de transação para redesenhar os links quando títulos mudam. */
-export const REFRESH_LINKS = "inkflowRefreshLinks";
+export const REFRESH_LINKS = "taliaRefreshLinks";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-const OPEN_HINT = `${isMac ? "⌘" : "Ctrl"}+clique para abrir`;
 
 /** Marcações de links e menções de um parágrafo (ou título) que começa em `pos`. */
 function decorateBlock(node: PMNode, pos: number, ctx: LinkContext): Decoration[] {
@@ -59,9 +60,12 @@ function decorateBlock(node: PMNode, pos: number, ctx: LinkContext): Decoration[
         class: id ? "wikilink" : "wikilink unresolved",
         "data-doc": id ?? "",
         "data-title": l.target,
-        title: id
-          ? OPEN_HINT
-          : `“${l.target}” ainda não existe. ${isMac ? "⌘" : "Ctrl"}+clique para criar como ideia`,
+        // Link que existe: a dica é o cartão do editor (nome e tipo); senão, o aviso.
+        ...(id
+          ? {}
+          : {
+              title: `“${l.target}” ainda não existe. ${isMac ? "⌘" : "Ctrl"}+clique para criar como ideia`,
+            }),
       }),
     );
   }
@@ -72,7 +76,6 @@ function decorateBlock(node: PMNode, pos: number, ctx: LinkContext): Decoration[
       Decoration.inline(at(m.from), at(m.to), {
         class: "mention",
         "data-doc": m.noteId,
-        title: OPEN_HINT,
       }),
     );
   }
@@ -118,7 +121,7 @@ export function redecorate(tr: Transaction, old: DecorationSet, ctx: LinkContext
   return set;
 }
 
-const linksKey = new PluginKey<DecorationSet>("inkflowLinks");
+const linksKey = new PluginKey<DecorationSet>("taliaLinks");
 
 function linksPlugin(ctx: LinkContext) {
   return new Plugin<DecorationSet>({
@@ -229,14 +232,14 @@ function suggestionPopup() {
 
 export function createLinksExtension(ctx: LinkContext) {
   return Extension.create({
-    name: "inkflowLinks",
+    name: "taliaLinks",
     addProseMirrorPlugins() {
       const editor = this.editor as Editor;
       return [
         linksPlugin(ctx),
         Suggestion<LinkSuggestion, LinkSuggestion>({
           editor,
-          pluginKey: new PluginKey("inkflowLinkSuggest"),
+          pluginKey: new PluginKey("taliaLinkSuggest"),
           char: "[[",
           allowSpaces: true,
           allowedPrefixes: null,

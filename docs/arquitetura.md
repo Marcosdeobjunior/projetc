@@ -46,7 +46,7 @@ Princípios que atravessam o código:
 - **A interface nunca toca em arquivos diretamente**: tudo passa por `VaultFs`.
 - **Toda escrita é serializada** numa fila única (`serial`), para nenhuma gravação cruzar com um
   `rename`.
-- **Nada é apagado**: excluir move para `.inkflow/lixeira/`.
+- **Nada é apagado**: excluir move para `.talia/lixeira/`.
 - A ordem de capítulos e cenas fica em `project.json`, não no nome dos arquivos (reordenar não
   renomeia arquivos — bom para o sync).
 
@@ -110,7 +110,7 @@ app/
       desktop.ts          TauriFs (invoke dos comandos Rust), diálogos, recentes no localStorage
       browser.ts          Projetos no IndexedDB (ou memória), download no lugar de "Salvar como"
       kvFs.ts             KeyValueFs: sistema de arquivos simulado sobre chave-valor; MemoryStore
-      idbStore.ts         KeyValueStore sobre IndexedDB ("inkflow" / "files")
+      idbStore.ts         KeyValueStore sobre IndexedDB ("talia" / "files")
     vault/
       paths.ts            Constantes de caminho, slugify, uniqueName, folderName
       vault.ts            createVault, loadProject, saveProject, applyOps, loadSceneDoc, saveScene,
@@ -167,16 +167,18 @@ app/
       settings.ts         useSettings: tema, minimapa, seções recolhidas, intervalo de sync
       search.ts           useSearch: estado do painel de busca
       openEditors.ts      Editores abertos (troca de links ao renomear) e editor ativo
-    ui/                   Telas: Home, Workspace, VaultSwitcher, ManuscriptTree, NotesTree,
-                          AttachmentsTree, SearchPanel, GraphView, graphCanvas, MiniMap, Settings,
+      comments.ts         useComments: comentários da cena aberta, painel e destaque
+    ui/                   Telas: Home, Workspace (trilho + painel do Manuscrito), VaultSwitcher,
+                          ManuscriptTree, WorldView (Mundo), GalleryView (Anexos), SearchPanel,
+                          GraphView, graphCanvas, MiniMap, Settings,
                           HistoryView, TrashView, ExportView, BookDesignView, Book3D, DocPreview,
                           InlineEdit, Icon
     styles/               app.css (tema claro/escuro por CSS variables), fonts.css (@fontsource)
   src-tauri/
     tauri.conf.json       Janela, CSP, bundle (ícones, targets "all")
     capabilities/default.json   Permissões da janela: core:default, window destroy, dialog open/save
-    Cargo.toml            Crate "inkflow" (lib inkflow_lib)
-    src/main.rs           Esconde o console no Windows (release) e chama inkflow_lib::run
+    Cargo.toml            Crate "talia" (lib talia_lib)
+    src/main.rs           Esconde o console no Windows (release) e chama talia_lib::run
     src/lib.rs            Registra plugins e comandos
     src/vault.rs          Comandos de arquivo (com testes)
     src/google.rs         Login OAuth (loopback + PKCE), refresh e revoke (com testes)
@@ -194,20 +196,20 @@ erDiagram
   CHAPTER ||--o{ SCENE : "scenes (ordem)"
   PROJECT ||--o{ NOTE : "notes"
   SCENE ||--|| SCENE_MD : "manuscrito/<dir>/<file>"
-  SCENE ||--o| YDOC : ".inkflow/ydoc/<id>.yjs"
+  SCENE ||--o| YDOC : ".talia/ydoc/<id>.yjs"
   NOTE ||--|| NOTE_MD : "notas/<kind>/<file>"
-  NOTE ||--o| YDOC : ".inkflow/ydoc/<id>.yjs"
-  PROJECT ||--o| DESIGN : ".inkflow/livro.json"
-  PROJECT ||--o{ VERSION : ".inkflow/versoes/*.json"
-  PROJECT ||--o{ TRASH_ENTRY : ".inkflow/lixeira/indice.json"
-  PROJECT ||--o| SYNC_STATE : ".inkflow/sync.json"
+  NOTE ||--o| YDOC : ".talia/ydoc/<id>.yjs"
+  PROJECT ||--o| DESIGN : ".talia/livro.json"
+  PROJECT ||--o{ VERSION : ".talia/versoes/*.json"
+  PROJECT ||--o{ TRASH_ENTRY : ".talia/lixeira/indice.json"
+  PROJECT ||--o| SYNC_STATE : ".talia/sync.json"
 ```
 
-- **`Project`** (`.inkflow/project.json`): `format: 1`, `id` (`prj_…`), `title`, `createdAt`,
+- **`Project`** (`.talia/project.json`): `format: 1`, `id` (`prj_…`), `title`, `createdAt`,
   `updatedAt`, `chapters[]`, `notes[]`, `author?`.
 - **`Chapter`**: `id` (`ch_…`), `title`, `dir` (pasta em `manuscrito/`), `scenes[]`.
 - **`Scene`**: `id` (`sc_…`), `title`, `file` (`.md` dentro da pasta do capítulo).
-- **`Note`**: `id` (`nt_…`), `title`, `kind` (`personagens` | `lugares` | `ideias`), `file`.
+- **`Note`**: `id` (`nt_…`), `title`, `kind` (`personagens` | `lugares` | `ideias` | `calendarios` | `idiomas` | `organizacoes`; ícones em `DOC_ICON`), `file`.
 - Ids: prefixo + 12 hex de um UUID (`newId` em `manuscript/tree.ts`).
 - Nomes de arquivo/pasta: `slugify(título)` (sem acentos, minúsculas, `-`, até 60 caracteres) +
   sufixo `-2`, `-3`… se já usado (`uniqueName`). A pasta do projeto usa `folderName` (mantém
@@ -215,7 +217,7 @@ erDiagram
 - Ao abrir (e ao receber do Drive), `validateProject` confere a estrutura: listas no lugar, ids e
   títulos como texto, `dir`/`file` sem `/`, `\`, `:`, `..` ou caracteres de controle, `file`
   terminando em `.md`, `kind` conhecido. Um problema vira
-  `VaultError("O arquivo .inkflow/project.json tem um problema (capítulo).")` (ou `estrutura`,
+  `VaultError("O arquivo .talia/project.json tem um problema (capítulo).")` (ou `estrutura`,
   `título`, `cena`, `nota`).
 
 Toda mudança de estrutura é uma **função pura** em `manuscript/tree.ts` que devolve
@@ -261,7 +263,7 @@ Caminhos são sempre relativos à raiz do projeto e usam `/`.
 | Arquivos          | Comandos Rust (`invoke`)                               | `KeyValueFs` sobre IndexedDB (chave `raiz + "\0" + caminho`); memória se o IndexedDB falhar (`persistent: false`) |
 | Pastas            | Reais                                                  | Implícitas (existem enquanto há arquivos dentro)                                                                  |
 | `mtime` no `walk` | ms desde 1970                                          | `null` (o MD5 é recalculado sempre)                                                                               |
-| Recentes          | `localStorage["inkflow.recentVaults"]` (até 12)        | Derivados das chaves `…\0.inkflow/project.json`                                                                   |
+| Recentes          | `localStorage["talia.recentVaults"]` (até 12)          | Derivados das chaves `…\0.talia/project.json`                                                                     |
 | `forgetVault`     | Só tira da lista                                       | **Apaga os arquivos** do projeto                                                                                  |
 | `saveFile`        | Diálogo "Salvar como" + `export_write`                 | Download (`<a download>`)                                                                                         |
 | `openFile`        | `vault_open` (programa padrão)                         | Download                                                                                                          |
@@ -269,8 +271,8 @@ Caminhos são sempre relativos à raiz do projeto e usam `/`.
 | Sincronização     | Disponível                                             | Desligada (`useSync.available = false`)                                                                           |
 
 Gravação segura: no desktop, `write_atomic` grava num temporário novo
-`.<nome>.<aleatório>.inkflow-tmp` na mesma pasta, faz `sync_all` e renomeia por cima. O `walk` e
-o sync ignoram `*.inkflow-tmp`.
+`.<nome>.<aleatório>.talia-tmp` na mesma pasta, faz `sync_all` e renomeia por cima. O `walk` e
+o sync ignoram `*.talia-tmp`.
 
 ---
 
@@ -320,7 +322,7 @@ projeto continua aberto. Escolher a pasta do próprio projeto aberto não faz na
 
 `DocEditor` (uma instância por texto, `key={id}`) carrega via `serial(loadSceneDoc)`:
 
-- se existe `.inkflow/ydoc/<id>.yjs`: aplica o update num `Y.Doc`, converte para Markdown e
+- se existe `.talia/ydoc/<id>.yjs`: aplica o update num `Y.Doc`, converte para Markdown e
   compara com o `.md` (`sameText`: só o corpo, sem o cabeçalho, com `trim`). Se diferem, o `.md`
   foi editado fora: `external = parseMarkdown(md)`, que o editor aplica com `setContent` **como
   uma edição** (preserva o histórico Yjs e desfazer);
@@ -371,7 +373,51 @@ Detalhes:
 Subconjunto de Markdown (`markdown/serialize.ts` e `parse.ts`): parágrafos, títulos 1–3 (o parser
 aceita até 6), citação, listas com marcador e numeradas (com `start`), `* * *` (separador),
 quebra de linha (`\` no fim da linha), `**negrito**`, `*itálico*`, `~~tachado~~`, `==destaque==`
-e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíveis.
+e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíveis. Listas dentro de
+itens de lista são lidas e gravadas coladas. O alinhamento (`editor/textAlign.ts`, atributo
+`textAlign` de parágrafo/título) vira `<!-- alinhar: … -->` antes do bloco e é respeitado na
+prévia e nas exportações (HTML/EPUB e DOCX).
+
+### 6.0 Linha do tempo
+
+`timeline/timeline.ts`: `readTimeline`/`writeTimeline`/`sanitizeTimeline` (formato em
+`formato-do-projeto.md`) e `buildTimeline` (pura: agrupa por dia, calcula o intervalo desde o fim
+do grupo anterior, lista as cenas sem data e marca as "fora de ordem" em relação ao livro).
+Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx`,
+dentro da aba Calendários do Mundo (sub-seção "Linha do tempo"). `timeline/calendar.ts` converte
+dia da história ↔ data do calendário do mundo (`dayToDate`, `dateToDay`, `formatDate`,
+`holidaysOn`, `seasonOf`); a definição é editada em `ui/CalendarEditor.tsx` (ficha de uma nota de
+calendário). Continuidade: `continuity()` (pura) calcula as idades (`ageOn`, anos do calendário
+ativo ou 365), o local de cada cena (escolhido ou o único lugar ligado) e os avisos de viagem,
+só quando a chegada é mais cedo que `travelDays`; nunca adivinha distâncias nem reclama de
+viagens lentas. Nascimento e tempos de viagem são editados em `ui/ContinuityEditors.tsx` (fichas
+de personagem e lugar). Faixas: `buildLanes()` (uma linha por nota, uma coluna por dia ocupado).
+Calendário de escrita: `writing/writing.ts` (`streak`, `lastDays`, `heatmap`) e
+`state/writing.ts`; o `DocEditor` soma ao dia as palavras novas de cenas (diferença positiva a
+cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de teste em
+`timeline/example.ts` (também usadas em `vault/sample.ts`).
+
+### 6.1 Comentários
+
+- Dados em `.talia/comentarios/<id>.json` (`comments/comments.ts`: `readComments`,
+  `writeComments`, `sanitizeComments`; formato em `formato-do-projeto.md`). Gravação pela fila
+  (`serial`) a partir de `state/comments.ts`.
+- Âncora: `editor/commentAnchors.ts` converte a seleção em duas `Y.RelativePosition`
+  (`absolutePositionToRelativePosition` com o `binding` do `ySyncPluginKey`) e, para desenhar,
+  volta para posições absolutas (`relativePositionToAbsolutePosition`).
+- Os destaques são decorações (`CommentAnchors`). Em edição local elas só são **mapeadas** pela
+  transação (o mapeamento do Yjs ainda não foi atualizado ali); são recalculadas pelas âncoras
+  quando chega uma transação do `ySyncPluginKey` (abrir, desfazer, Yjs) ou `REFRESH_COMMENTS`.
+- UI em `editor/Comments.tsx` (`CommentComposer`, `CommentsPanel`); atalho Ctrl/⌘+Alt+M.
+- Campos da ficha: `manuscript/fields.ts` (`NOTE_FIELDS` por tipo, `sanitizeFields`,
+  `mergeFields` campo a campo no `mergeProject`, `fieldRefs`); gravados em `notes[].fields` por
+  `setNoteFields` (pela `change`); campos de referência viram arestas "link" em `buildGraph`. A tela
+  é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida).
+- Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
+  (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
+  `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença
+  do `.md` é aplicada como edição (o mesmo caminho de uma mudança feita fora do app). A ficha
+  aberta no Mundo vive em `state/worldNav.ts`, para o cartão poder pedir uma ficha.
 
 ---
 
@@ -385,7 +431,8 @@ e anexos. Colchetes não são escapados, para os `[[links]]` continuarem legíve
   `allDocs().reverse()` e o último `set` vence, **numa colisão de títulos a cena vence a nota**
   (verificado). As sugestões de `[[` (`suggestLinks`) mostram as notas primeiro.
 - **Menções** (`mentionMatcher`): uma regex com os títulos das notas (≥ 2 caracteres, os mais
-  longos primeiro), **diferenciando maiúsculas** e exigindo fronteira de palavra Unicode
+  longos primeiro), **sem diferenciar maiúsculas** (flag `i`; o título é achado em minúsculas
+  `pt-BR`) e exigindo fronteira de palavra Unicode
   (sem lookbehind, por compatibilidade com macOS < 13.3).
 - **Grafo** (`buildGraph`): um nó por cena/nota; arestas não direcionadas, deduplicadas; um link
   escrito prevalece sobre uma menção entre os mesmos dois textos. `degree` define o tamanho do
@@ -400,6 +447,8 @@ a lista. Os índices são cacheados por objeto `Project` (`WeakMap`).
 `ui/graphCanvas.ts` (`mountGraph`) é compartilhado entre o grafo completo e o minimapa
 (`compact`): simulação `d3-force` (link, charge, collide, x/y), arrastar nós (fixa `fx/fy`),
 arrastar o fundo (pan), roda = zoom (0,2× a 4×), hover destaca vizinhos, clique sem arrastar abre.
+Visual de grafo de notas: pontos lisos em `--muted` (raio pelo grau), linhas finas em `--edge`;
+hover pinta o ponto e as ligações dele em `--accent` e esmaece o resto; o texto aberto ganha anel.
 As posições e a visão são guardadas em `ref`s para o grafo não "pular" entre renderizações. O
 minimapa só remonta quando os nós/arestas mudam de fato (`graphKey`) e espera 600 ms de pausa
 na digitação.
@@ -427,9 +476,9 @@ o `DocEditor` daquele texto recalcula as ocorrências no doc do ProseMirror
 
 ## 9. Histórico de versões
 
-`src/vault/history.ts`. Cada versão é `.inkflow/versoes/<id>.json` com a estrutura e o **corpo
+`src/vault/history.ts`. Cada versão é `.talia/versoes/<id>.json` com a estrutura e o **corpo
 Markdown (sem frontmatter)** de todas as cenas e notas, lidos do disco (`readBodies`). Anexos não
-entram. Um índice `.inkflow/versoes/indice.json` (só metadados) acelera a lista; se faltar ou
+entram. Um índice `.talia/versoes/indice.json` (só metadados) acelera a lista; se faltar ou
 estiver corrompido, é refeito a partir dos arquivos.
 
 - `id = "v-" + ISO(createdAt)` com `:` e `.` trocados por `-` (com sufixo se colidir).
@@ -443,7 +492,7 @@ estiver corrompido, é refeito a partir dos arquivos.
 - `restoreText` (store): salva antes uma versão manual "Antes de restaurar …", grava o corpo no
   `.md` (ou recria a cena/nota se foi excluída, no mesmo capítulo/posição ou num capítulo novo).
 - `restoreProjectFiles`: manda `manuscrito/` e `notas/` para a lixeira como `backup`, reescreve
-  todos os `.md` da versão e o `project.json`. O `.inkflow/ydoc` fica; cada texto aplica a
+  todos os `.md` da versão e o `project.json`. O `.talia/ydoc` fica; cada texto aplica a
   diferença como edição ao abrir.
 
 Na sincronização, os arquivos de versão são sincronizados, mas `indice.json` não: quando chega ou
@@ -453,11 +502,11 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 ## 10. Lixeira
 
-`src/vault/trash.ts`. Tudo em `.inkflow/lixeira/`, com um índice `indice.json`
+`src/vault/trash.ts`. Tudo em `.talia/lixeira/`, com um índice `indice.json`
 (`TrashEntry[]`: `id`, `deletedAt`, `title`, `item`, `path`, `ydocs`).
 
 - `moveToTrash(path, item, sceneIds)` move o arquivo/pasta para
-  `.inkflow/lixeira/<stamp>-<nome>` e os `.yjs` das cenas para `<stamp>-<id>.yjs`.
+  `.talia/lixeira/<stamp>-<nome>` e os `.yjs` das cenas para `<stamp>-<id>.yjs`.
 - `saveToTrash(path, bytes, label)` grava um conteúdo que não existia em arquivo (cópias da
   sincronização) como item `backup`.
 - `restorePlan` calcula o projeto novo e os `move` de volta: ids já usados ganham id novo; nomes
@@ -487,14 +536,14 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 - **Credenciais do app** (ID e segredo do cliente OAuth "App para computador"): vêm de
   `VITE_GOOGLE_CLIENT_ID`/`VITE_GOOGLE_CLIENT_SECRET` na compilação (`app/.env.local`, fora do
-  Git) ou do formulário em Configurações (`localStorage["inkflow.googleClient"]`).
+  Git) ou do formulário em Configurações (`localStorage["talia.googleClient"]`).
 - **Login** (`google_sign_in`): abre `TcpListener` em `127.0.0.1:0` (porta aleatória), gera
   `state` (16 bytes) e verificador PKCE (48 bytes, desafio S256), abre o navegador em
   `accounts.google.com/o/oauth2/v2/auth` com `scope=drive.file`, `access_type=offline` e
   `prompt=consent`, espera até 5 min o redirecionamento com o `state` certo (ignora outros
   pedidos, como o favicon), responde uma página HTML e troca o `code` por tokens em
   `oauth2.googleapis.com/token`.
-- O **refresh token** e o e-mail ficam em `localStorage["inkflow.google"]`. O access token fica
+- O **refresh token** e o e-mail ficam em `localStorage["talia.google"]`. O access token fica
   só em memória e é renovado (`google_refresh`) quando falta menos de 1 min para vencer, ou
   quando o Drive responde 401.
 - **Desconectar** apaga a conta local e chama `google_revoke`.
@@ -503,10 +552,10 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 `src/sync/drive.ts` (`GoogleDrive`, REST v3 via `fetch`):
 
-- Pasta raiz `Tália` marcada com `appProperties.inkflowRoot = "1"` (é a marcação que identifica a pasta,
-  não o nome: quem já sincronizava quando o app se chamava InkFlow continua com a pasta "InkFlow").
+- Pasta raiz `Tália` marcada com `appProperties.taliaRoot = "1"` (é a marcação que identifica a pasta,
+  não o nome).
 - Cada projeto: pasta com o **título no momento em que a sync foi ligada**, marcada com
-  `appProperties.inkflowProject = <project.id>` (é o id que identifica, não o nome). As subpastas
+  `appProperties.taliaProject = <project.id>` (é o id que identifica, não o nome). As subpastas
   espelham o caminho dos arquivos.
 - `list(folderId)` percorre a árvore (BFS) e devolve `caminho → { id, md5Checksum }`.
 - Envio: até 5 MB em `multipart` (novo) ou `media` (substituir); acima, `resumable`.
@@ -516,11 +565,11 @@ sai uma versão, o índice local é apagado (`forgetVersionIndex`) e refeito na 
 
 ### 11.3 Algoritmo (três vias por MD5)
 
-`src/sync/engine.ts`. Estado em `.inkflow/sync.json` (`folderId`, `base`, `cache`,
+`src/sync/engine.ts`. Estado em `.talia/sync.json` (`folderId`, `base`, `cache`,
 `projectBase`, `lastSync`).
 
-Ficam **fora** da sincronização: `.inkflow/sync.json`, `.inkflow/versoes/indice.json`,
-`.inkflow/lixeira/**`, `*.inkflow-tmp`, `.DS_Store`, `Thumbs.db`, `desktop.ini`.
+Ficam **fora** da sincronização: `.talia/sync.json`, `.talia/versoes/indice.json`,
+`.talia/lixeira/**`, `*.talia-tmp`, `.DS_Store`, `Thumbs.db`, `desktop.ini`.
 
 1. **`hashLocal`**: MD5 de cada arquivo local; reaproveita o `cache` quando `size` e `mtime`
    não mudaram (no navegador, `mtime = null`, recalcula sempre).
@@ -534,7 +583,7 @@ flowchart TD
   B1 -- não --> B2{L == B?}
   B2 -- "sim (só o Drive mudou)" --> S2{"R existe?"}
   S2 -- sim --> D1[download]
-  S2 -- não --> D2["deleteLocal → Lixeira (ou remove se em .inkflow/)"]
+  S2 -- não --> D2["deleteLocal → Lixeira (ou remove se em .talia/)"]
   B2 -- não --> B3{R == B?}
   B3 -- "sim (só aqui mudou)" --> S3{"L existe?"}
   S3 -- sim --> U1[upload]
@@ -616,7 +665,7 @@ com `chooseNewVaultRoot`, roda o sync com `base = {}` (tudo vira `download`) e a
 flowchart LR
   P["project.json + .md das cenas"] --> B["buildBook(opts)"]
   B -->|"[[links]] → texto<br/>sem marca-texto<br/>só imagens"| Book["Book (capítulos, cenas, blocos, imagens)"]
-  D[".inkflow/livro.json (se existir)"] -.-> X
+  D[".talia/livro.json (se existir)"] -.-> X
   Book --> X{formato}
   X -->|docx| W["docx.ts → Packer → saveFile"]
   X -->|pdf| H["bookHtml (+ interiorCss se houver design e estilo Livro) → iframe → print()"]
@@ -639,7 +688,7 @@ flowchart LR
   sem compressão; capa = `renderPart("front")` a 1600 px de largura se houver design.
 - **Markdown/Texto** (`text.ts`): um arquivo; título/autor no topo se "Folha de rosto".
 - Nome do arquivo: `folderName(título).<ext>`.
-- As opções são guardadas por projeto em `localStorage["inkflow.export.<projectId>"]`
+- As opções são guardadas por projeto em `localStorage["talia.export.<projectId>"]`
   (capítulos desmarcados ficam em `uncheckedIds`, para capítulos novos entrarem marcados). O
   autor vai para `project.author`.
 
@@ -647,7 +696,7 @@ flowchart LR
 
 ## 13. Projeto gráfico (Diagramação)
 
-- **`book/design.ts`**: o modelo `BookDesign` (`.inkflow/livro.json`, gravado 500 ms depois de
+- **`book/design.ts`**: o modelo `BookDesign` (`.talia/livro.json`, gravado 500 ms depois de
   cada mudança — o arquivo só passa a existir depois da primeira mudança), tamanhos (`TRIM`),
   papéis (`PAPER`: espessura por página), `estimatePages` (linhas por página × palavras por linha
   estimadas, + aberturas de capítulo, + 6 páginas iniciais; sempre par), `spineWidth`
@@ -696,7 +745,7 @@ em texto. `root` é sempre um caminho absoluto e `path`/`from`/`to` são relativ
 | `vault_write_bytes` | corpo binário; cabeçalhos `x-root`, `x-path` | `()`                                           | Cabeçalhos com `encodeURIComponent`; gravação atômica                                                       |
 | `vault_exists`      | `root`, `path`                               | `bool`                                         | Arquivo ou pasta                                                                                            |
 | `vault_list`        | `root`, `path`                               | `string[]`                                     | Só arquivos (não pastas) direto na pasta, em ordem; `[]` se a pasta não existe                              |
-| `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.inkflow-tmp`; em ordem                        |
+| `vault_walk`        | `root`                                       | `{ path, size, mtime }[]`                      | Todos os arquivos, caminhos com `/`, `mtime` em ms; ignora `*.talia-tmp`; em ordem                          |
 | `vault_rename`      | `root`, `from`, `to`                         | `()`                                           | Recusa se o destino existe; cria as pastas do destino                                                       |
 | `vault_remove`      | `root`, `path`                               | `()`                                           | Pasta: remove tudo; inexistente: ok; recusa apagar a própria raiz                                           |
 | `vault_open`        | `root`, `path`                               | `()`                                           | Abre no programa padrão (`tauri-plugin-opener`); só `anexos/` com extensão permitida; erro se não é arquivo |
@@ -735,7 +784,7 @@ Windows; `dmg`/`app` no Mac; `deb`/`AppImage`/`rpm` no Linux — `targets: "all"
 
 - **Versão**: `0.1.0` está repetida em `app/package.json`, `app/src-tauri/tauri.conf.json` e
   `app/src-tauri/Cargo.toml`; atualize as três juntas.
-- **Identificador**: `app.inkflow.desktop`. Ícones em `src-tauri/icons/`.
+- **Identificador**: `app.talia.desktop`. Ícones em `src-tauri/icons/`.
 - **CI**: o job "Instalador do Windows" (`.github/workflows/app.yml`) gera o `.exe` e o `.msi` em
   cada push que mexe em `app/` e publica o artefato **Talia-Windows** (guardado por 30 dias).
 - Ainda **não há** assinatura de código, atualização automática nem empacotamento para as lojas
@@ -845,20 +894,20 @@ Qualidade local: `pnpm lint`, `pnpm typecheck`, `pnpm format` (Prettier, `printW
 
 Chaves no `localStorage` do WebView (por computador, não vão para o projeto nem para o Drive):
 
-| Chave                        | Conteúdo                                                                      |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| `inkflow.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                         |
-| `inkflow.lastVault`          | Raiz do último projeto aberto                                                 |
-| `inkflow.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)        |
-| `inkflow.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `syncEvery` |
-| `inkflow.theme`              | Formato antigo (só o tema), lido na migração                                  |
-| `inkflow.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                       |
-| `inkflow.export.<projectId>` | Opções de exportação daquele projeto                                          |
-| `inkflow.googleClient`       | `{ id, secret }` do cliente OAuth                                             |
-| `inkflow.google`             | `{ email, refreshToken }` da conta conectada                                  |
-| `inkflow.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                        |
+| Chave                      | Conteúdo                                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `talia.recentVaults`       | Lista de `VaultRef` (desktop, até 12)                                                                           |
+| `talia.lastVault`          | Raiz do último projeto aberto                                                                                   |
+| `talia.activeFolder`       | Pasta ativa da tela inicial (o app abre no Início com ela selecionada)                                          |
+| `talia.settings`           | `theme`, `minimap`, `minimapPos`, `minimapMentions`, `collapsed`, `collapsedChapters`, `syncEvery`, `textStyle` |
+| `talia.theme`              | Formato antigo (só o tema), lido na migração                                                                    |
+| `talia.sidebarCollapsed`   | `"1"` se a barra lateral está recolhida                                                                         |
+| `talia.export.<projectId>` | Opções de exportação daquele projeto                                                                            |
+| `talia.googleClient`       | `{ id, secret }` do cliente OAuth                                                                               |
+| `talia.google`             | `{ email, refreshToken }` da conta conectada                                                                    |
+| `talia.sampleCreated`      | `"1"` depois de criar o exemplo da prévia no navegador                                                          |
 
-`sessionStorage["inkflow.settingsTab"]` lembra a última aba das Configurações.
+`sessionStorage["talia.settingsTab"]` lembra a última aba das Configurações.
 
 ---
 

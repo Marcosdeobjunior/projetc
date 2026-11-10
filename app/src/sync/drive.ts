@@ -159,19 +159,19 @@ export class GoogleDrive implements Drive {
 
   private async rootFolder(create: boolean): Promise<string | null> {
     const found = await this.search(
-      `appProperties has { key='inkflowRoot' and value='1' } and mimeType=${quote(FOLDER)} and trashed=false`,
+      `appProperties has { key='taliaRoot' and value='1' } and mimeType=${quote(FOLDER)} and trashed=false`,
     );
     if (found[0]) return found[0].id;
-    return create ? this.createFolder(ROOT_NAME, null, { inkflowRoot: "1" }) : null;
+    return create ? this.createFolder(ROOT_NAME, null, { taliaRoot: "1" }) : null;
   }
 
   async projectFolder(projectId: string, title: string) {
     const found = await this.search(
-      `appProperties has { key='inkflowProject' and value=${quote(projectId)} } and trashed=false`,
+      `appProperties has { key='taliaProject' and value=${quote(projectId)} } and trashed=false`,
     );
     if (found[0]) return found[0].id;
     const root = (await this.rootFolder(true))!;
-    return this.createFolder(title, root, { inkflowProject: projectId });
+    return this.createFolder(title, root, { taliaProject: projectId });
   }
 
   async listProjects(): Promise<RemoteProject[]> {
@@ -181,10 +181,10 @@ export class GoogleDrive implements Drive {
       `${quote(root)} in parents and mimeType=${quote(FOLDER)} and trashed=false`,
     );
     return found
-      .filter((f) => f.appProperties?.inkflowProject)
+      .filter((f) => f.appProperties?.taliaProject)
       .map((f) => ({
         folderId: f.id,
-        projectId: f.appProperties!.inkflowProject!,
+        projectId: f.appProperties!.taliaProject!,
         title: f.name,
         modifiedTime: f.modifiedTime ?? "",
       }));
@@ -262,7 +262,7 @@ export class GoogleDrive implements Drive {
         body,
       });
     } else {
-      const boundary = `inkflow${crypto.randomUUID().replace(/-/g, "")}`;
+      const boundary = `talia${crypto.randomUUID().replace(/-/g, "")}`;
       const meta = { name: path.split("/").pop(), parents: [await this.folderFor(folderId, path)] };
       const multipart = new Blob([
         `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`,

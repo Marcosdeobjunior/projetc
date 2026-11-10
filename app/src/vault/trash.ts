@@ -13,7 +13,7 @@ import {
 export type { TrashItem };
 
 /*
- * Lixeira: o que é excluído vai para `.inkflow/lixeira/` e ganha uma entrada
+ * Lixeira: o que é excluído vai para `.talia/lixeira/` e ganha uma entrada
  * em `indice.json` dizendo o que era e onde estava, para poder voltar.
  */
 

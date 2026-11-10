@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import {
   addChapter,
@@ -14,7 +14,7 @@ import type { Chapter, Scene } from "../manuscript/types";
 import { formatCount } from "../manuscript/wordCount";
 import { Icon } from "./Icon";
 import { InlineEdit } from "./InlineEdit";
-import { useSettings, type SectionId } from "../state/settings";
+import { useSettings } from "../state/settings";
 
 type Drag = { kind: "scene" | "chapter"; id: string } | null;
 type DropMark = { id: string; where: "before" | "after" | "inside" } | null;
@@ -31,11 +31,22 @@ export function ManuscriptTree({
   const openDoc = useApp((s) => s.openDoc);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Capítulos recolhidos: guardados nas preferências, por projeto, para a
+  // barra voltar do mesmo jeito ao reabrir o app.
+  const folded = useSettings((s) => s.collapsedChapters[session.project.id]);
+  const collapsed = useMemo(() => new Set(folded ?? []), [folded]);
+  const setCollapsed = (update: (s: Set<string>) => Set<string>) => {
+    const ids = new Set(project.chapters.map((c) => c.id));
+    const next = [...update(new Set(collapsed))].filter((id) => ids.has(id));
+    useSettings.getState().setCollapsedChapters(project.id, next);
+  };
   const [drag, setDrag] = useState<Drag>(null);
   const [mark, setMark] = useState<DropMark>(null);
   const { project, words, activeDocId } = session;
   const sectionOpen = !useSettings((s) => s.collapsed.includes("manuscrito"));
+
+  const allCollapsed =
+    project.chapters.length > 0 && project.chapters.every((c) => collapsed.has(c.id));
 
   const chapterWords = (c: Chapter) => c.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0);
 
@@ -146,16 +157,29 @@ export function ManuscriptTree({
   return (
     <nav className="tree" aria-label="Manuscrito" onDragEnd={finishDrag}>
       <div className="tree-head">
-        <SectionToggle id="manuscrito" label="Manuscrito" />
-        <button
-          type="button"
-          className="icon-btn"
-          title="Novo capítulo"
-          aria-label="Novo capítulo"
-          onClick={newChapter}
-        >
-          <Icon name="plus" />
-        </button>
+        <h2 className="tree-label tree-title">Manuscrito</h2>
+        <div className="tree-actions">
+          {sectionOpen && project.chapters.length > 0 && (
+            <CollapseAllButton
+              collapsed={allCollapsed}
+              what="os capítulos"
+              onClick={() =>
+                setCollapsed(() =>
+                  allCollapsed ? new Set() : new Set(project.chapters.map((c) => c.id)),
+                )
+              }
+            />
+          )}
+          <button
+            type="button"
+            className="icon-btn"
+            title="Novo capítulo"
+            aria-label="Novo capítulo"
+            onClick={newChapter}
+          >
+            <Icon name="plus" />
+          </button>
+        </div>
       </div>
 
       {sectionOpen && (
@@ -419,18 +443,22 @@ export function ConfirmRow({
 }
 
 /** Título de uma seção da barra lateral que recolhe e expande o conteúdo. */
-export function SectionToggle({ id, label }: { id: SectionId; label: string }) {
-  const open = !useSettings((s) => s.collapsed.includes(id));
-  const toggle = useSettings((s) => s.toggleSection);
+/** Recolhe (ou expande) de uma vez todos os grupos de uma seção da barra lateral. */
+export function CollapseAllButton({
+  collapsed,
+  what,
+  onClick,
+}: {
+  /** Todos os grupos já estão recolhidos: o botão expande. */
+  collapsed: boolean;
+  /** Complemento do rótulo, ex.: "os capítulos". */
+  what: string;
+  onClick(): void;
+}) {
+  const label = collapsed ? `Expandir todos ${what}` : `Recolher todos ${what}`;
   return (
-    <button
-      type="button"
-      className={"section-toggle" + (open ? " open" : "")}
-      aria-expanded={open}
-      onClick={() => toggle(id)}
-    >
-      <Icon name="chevron" size={13} />
-      <span className="tree-label">{label}</span>
+    <button type="button" className="icon-btn" title={label} aria-label={label} onClick={onClick}>
+      <Icon name={collapsed ? "expand-all" : "collapse-all"} size={15} />
     </button>
   );
 }

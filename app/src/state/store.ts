@@ -56,7 +56,7 @@ export interface Session {
   activeDocId: string | null;
   /** Arquivos da pasta anexos/. */
   attachments: string[];
-  view: "editor" | "graph" | "settings" | "history" | "trash";
+  view: "editor" | "graph" | "world" | "attachments" | "settings" | "history" | "trash";
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -129,9 +129,9 @@ interface AppState {
   showMessage(message: string | null, tone?: "info" | "error"): void;
 }
 
-const SAMPLE_FLAG = "inkflow.sampleCreated";
-const LAST_KEY = "inkflow.lastVault";
-const ACTIVE_KEY = "inkflow.activeFolder";
+const SAMPLE_FLAG = "talia.sampleCreated";
+const LAST_KEY = "talia.lastVault";
+const ACTIVE_KEY = "talia.activeFolder";
 let initOnce: Promise<void> | undefined;
 
 function storageGet(key: string) {
@@ -320,7 +320,7 @@ export const useApp = create<AppState>((set, get) => {
     if (!restorable(contents)) {
       set({
         message:
-          "Esta cópia de segurança só tem arquivos técnicos do app, que não dá para restaurar por aqui. Ela continua na Lixeira, dentro da pasta .inkflow/lixeira do projeto.",
+          "Esta cópia de segurança só tem arquivos técnicos do app, que não dá para restaurar por aqui. Ela continua na Lixeira, dentro da pasta .talia/lixeira do projeto.",
         messageTone: "info",
       });
       return;

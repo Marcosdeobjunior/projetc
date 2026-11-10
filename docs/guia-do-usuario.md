@@ -96,7 +96,7 @@ servidor.
 
 Cada livro é um **projeto**, e cada projeto é uma **pasta** no seu computador. Dentro dela ficam
 os capítulos e cenas (arquivos `.md` que qualquer editor de texto abre), as notas, os anexos e
-uma pasta escondida `.inkflow` com os dados do app (ordem dos capítulos, histórico, lixeira). O
+uma pasta escondida `.talia` com os dados do app (ordem dos capítulos, histórico, lixeira). O
 formato exato está em [Formato do projeto](formato-do-projeto.md).
 
 ### 2.1 A tela inicial (Início)
@@ -125,9 +125,9 @@ quarta capa (no livro 3D) vêm do projeto gráfico de cada livro: se você envio
 o desenho padrão da Tália. A última lombada, tracejada, começa um livro novo. O planeta ao lado da
 busca abre o **Elo** do projeto ativo.
 
-Cada paleta tem um **fundo próprio**, que troca junto com ela. Em **Configurações → Geral → Tela
-de projetos** dá para escolher o fundo liso ou uma imagem sua; essa escolha vale em qualquer
-paleta até você voltar para o fundo do tema.
+A tela de projetos usa um **fundo liso**, na cor da paleta. Em **Configurações → Geral → Tela de
+projetos** dá para colocar uma imagem sua; ela vale em qualquer paleta até você voltar para o fundo
+liso ou remover a imagem.
 
 ### 2.2 Criar um projeto
 
@@ -142,9 +142,9 @@ Se já existir uma pasta com esse nome no local escolhido, o app avisa e não cr
 
 **Abrir projeto existente** pede uma pasta:
 
-- se ela já é um projeto da Tália (tem `.inkflow/project.json`), ele abre;
+- se ela já é um projeto da Tália (tem `.talia/project.json`), ele abre;
 - se é uma pasta comum, o app pergunta se você quer **Criar projeto nesta pasta**. Ele cria
-  `manuscrito/`, `.inkflow/` e um arquivo `LEIA-ME.md` (se ainda não existir), com o nome da
+  `manuscrito/`, `.talia/` e um arquivo `LEIA-ME.md` (se ainda não existir), com o nome da
   pasta como título. **Os arquivos que já estavam lá não são alterados.**
 
 Use isso também quando você mover a pasta de um projeto de lugar: a lista de recentes guarda o
@@ -167,15 +167,20 @@ no histórico (se algo mudou) e, se a sincronização estiver ligada, sincroniza
 
 ## 3. A barra lateral
 
-Do alto para baixo:
+A barra é um **trilho estreito** com as seções do projeto. Do alto para baixo:
 
 1. **Nome do projeto** (o menu de projetos, acima).
 2. **Total de palavras** do livro (só as cenas do manuscrito; notas não contam), o botão de
-   **busca** (lupa) e o botão **Grafo**.
-3. **Manuscrito** — capítulos e cenas.
-4. **Notas** — Personagens, Lugares e Ideias.
-5. **Anexos** — arquivos do projeto.
-6. No rodapé, **Configurações** e **Lixeira**.
+   **busca** (lupa) e, ao lado dela, o ícone do **Elo** (planeta), que abre o
+   [grafo](#7-grafo-e-minimapa) de conexões.
+3. **Manuscrito** — abre (ou fecha) um **painel ao lado** do trilho com os capítulos e as cenas.
+   Se você estiver em outra tela (Anexos, Mundo, Elo…), volta para o texto que estava aberto (ou
+   abre a primeira cena) e mostra o painel. O app lembra se ele ficou aberto.
+4. **Anexos** — abre a [galeria](#33-anexos) com os arquivos do projeto.
+5. **Mundo** — personagens, lugares, ideias, calendários, idiomas e organizações (as notas) em cartões.
+6. No rodapé, **Música** (o player), **Configurações** e **Lixeira**.
+
+No celular, com o painel do Manuscrito aberto, o trilho mostra só os ícones.
 
 ### 3.1 Manuscrito: capítulos e cenas
 
@@ -193,29 +198,149 @@ Do alto para baixo:
 - **Excluir:** a lixeirinha. O app pede confirmação; o texto vai para a
   [Lixeira](#9-lixeira) e pode voltar.
 - O número à direita de cada capítulo e cena é a contagem de palavras.
-- A setinha ao lado do capítulo recolhe ou mostra as cenas dele.
+- A setinha ao lado do capítulo recolhe ou mostra as cenas dele. O app lembra, em cada projeto,
+  quais capítulos ficaram recolhidos.
 
-### 3.2 Notas: personagens, lugares e ideias
+### 3.2 Mundo: personagens, lugares, ideias, calendários, idiomas e organizações
 
-As notas guardam o que não é o livro em si: fichas de personagens, lugares, ideias de enredo.
-Ficam em ordem alfabética, cada tipo no seu grupo.
+As notas guardam o que não é o livro em si: fichas de personagens, lugares, ideias de enredo,
+calendários do mundo (meses, festas, eras), idiomas inventados e organizações (reinos, guildas,
+famílias, ordens).
+Elas ficam no **Mundo** (no trilho, abaixo de Anexos), organizadas em **abas** no alto da tela
+(**Personagens**, **Lugares**, **Ideias**, **Calendários**, **Idiomas** e **Organizações**, cada
+uma com a quantidade; as setas ← → do teclado
+também trocam de aba, e o app lembra a última). Cada aba mostra cartões em ordem alfabética,
+com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
 
-- **Nova nota:** o **+** de "Personagens", "Lugares" ou "Ideias".
-- Abrir, renomear e excluir funcionam como nas cenas. Notas não têm ordem manual.
+- **Nova nota:** o botão de cada aba (**Novo personagem**, **Novo lugar**, **Nova ideia**, **Novo
+  calendário**, **Novo idioma**, **Nova organização**) cria a nota e abre a ficha. Cada tipo fica
+  numa subpasta de `notas/` (`calendarios/`, `idiomas/`, `organizacoes/`…).
+- **Ficha:** clique no cartão para abrir a página própria da nota, com:
+  - a **imagem** (retrato do personagem, foto do lugar): **Escolher imagem**, ou arraste uma
+    imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
+    remove da ficha (o arquivo continua em Anexos);
+  - o nome, o tipo e os **campos da ficha**, que mudam conforme o tipo:
+    - **personagem:** nome completo, apelidos, idade, gênero, ocupação, onde vive, organização,
+      aparência, personalidade, objetivo, medos e conflitos, background;
+    - **lugar:** tipo, onde fica, quem governa, população, clima, descrição, história;
+    - **organização:** tipo, líder, sede, objetivo, membros, história;
+    - **idioma:** falado por, onde se fala, escrita, palavras e frases, regras;
+    - **ideia:** tipo e situação.
+
+    Cada campo grava ao sair dele. Campos como **Onde vive**, **Organização**, **Líder** e **Sede**
+    escolhem outra nota (com **abrir** ao lado) e passam a ligar as duas no Elo. Se o personagem
+    tem nascimento na linha do tempo, a idade calculada aparece embaixo do campo Idade.
+
+  - **Anotações:** o texto livre da nota, para o que não cabe nos campos; **Editar anotações** abre
+    no editor (renomeie pelo nome no alto do texto);
+  - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);
+  - **Ligado a**: as outras notas ligadas a ela (clique para abrir a ficha delas).
+- **Voltar** pela seta no alto da ficha ou por qualquer aba.
 - O nome de uma nota é especial: quando ele aparece no texto das cenas, conta como **menção** e
   liga a nota àquela cena no [grafo](#7-grafo-e-minimapa).
+- A [busca](#6-busca-no-projeto) também encontra as notas.
+
+#### Calendários: linha do tempo e calendários do mundo
+
+A aba **Calendários** do Mundo tem três partes, escolhidas no alto: **Linha do tempo**,
+**Calendários do mundo** (as fichas de calendário) e **Escrita** (o seu calendário de escrita). O
+app lembra qual ficou aberta.
+
+**Linha do tempo** mostra as cenas na ordem em que **acontecem na história**, que pode ser
+diferente da ordem do livro.
+
+- **As datas são suas.** Cada cena começa em **Sem data**, embaixo. Digite o **dia da história**
+  (1, 2, 3…; pode ser negativo, para o passado antes do livro) e ela entra na linha. **Dura** diz
+  quantos dias a cena (ou a viagem) leva.
+- Entre um dia e outro aparece quanto tempo passou (**no dia seguinte**, **4 dias depois**…). É só
+  uma conta a partir das datas que você deu: se a viagem demorou mais por causa dos acontecimentos,
+  basta pôr o dia certo na chegada.
+- **fora de ordem** marca uma cena que o livro conta depois de outra que acontece mais tarde
+  (flashback). É só um aviso.
+- **Acontecimento** cria um evento que não é cena (uma guerra, um nascimento, a fuga do pai), com
+  nome, dia e duração editáveis. **+ ligar nota** liga personagens, lugares etc. ao acontecimento
+  (o × do nome desliga).
+- **Datas:** escolha um calendário do mundo para ver as datas nele ("Terça, 3 de Brumal de 412 da
+  Segunda Era", com a estação e os feriados do dia) em vez de "Dia 3". O número do dia continua
+  ao lado.
+- **Mostrar tudo / uma nota:** filtra a linha pelo que está ligado a um personagem, lugar etc.
+  (cenas que citam a nota e acontecimentos criados com o filtro ativo).
+- O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
+
+**Faixas por personagem:** na Linha do tempo, troque **Lista** por **Faixas por personagem** para
+ver uma linha para cada personagem (ou lugar, organização — escolha nos botões acima da tabela) e
+uma coluna para cada dia com alguma coisa: quem está em qual cena ao mesmo tempo. Uma cena que
+dura vários dias aparece em todos eles; a linha mais grossa marca dias pulados; clique numa cena
+para abri-la.
+
+**Escrita:** conta quantas palavras você escreve por dia nas cenas do manuscrito (apagar não
+desconta o que já foi escrito). Mostra as palavras de hoje, a **meta diária** (opcional, com
+barra de progresso), os **dias seguidos** escrevendo, os totais dos últimos 7 e 30 dias e um
+**mapa** dos últimos seis meses (passe o mouse num dia para ver as palavras). Fica em
+`.talia/escrita.json` e vai junto no sync.
+
+**Datas de teste:** numa linha do tempo vazia, **Preencher com datas de teste** dá datas
+fictícias às cenas (com um flashback), locais, idades aos personagens, tempos de viagem e dois
+acontecimentos; na Escrita sem registros, **Preencher com dias de teste** cria seis semanas de
+escrita fictícia. O projeto de exemplo da prévia já vem com essas datas.
+
+**Continuidade (idades e viagens):**
+
+- Na ficha de um **personagem**, em **Nascimento**, informe o dia da história em que ele nasceu ou
+  simplesmente **quantos anos tem no dia 1**. A linha do tempo passa a mostrar a idade dele em
+  cada cena em que aparece ("Lucas, 17 anos"), e a ficha mostra "Dia 12 · 17 anos" ao lado de
+  cada cena. O ano tem 365 dias, ou o tamanho do ano do calendário do mundo escolhido.
+- Na ficha de um **lugar**, em **Tempo de viagem**, cadastre quanto leva para ir dali a outros
+  lugares (vale nos dois sentidos). É só uma referência.
+- Cada cena com data tem um **local** (o alfinete): escolha um lugar, ou deixe em branco e o app
+  usa o único lugar citado no texto, marcado como "(pelo texto)".
+- Se um personagem vai de um lugar a outro **mais rápido** do que o tempo de viagem cadastrado, a
+  cena de chegada mostra um aviso ("Lucas vai de Vila Serena à Capital, que leva 2 dias, mas só
+  passou 1 dia"), e o topo da linha conta os avisos. **Demorar mais nunca gera aviso.** Sem tempo
+  de viagem cadastrado, o app não adivinha distâncias.
+- **Ignorar nesta cena** cala os avisos daquela cena (atalho, magia…); **avisos ignorados** volta a
+  avisar.
+
+**Calendário do mundo:** na ficha de um calendário (aba Calendários → Calendários do mundo →
+cartão), **Definir calendário** cria um calendário editável, começando com 12 meses e 7 dias na
+semana. Dá para:
+
+- renomear, mudar a quantidade de dias, subir e tirar **meses** (+ mês acrescenta);
+- definir os **dias da semana** (separados por vírgula; vazio = sem semana);
+- pôr um texto depois do **ano** ("da Segunda Era", "d.C.");
+- dizer **que data é o dia 1 da história** (dia, mês, ano e dia da semana);
+- cadastrar **feriados e festas** (repetem todo ano) e **estações** (cada uma começa no primeiro dia
+  de um mês);
+- marcar **Usar na linha do tempo**.
+
+O ano não tem bissextos: tem a soma dos dias dos meses. **Apagar a definição** tira só o calendário;
+a ficha e as datas das cenas continuam.
+
+As datas e os calendários ficam em `.talia/linha-do-tempo.json` e vão junto na sincronização com o
+Drive.
 
 ### 3.3 Anexos
 
-Lista os arquivos da pasta `anexos/` do projeto. Veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos).
+O botão **Anexos** abre a **galeria** dos arquivos da pasta `anexos/`: imagens em miniatura,
+vídeos, áudios e outros arquivos como cartões. Os filtros (**Todos**, **Imagens**, **Vídeos**,
+**Áudios**, **Outros**) mostram só um tipo. **Adicionar arquivos** copia arquivos para o
+projeto; clicar num item abre no programa padrão; a lixeirinha (ao passar o mouse) manda o
+arquivo para a Lixeira. Veja também [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos).
 
-### 3.4 Recolher seções e a barra inteira
+### 3.4 Painel do Manuscrito e a barra inteira
 
-- Clique no título de uma seção (**Manuscrito**, **Notas**, **Anexos**) ou de um grupo de notas
-  para recolher ou mostrar o conteúdo. O app lembra o que ficou recolhido.
+- **Manuscrito** no trilho abre ou fecha o painel de capítulos. Clicar em qualquer outro botão
+  da barra (Anexos, Mundo, Elo, Configurações, Lixeira) recolhe o painel. O app lembra a escolha.
+- O botão de **setas duplas** no painel recolhe todos os capítulos de uma vez (ou expande todos,
+  se já estiverem recolhidos).
 - **Ctrl + \\** esconde ou mostra a **barra lateral inteira**, para escrever com a tela livre.
   O mesmo vale para o botão de painel no alto da barra (e no alto do texto, quando ela está
   escondida). O app lembra a escolha.
+- Com a barra escondida, **passe o mouse** sobre o botão de mostrar a barra (no alto do texto): ela
+  abre por cima do texto só enquanto o mouse estiver nela e fecha quando ele sai da barra. Para
+  deixá-la aberta, clique no botão de painel no alto dela (**Fixar a barra lateral**) ou no próprio
+  botão de mostrar. Na tela de projetos, com o menu recolhido (só ícones), passar o mouse na seta do alto abre o
+  menu como sempre (mesmo visual e animação), sem fixar: ele recolhe de novo quando o mouse sai.
 - Em telas estreitas (celular, janela pequena), a barra vira uma gaveta que abre pelo botão de
   menu.
 
@@ -237,19 +362,45 @@ até conseguir gravar.
 
 Da esquerda para a direita:
 
-| Ferramenta                   | O que faz                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------- |
-| Estilo do parágrafo          | **Texto** (parágrafo comum), **Título 1**, **Título 2**, **Título 3**      |
-| Negrito, Itálico, Tachado    | Formatação do trecho selecionado (Ctrl+B, Ctrl+I, Ctrl+Shift+S)            |
-| Marca-texto                  | Marca-texto amarelo (Ctrl+Shift+H). **Não sai no livro exportado**         |
-| Lista, Lista numerada        | Lista com marcadores ou numerada                                           |
-| Citação                      | Parágrafo recuado, para epígrafes, cartas, citações                        |
-| Separador de cena (\* \* \*) | Linha que separa duas partes da mesma cena                                 |
-| Limpar formatação            | Tira negrito, itálico etc. e volta o bloco a parágrafo comum               |
-| Clipe                        | Anexar arquivo (veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos)) |
-| Desfazer / Refazer           | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y também refaz)                                |
-| Relógio                      | Abre o [Histórico de versões](#8-histórico-de-versões)                     |
-| Grafo pequeno                | Mostra ou esconde o [minimapa](#72-minimapa)                               |
+| Ferramenta                   | O que faz                                                                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Estilo do parágrafo          | **Texto** (parágrafo comum), **Título 1**, **Título 2**, **Título 3**                                                                                                    |
+| **T** (Aparência do texto)   | Fonte, tamanho e espaçamento entre letras, palavras e linhas (veja abaixo)                                                                                               |
+| Negrito, Itálico, Tachado    | Formatação do trecho selecionado (Ctrl+B, Ctrl+I, Ctrl+Shift+S)                                                                                                          |
+| Marca-texto                  | Marca-texto amarelo (Ctrl+Shift+H). **Não sai no livro exportado**                                                                                                       |
+| Lista, Lista numerada        | Lista com marcadores ou numerada                                                                                                                                         |
+| Alinhamento                  | À esquerda, centralizado, justificado ou à direita, no parágrafo ou título (ou em todos os selecionados). Ctrl+Shift+L / E / J / R. Vale no arquivo e no livro exportado |
+| Aumentar / diminuir recuo    | Recua um item da lista para dentro do anterior (sublista) ou volta. **Tab** e **Shift+Tab** fazem o mesmo                                                                |
+| Citação                      | Parágrafo recuado, para epígrafes, cartas, citações                                                                                                                      |
+| Separador de cena (\* \* \*) | Linha que separa duas partes da mesma cena                                                                                                                               |
+| Limpar formatação            | Tira negrito, itálico etc. e volta o bloco a parágrafo comum                                                                                                             |
+| Imagem                       | Inserir uma ou mais imagens no texto (copiadas para `anexos/`)                                                                                                           |
+| Clipe                        | Anexar arquivo (veja [Anexos](#5-anexos-imagens-vídeos-áudios-e-arquivos))                                                                                               |
+| Desfazer / Refazer           | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y também refaz)                                                                                                                              |
+| Relógio                      | Abre o [Histórico de versões](#8-histórico-de-versões)                                                                                                                   |
+| Grafo pequeno                | Mostra ou esconde o [minimapa](#72-minimapa)                                                                                                                             |
+
+**Comentários:** selecione o trecho exato que quer comentar e clique em **Comentar** na barra
+(ou **Ctrl+Alt+M**). Escreva e confirme (**Ctrl+Enter** também salva). O trecho fica marcado no
+texto e o comentário aparece no painel **Comentários**, à direita, que abre e fecha pelo botão de
+balão no fim da barra (o número é quantos comentários estão abertos). No painel:
+
+- clique num comentário para ir até o trecho; clique num trecho marcado para ver o comentário;
+- **lápis** edita, **✓** resolve (o trecho deixa de ser marcado, e o comentário vai para
+  "Mostrar resolvidos", de onde pode ser reaberto) e a **lixeirinha** exclui (pede confirmação e
+  não tem volta);
+- o comentário segue o trecho mesmo que você escreva antes ou dentro dele. Se o trecho inteiro
+  for apagado, o comentário fica na lista com o aviso "(trecho apagado)".
+
+Os comentários são só para você: não entram no arquivo `.md` nem no livro exportado. Ficam em
+`.talia/comentarios/` e vão junto na sincronização com o Drive.
+
+**Aparência do texto** (botão **T**): escolha a fonte (Literata, EB Garamond, Fraunces, Georgia,
+Figtree sem serifa ou máquina de escrever), o tamanho da letra, o espaço entre as letras, as
+palavras e as linhas, e o **recuo da primeira linha** dos parágrafos (como nos livros: o primeiro
+parágrafo depois de um título ou separador fica sem recuo). Vale para todos os textos e o app lembra a escolha. É só a forma de ver o
+texto na tela: o arquivo `.md` e o livro exportado não mudam (a tipografia do livro fica no
+[Diagramação](#104-diagramação)). **Voltar ao padrão** desfaz tudo.
 
 Você também pode formatar escrevendo como no Markdown: `**negrito**`, `*itálico*`, `~~tachado~~`,
 `==destaque==`, `# ` no começo da linha para título, `> ` para citação, `- ` para lista, `1. `
@@ -288,9 +439,15 @@ outra palavra no lugar do nome, use uma barra: `[[Helena|a amiga]]`.
   nota do tipo Ideia** com esse nome e abre.
 - O nome é procurado sem diferenciar maiúsculas e minúsculas.
 - **Menções:** sempre que o nome de uma **nota** aparece no texto, mesmo sem colchetes, ele
-  ganha um sublinhado leve e conta como ligação no grafo. Menções diferenciam maiúsculas
-  ("Rosa" a personagem não é "rosa" a cor) e só contam palavras inteiras. Ctrl + clique numa
-  menção também abre a nota.
+  ganha um sublinhado leve e conta como ligação no grafo, automaticamente, enquanto você digita.
+  Maiúsculas não importam ("Lucas", "lucas" e "LUCAS" contam); só contam palavras inteiras.
+  Ctrl + clique numa menção também abre a nota.
+- **Passe o mouse** numa menção ou num link para ver um cartão com o nome e o tipo (Personagem,
+  Lugar, Ideia… ou a cena e o capítulo). Leve o mouse até o cartão para usá-lo:
+  - **clique no nome** para abrir a ficha da nota no Mundo (ou a cena);
+  - o **lápis** abre a **edição rápida**: o texto da ficha num quadro por cima do manuscrito, para
+    corrigir os campos da ficha e as anotações sem sair da cena (os campos gravam ao sair de cada um). **Salvar** (ou Ctrl+Enter) grava; **Esc** ou **Cancelar** fecha
+    (o app pergunta antes de descartar mudanças); **Abrir ficha** leva à página completa.
 - Ao **renomear** uma cena ou nota, todos os `[[Nome antigo]]` do projeto viram `[[Nome novo]]`
   automaticamente (o texto depois da barra é mantido) e o app avisa quantos links mudaram.
 - Na exportação, os links viram texto comum: `[[Helena]]` sai como "Helena" e
@@ -319,7 +476,8 @@ Imagens, vídeos, áudios, PDFs e outros arquivos podem fazer parte do projeto. 
 **Para anexar:**
 
 - **arraste** o arquivo para dentro do texto, ou **cole** (Ctrl+V) uma imagem copiada;
-- ou clique no **clipe** da barra de ferramentas;
+- ou clique no botão de **imagem** (só imagens) ou no **clipe** (qualquer arquivo) da barra de
+  ferramentas;
 - ou use o **+** da seção **Anexos** na barra lateral (só copia, não insere no texto).
 
 **No texto**, o anexo aparece como um bloco: imagens são mostradas, vídeos e áudios ganham um
@@ -375,7 +533,7 @@ A busca não procura dentro dos anexos nem na lixeira.
 O botão **Grafo** (barra lateral) mostra todos os textos do projeto como pontos e as ligações
 entre eles como linhas, no estilo do Obsidian:
 
-- cada **cor** é um tipo: cenas, personagens, lugares e ideias. Clique nos botões do alto para
+- cada **cor** é um tipo: cenas, personagens, lugares, ideias, calendários, idiomas e organizações. Clique nos botões do alto para
   esconder ou mostrar cada tipo;
 - **linha cheia** = link `[[…]]` escrito; **linha tracejada** = menção automática (o nome de uma
   nota aparecendo no texto). A caixa **Menções automáticas** liga ou desliga essas linhas;
@@ -454,7 +612,7 @@ Clique num texto para ver como ele estava. Então:
 ## 9. Lixeira
 
 Na Tália **nada é apagado de verdade** quando você exclui: cenas, capítulos, notas e anexos vão
-para a **Lixeira**, que fica dentro da pasta do projeto (`.inkflow/lixeira/`). Abra pelo rodapé
+para a **Lixeira**, que fica dentro da pasta do projeto (`.talia/lixeira/`). Abra pelo rodapé
 da barra lateral.
 
 Cada item mostra o nome, o tipo (por exemplo "Cena de "Capítulo 2"", "Capítulo com 3 cenas",
@@ -497,8 +655,8 @@ para você comparar e ficar com o que quiser.
 
 Arquivos técnicos do app (como `project.json` ou o estado do editor) não voltam pela Lixeira: uma
 cópia só com eles não tem o botão Restaurar, e numa pasta eles ficam na Lixeira depois de
-restaurar o resto. Se precisar de um deles, abra a pasta `.inkflow/lixeira/` do projeto no
-gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.inkflow`). Veja também
+restaurar o resto. Se precisar de um deles, abra a pasta `.talia/lixeira/` do projeto no
+gerenciador de arquivos (no Windows, ative "Itens ocultos" para ver `.talia`). Veja também
 [Conflitos de sincronização](#a-sincronização-avisou-que-um-arquivo-foi-alterado-aqui-e-em-outro-computador).
 
 > A Lixeira fica só neste computador: ela **não é sincronizada** com o Drive.
@@ -657,12 +815,12 @@ Desligar a chave para de sincronizar este projeto (nada é apagado nem aqui nem 
   você exclui vai para a lixeira do Drive (recuperável por 30 dias).
 
 O histórico de versões também é sincronizado. A Lixeira e o estado da sincronização
-(`.inkflow/sync.json`) ficam só em cada computador.
+(`.talia/sync.json`) ficam só em cada computador.
 
 ### 10.4 Diagramação
 
 A aba Diagramação faz o **projeto gráfico** do livro impresso: capa, quarta capa, lombada,
-orelhas e miolo, com uma prévia ao vivo. Tudo é gravado sozinho em `.inkflow/livro.json`
+orelhas e miolo, com uma prévia ao vivo. Tudo é gravado sozinho em `.talia/livro.json`
 (sincronizado com o Drive); as imagens ficam em `anexos/`. Se não entender algum termo, veja o
 [glossário](#glossário-de-termos-editoriais) no fim desta seção.
 
@@ -822,7 +980,7 @@ No Mac, troque **Ctrl** por **⌘** e **Alt** por **⌥ (Option)**.
 Na pasta do projeto que você escolheu ao criar. Cada cena é um arquivo `.md` em
 `manuscrito/<capítulo>/`, e cada nota em `notas/<tipo>/`. Você pode abrir esses arquivos em
 qualquer editor de texto (e até no Obsidian). Para fazer um backup, basta copiar a pasta inteira
-— **inclusive a pasta escondida `.inkflow`**, que guarda a ordem dos capítulos, o histórico e a
+— **inclusive a pasta escondida `.talia`**, que guarda a ordem dos capítulos, o histórico e a
 lixeira. As preferências do app (tema, minimapa, projetos recentes, a conta Google) ficam no
 computador, fora da pasta do projeto.
 

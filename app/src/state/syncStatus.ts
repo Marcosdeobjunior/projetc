@@ -10,7 +10,7 @@ export type { SyncStatus };
 /*
  * O que o ponto do topo da tela de projetos mostra: a situação real da
  * sincronização com o Google Drive para a pasta ativa. Junta a conta (de
- * useSync), se aquela pasta sincroniza (`.inkflow/sync.json`), a conexão com
+ * useSync), se aquela pasta sincroniza (`.talia/sync.json`), a conexão com
  * a internet (eventos online/offline) e a última falha do motor de sync.
  */
 
@@ -30,7 +30,7 @@ export function useFolderSyncStatus(platform: Platform | null, root: string | nu
   const status = useSync((s) => s.status);
   const error = useSync((s) => s.error);
   const online = useOnline((s) => s.online);
-  // Lido do disco: se a pasta tem .inkflow/sync.json e quando sincronizou.
+  // Lido do disco: se a pasta tem .talia/sync.json e quando sincronizou.
   const [folder, setFolder] = useState<{ root: string; syncs: boolean; last: number | null }>();
 
   useEffect(() => {

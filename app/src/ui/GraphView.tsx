@@ -11,9 +11,12 @@ const TYPES: { type: NodeType; label: string }[] = [
   { type: "personagens", label: KIND_LABEL.personagens.many },
   { type: "lugares", label: KIND_LABEL.lugares.many },
   { type: "ideias", label: KIND_LABEL.ideias.many },
+  { type: "calendarios", label: KIND_LABEL.calendarios.many },
+  { type: "idiomas", label: KIND_LABEL.idiomas.many },
+  { type: "organizacoes", label: KIND_LABEL.organizacoes.many },
 ];
 
-/** Elo: constelação de conexões entre cenas e notas, cada texto é uma estrela. */
+/** Elo: grafo de conexões entre cenas e notas, cada texto é um ponto. */
 export function GraphView({ session }: { session: Session }) {
   const openDoc = useApp((s) => s.openDoc);
   return (
@@ -119,8 +122,8 @@ export function Elo({
       </div>
 
       <p className="graph-hint">
-        Clique em uma estrela para abrir · arraste para mover · role para dar zoom · linhas
-        tracejadas são menções automáticas
+        Clique em um ponto para abrir · arraste para mover · role para dar zoom · linhas tracejadas
+        são menções automáticas
       </p>
 
       {/* Alternativa em texto para leitores de tela. */}

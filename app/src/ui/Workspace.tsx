@@ -1,27 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { renameDocAndLinks, useApp, type Session } from "../state/store";
 import { findDoc, findScene, renameDoc, renameProject } from "../manuscript/tree";
 import { formatCount } from "../manuscript/wordCount";
 import { KIND_LABEL } from "../links/context";
 import { DocEditor } from "../editor/DocEditor";
 import { ManuscriptTree } from "./ManuscriptTree";
-import { NotesTree } from "./NotesTree";
 import { GraphView } from "./GraphView";
+import { WorldView } from "./WorldView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
 import { Settings, type SettingsTab } from "./Settings";
 import { SearchPanel } from "./SearchPanel";
-import { AttachmentsTree } from "./AttachmentsTree";
+import { GalleryView } from "./GalleryView";
 import { HistoryView } from "./HistoryView";
 import { TrashView } from "./TrashView";
 import { useSearch } from "../state/search";
 import { useSync } from "../state/sync";
 import { useSettings } from "../state/settings";
+import { useWriting } from "../state/writing";
 import { Icon } from "./Icon";
 import { MusicFloating } from "./Music";
 import { shortcut } from "../editor/formatting";
 
-const COLLAPSED_KEY = "inkflow.sidebarCollapsed";
+const COLLAPSED_KEY = "talia.sidebarCollapsed";
 const VERSION_EVERY_MS = 10 * 60 * 1000;
 const isPhone = () => window.matchMedia("(max-width: 760px)").matches;
 
@@ -47,6 +48,19 @@ export function Workspace({ session }: { session: Session }) {
   const [editingTitle, setEditingTitle] = useState(false);
 
   const { project, words, activeDocId, view } = session;
+  /** Painel do Manuscrito, ao lado da barra (lembrado entre aberturas). */
+  const panelOpen = !useSettings((s) => s.collapsed.includes("manuscrito"));
+  const toggleSection = useSettings((s) => s.toggleSection);
+  /** Sem texto aberto: abre a primeira cena do livro (ou só mostra o editor vazio). */
+  const openFirstScene = () => {
+    const first = project.chapters.find((c) => c.scenes.length)?.scenes[0];
+    if (first) useApp.getState().openDoc(first.id);
+    else setView("editor");
+  };
+  /** Os outros botões da barra recolhem o painel do Manuscrito. */
+  const closePanel = () => {
+    if (panelOpen) toggleSection("manuscrito");
+  };
   const active = activeDocId ? findDoc(project, activeDocId) : null;
   const scene = activeDocId ? findScene(project, activeDocId) : null;
   // Soma só as cenas que estão no manuscrito (notas e cenas excluídas ficam fora).
@@ -56,6 +70,25 @@ export function Workspace({ session }: { session: Session }) {
   );
   const chapterTotal = scene ? scene.chapter.scenes.reduce((n, s) => n + (words[s.id] ?? 0), 0) : 0;
   const closeNav = () => setNavOpen(false);
+  /**
+   * Barra recolhida: passar o mouse no botão de mostrar abre a barra por cima
+   * do texto, sem fixar; ela fecha quando o mouse sai da barra (não só do botão).
+   */
+  const [peek, setPeek] = useState(false);
+  const peekTimer = useRef<number | undefined>(undefined);
+  const hoverable = () => window.matchMedia("(hover: hover) and (min-width: 761px)").matches;
+  const startPeek = () => {
+    window.clearTimeout(peekTimer.current);
+    if (collapsed && hoverable()) setPeek(true);
+  };
+  const keepPeek = () => window.clearTimeout(peekTimer.current);
+  /** A barra está aberta só por espiar (recolhida, com o mouse em cima). */
+  const peeking = collapsed && peek;
+  const endPeek = () => {
+    window.clearTimeout(peekTimer.current);
+    // Uma folga curta para o mouse atravessar do botão para a barra.
+    peekTimer.current = window.setTimeout(() => setPeek(false), 300);
+  };
   const showNav = () => (isPhone() ? setNavOpen(true) : setCollapsed(false));
 
   useEffect(() => {
@@ -65,6 +98,11 @@ export function Workspace({ session }: { session: Session }) {
       // sem armazenamento: vale só nesta sessão
     }
   }, [collapsed]);
+
+  // Calendário de escrita: começa a contar assim que o projeto abre.
+  useEffect(() => {
+    void useWriting.getState().load();
+  }, [session.root]);
 
   // Sincronização com o Drive: ao abrir o projeto e de tempos em tempos.
   const syncEvery = useSettings((s) => s.syncEvery);
@@ -116,102 +154,172 @@ export function Workspace({ session }: { session: Session }) {
 
   return (
     <div
-      className={"workspace" + (navOpen ? " nav-open" : "") + (collapsed ? " nav-collapsed" : "")}
+      className={
+        "workspace" +
+        (navOpen ? " nav-open" : "") +
+        (collapsed ? " nav-collapsed" : "") +
+        (collapsed && peek ? " nav-peek" : "")
+      }
     >
-      <aside className="sidebar">
-        <div className="side-top">
-          {editingProject ? (
-            <InlineEdit
-              value={project.title}
-              label="Nome do projeto"
-              className="big"
-              onCommit={(t) => {
-                setEditingProject(false);
-                void change((p) => ({ project: renameProject(p, t), ops: [] }));
-              }}
-              onCancel={() => setEditingProject(false)}
-            />
-          ) : (
-            <VaultSwitcher session={session} onRename={() => setEditingProject(true)} />
-          )}
-          <button
-            type="button"
-            className="icon-btn nav-close"
-            aria-label="Fechar a barra lateral"
-            onClick={closeNav}
-          >
-            <Icon name="close" />
-          </button>
-          <button
-            type="button"
-            className="icon-btn nav-collapse"
-            aria-label="Recolher a barra lateral"
-            title={`Recolher a barra lateral (${shortcut("Mod+\\")})`}
-            onClick={() => setCollapsed(true)}
-          >
-            <Icon name="sidebar" />
-          </button>
-        </div>
-        <div className="side-meta">
-          <span className="project-total">{formatCount(total)} palavras</span>
-          <button
-            type="button"
-            className={"icon-btn sm" + (searching ? " on" : "")}
-            aria-pressed={searching}
-            title={`Buscar no projeto (${shortcut("Mod+Shift+F")})`}
-            aria-label="Buscar no projeto"
-            onClick={() => (searching ? useSearch.getState().close() : openSearch())}
-          >
-            <Icon name="search" size={16} />
-          </button>
-          <button
-            type="button"
-            className={"graph-btn" + (view === "graph" ? " on" : "")}
-            aria-pressed={view === "graph"}
-            onClick={() => {
-              setView(view === "graph" ? "editor" : "graph");
-              closeNav();
-            }}
-          >
-            <Icon name="planet" size={16} /> Elo
-          </button>
-        </div>
-
-        {searching ? (
-          <SearchPanel session={session} onOpen={closeNav} />
-        ) : (
-          <div className="side-scroll">
-            <ManuscriptTree session={session} onOpenScene={closeNav} />
-            <NotesTree session={session} onOpen={closeNav} />
-            <AttachmentsTree session={session} />
-          </div>
-        )}
-
-        <div className="side-foot">
-          {(["settings", "trash"] as const).map((v) => (
+      <aside className="sidebar" onMouseEnter={keepPeek} onMouseLeave={endPeek}>
+        <div className="rail">
+          <div className="side-top">
+            {editingProject ? (
+              <InlineEdit
+                value={project.title}
+                label="Nome do projeto"
+                className="big"
+                onCommit={(t) => {
+                  setEditingProject(false);
+                  void change((p) => ({ project: renameProject(p, t), ops: [] }));
+                }}
+                onCancel={() => setEditingProject(false)}
+              />
+            ) : (
+              <VaultSwitcher session={session} onRename={() => setEditingProject(true)} />
+            )}
             <button
-              key={v}
               type="button"
-              className={"foot-btn" + (view === v ? " on" : "")}
-              aria-pressed={view === v}
+              className="icon-btn nav-close"
+              aria-label="Fechar a barra lateral"
+              onClick={closeNav}
+            >
+              <Icon name="close" />
+            </button>
+            <button
+              type="button"
+              className="icon-btn nav-collapse"
+              aria-label={peeking ? "Fixar a barra lateral" : "Recolher a barra lateral"}
+              title={
+                peeking
+                  ? "Fixar a barra lateral aberta"
+                  : `Recolher a barra lateral (${shortcut("Mod+\\")})`
+              }
               onClick={() => {
-                setSettingsTab(null);
-                setView(view === v ? "editor" : v);
+                if (peeking) {
+                  setPeek(false);
+                  setCollapsed(false);
+                } else setCollapsed(true);
+              }}
+            >
+              <Icon name="sidebar" />
+            </button>
+          </div>
+          <div className="side-meta">
+            <span className="project-total">{formatCount(total)} palavras</span>
+            <button
+              type="button"
+              className={"icon-btn sm" + (searching ? " on" : "")}
+              aria-pressed={searching}
+              title={`Buscar no projeto (${shortcut("Mod+Shift+F")})`}
+              aria-label="Buscar no projeto"
+              onClick={() => (searching ? useSearch.getState().close() : openSearch())}
+            >
+              <Icon name="search" size={16} />
+            </button>
+            <button
+              type="button"
+              className={"icon-btn sm" + (view === "graph" ? " on" : "")}
+              aria-pressed={view === "graph"}
+              title="Elo: grafo de conexões entre os textos"
+              aria-label="Elo"
+              onClick={() => {
+                closePanel();
+                setView(view === "graph" ? "editor" : "graph");
                 closeNav();
               }}
             >
-              <Icon name={v === "settings" ? "settings" : "trash"} size={17} />
-              {v === "settings" ? "Configurações" : "Lixeira"}
+              <Icon name="planet" size={16} />
             </button>
-          ))}
-          <MusicFloating
-            onSettings={() => {
-              setSettingsTab("musica");
-              setView("settings");
-              closeNav();
-            }}
-          />
+          </div>
+          <nav className="rail-nav" aria-label="Seções do projeto">
+            <button
+              type="button"
+              className="rail-item"
+              aria-expanded={panelOpen}
+              aria-controls="side-panel"
+              title="Mostrar ou esconder os capítulos e cenas"
+              onClick={() => {
+                if (searching) useSearch.getState().close();
+                // Fora do texto (Mundo, Anexos, Elo…): volta para a escrita e mostra os
+                // capítulos. Já no texto: só abre ou fecha o painel.
+                if (view !== "editor") {
+                  if (!panelOpen) toggleSection("manuscrito");
+                  if (activeDocId) setView("editor");
+                  else openFirstScene();
+                  return;
+                }
+                if (!panelOpen && !activeDocId) openFirstScene();
+                toggleSection("manuscrito");
+              }}
+            >
+              <Icon name="book" size={17} />
+              <span>Manuscrito</span>
+            </button>
+            {(
+              [
+                ["attachments", "image", "Anexos", "Galeria de imagens, vídeos e arquivos"],
+                ["world", "globe", "Mundo", "Personagens, lugares e ideias do projeto"],
+              ] as const
+            ).map(([v, icon, label, title]) => (
+              <button
+                key={v}
+                type="button"
+                className={"rail-item" + (view === v ? " on" : "")}
+                aria-pressed={view === v}
+                title={title}
+                onClick={() => {
+                  closePanel();
+                  setView(view === v ? "editor" : v);
+                  closeNav();
+                }}
+              >
+                <Icon name={icon} size={17} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="rail-spacer" />
+          <div className="side-foot">
+            <MusicFloating
+              onSettings={() => {
+                setSettingsTab("musica");
+                setView("settings");
+                closeNav();
+              }}
+            />
+            {(["settings", "trash"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={"foot-btn" + (view === v ? " on" : "")}
+                aria-pressed={view === v}
+                onClick={() => {
+                  closePanel();
+                  setSettingsTab(null);
+                  setView(view === v ? "editor" : v);
+                  closeNav();
+                }}
+              >
+                <Icon name={v === "settings" ? "settings" : "trash"} size={17} />
+                <span>{v === "settings" ? "Configurações" : "Lixeira"}</span>
+              </button>
+            ))}
+          </div>
         </div>
+
+        {(panelOpen || searching) && (
+          <div id="side-panel" className="side-panel">
+            {searching ? (
+              <SearchPanel session={session} onOpen={closeNav} />
+            ) : (
+              <div className="side-scroll">
+                <ManuscriptTree session={session} onOpenScene={closeNav} />
+              </div>
+            )}
+          </div>
+        )}
       </aside>
 
       <div className="scrim" onClick={closeNav} />
@@ -222,8 +330,13 @@ export function Workspace({ session }: { session: Session }) {
             type="button"
             className="icon-btn nav-toggle"
             aria-label="Mostrar a barra lateral"
-            title={`Mostrar a barra lateral (${shortcut("Mod+\\")})`}
-            onClick={showNav}
+            title={`Mostrar a barra lateral (${shortcut("Mod+\\")}). Passe o mouse para espiar.`}
+            onMouseEnter={startPeek}
+            onMouseLeave={endPeek}
+            onClick={() => {
+              setPeek(false);
+              showNav();
+            }}
           >
             <Icon name="sidebar" />
           </button>
@@ -232,11 +345,15 @@ export function Workspace({ session }: { session: Session }) {
               <span className="crumb-title">
                 {view === "graph"
                   ? "Elo"
-                  : view === "history"
-                    ? "Histórico de versões"
-                    : view === "trash"
-                      ? "Lixeira"
-                      : "Configurações"}
+                  : view === "world"
+                    ? "Mundo"
+                    : view === "attachments"
+                      ? "Anexos"
+                      : view === "history"
+                        ? "Histórico de versões"
+                        : view === "trash"
+                          ? "Lixeira"
+                          : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -286,6 +403,10 @@ export function Workspace({ session }: { session: Session }) {
         <section className="editor-area">
           {view === "graph" ? (
             <GraphView session={session} />
+          ) : view === "world" ? (
+            <WorldView session={session} />
+          ) : view === "attachments" ? (
+            <GalleryView session={session} />
           ) : view === "settings" ? (
             <Settings key={settingsTab ?? ""} initialTab={settingsTab ?? undefined} />
           ) : view === "history" ? (

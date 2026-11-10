@@ -1,5 +1,5 @@
 /**
- * Conteúdo de `.inkflow/project.json`. A ordem dos capítulos e das cenas vive
+ * Conteúdo de `.talia/project.json`. A ordem dos capítulos e das cenas vive
  * aqui; os textos ficam em `manuscrito/<pasta do capítulo>/<arquivo da cena>.md`
  * e as notas em `notas/<tipo>/<arquivo>.md`.
  */
@@ -31,7 +31,14 @@ export interface Scene {
   file: string;
 }
 
-export const NOTE_KINDS = ["personagens", "lugares", "ideias"] as const;
+export const NOTE_KINDS = [
+  "personagens",
+  "lugares",
+  "ideias",
+  "calendarios",
+  "idiomas",
+  "organizacoes",
+] as const;
 export type NoteKind = (typeof NOTE_KINDS)[number];
 
 export interface Note {
@@ -40,6 +47,10 @@ export interface Note {
   kind: NoteKind;
   /** Nome do arquivo .md dentro de `notas/<tipo>/`. */
   file: string;
+  /** Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Opcional. */
+  image?: string;
+  /** Campos da ficha (veja manuscript/fields.ts). Opcional. */
+  fields?: Record<string, string>;
 }
 
 /** Qualquer texto do projeto que abre no editor: uma cena ou uma nota. */

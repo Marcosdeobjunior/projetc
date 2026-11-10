@@ -88,11 +88,7 @@ fn write_atomic(path: &Path, data: &[u8]) -> CmdResult<()> {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_nanos())
         ^ (std::process::id() as u128) << 64;
-    let tmp = dir.join(format!(
-        ".{}.{:x}.inkflow-tmp",
-        name.to_string_lossy(),
-        nonce
-    ));
+    let tmp = dir.join(format!(".{}.{:x}.talia-tmp", name.to_string_lossy(), nonce));
     {
         let mut f = fs::OpenOptions::new()
             .write(true)
@@ -185,7 +181,7 @@ fn walk(root: &str) -> CmdResult<Vec<FileInfo>> {
                 stack.push(entry.path());
             } else if kind.is_file() {
                 let name = entry.file_name().to_string_lossy().into_owned();
-                if name.ends_with(".inkflow-tmp") {
+                if name.ends_with(".talia-tmp") {
                     continue;
                 }
                 let meta = entry.metadata().map_err(err)?;
@@ -378,13 +374,11 @@ mod tests {
             Some("Olá")
         );
         assert_eq!(read_text(&r, "nao-existe.md").unwrap(), None);
-        rename(&r, "manuscrito/cap", ".inkflow/lixeira/cap").unwrap();
+        rename(&r, "manuscrito/cap", ".talia/lixeira/cap").unwrap();
         assert!(!resolve(&r, "manuscrito/cap").unwrap().exists());
-        assert!(resolve(&r, ".inkflow/lixeira/cap/cena.md")
-            .unwrap()
-            .exists());
-        remove(&r, ".inkflow").unwrap();
-        assert!(!resolve(&r, ".inkflow").unwrap().exists());
+        assert!(resolve(&r, ".talia/lixeira/cap/cena.md").unwrap().exists());
+        remove(&r, ".talia").unwrap();
+        assert!(!resolve(&r, ".talia").unwrap().exists());
         assert!(remove(&r, "").is_err());
     }
 
@@ -402,14 +396,11 @@ mod tests {
     fn percorre_todas_as_pastas() {
         let (_d, r) = root();
         write_atomic(&resolve(&r, "manuscrito/cap/cena.md").unwrap(), b"abc").unwrap();
-        write_atomic(&resolve(&r, ".inkflow/project.json").unwrap(), b"{}").unwrap();
-        fs::write(resolve(&r, "manuscrito/.x.inkflow-tmp").unwrap(), b"tmp").unwrap();
+        write_atomic(&resolve(&r, ".talia/project.json").unwrap(), b"{}").unwrap();
+        fs::write(resolve(&r, "manuscrito/.x.talia-tmp").unwrap(), b"tmp").unwrap();
         let files = walk(&r).unwrap();
         let paths: Vec<_> = files.iter().map(|f| f.path.as_str()).collect();
-        assert_eq!(
-            paths,
-            vec![".inkflow/project.json", "manuscrito/cap/cena.md"]
-        );
+        assert_eq!(paths, vec![".talia/project.json", "manuscrito/cap/cena.md"]);
         assert_eq!(files[1].size, 3);
         assert!(files[1].mtime > 0);
     }
@@ -433,7 +424,7 @@ mod tests {
         write_atomic(&resolve(&r, "a.md").unwrap(), b"ok").unwrap();
         // Um temporário plantado como atalho não é seguido.
         let alvo = fora.path().join("alvo.txt");
-        std::os::unix::fs::symlink(&alvo, resolve(&r, ".b.md.inkflow-tmp").unwrap()).unwrap();
+        std::os::unix::fs::symlink(&alvo, resolve(&r, ".b.md.talia-tmp").unwrap()).unwrap();
         write_atomic(&safe_path(&r, "b.md").unwrap(), b"novo").unwrap();
         assert!(!alvo.exists());
     }

@@ -1,8 +1,18 @@
 import type { VaultFs } from "../platform/types";
 import type { Project } from "../manuscript/types";
-import { addChapter, addNote, addScene, renameChapter, renameScene } from "../manuscript/tree";
+import {
+  addChapter,
+  addNote,
+  addScene,
+  renameChapter,
+  renameScene,
+  setNoteFields,
+} from "../manuscript/tree";
 import type { NoteKind } from "../manuscript/types";
 import { createVault, saveProject, writeSceneMarkdown } from "./vault";
+import { EMPTY_TIMELINE, writeTimeline } from "../timeline/timeline";
+import { exampleTimeline, exampleWriting } from "../timeline/example";
+import { writeLog } from "../writing/writing";
 
 /** Projeto de exemplo criado na primeira visita à prévia no navegador. */
 export async function createSampleVault(fs: VaultFs): Promise<Project> {
@@ -73,7 +83,26 @@ export async function createSampleVault(fs: VaultFs): Promise<Project> {
     p = r.project;
     texts.push([r.note.id, md]);
   }
+  // Campos de exemplo nas fichas.
+  const id = (title: string) => p.notes.find((n) => n.title === title)?.id ?? "";
+  const vila = id("Vila Serena");
+  const sampleFields: [string, Record<string, string>][] = [
+    ["Lucas", { nomeCompleto: "Lucas Andrade", idade: "17 anos", ocupacao: "Estudante" }],
+    [
+      "Helena",
+      { idade: "18 anos", ocupacao: "Padeira", local: vila, personalidade: "Desconfiada, leal" },
+    ],
+    [
+      "Mariana",
+      { ocupacao: "Mentora", local: vila, objetivo: "Proteger o segredo do pai de Lucas" },
+    ],
+    ["Vila Serena", { tipo: "Cidade serrana", clima: "Frio e úmido" }],
+  ];
+  for (const [title, fields] of sampleFields) p = setNoteFields(p, id(title), fields).project;
   for (const [id, md] of texts) await writeSceneMarkdown(fs, p, id, md);
   await saveProject(fs, p);
+  // Datas fictícias, para a linha do tempo e o calendário de escrita já mostrarem algo.
+  await writeTimeline(fs, exampleTimeline(p, EMPTY_TIMELINE));
+  await writeLog(fs, exampleWriting(new Date()));
   return p;
 }

@@ -6,7 +6,7 @@ import type { Platform, VaultFs, VaultRef } from "./types";
 import { PlatformError } from "./types";
 import { PROJECT_FILE } from "../vault/paths";
 
-const RECENT_KEY = "inkflow.recentVaults";
+const RECENT_KEY = "talia.recentVaults";
 
 function readRecent(): VaultRef[] {
   try {

@@ -3,7 +3,7 @@ import { useEditorState, type Editor } from "@tiptap/react";
 import { Icon } from "../ui/Icon";
 import { countWords, formatCount } from "../manuscript/wordCount";
 import { NOTE_KINDS, type NoteKind } from "../manuscript/types";
-import { KIND_LABEL } from "../links/context";
+import { DOC_ICON, KIND_LABEL } from "../links/context";
 import type { LinkContext } from "./links";
 import { clearFormatting, MARKS, shortcut, toggleMark } from "./formatting";
 
@@ -222,11 +222,7 @@ export function ContextMenu({ editor, links, x, y, onClose }: Props) {
   );
 }
 
-const KIND_ICON: Record<NoteKind, string> = {
-  personagens: "person",
-  lugares: "pin",
-  ideias: "bulb",
-};
+const KIND_ICON = DOC_ICON;
 
 function Item({
   icon,

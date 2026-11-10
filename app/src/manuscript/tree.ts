@@ -256,6 +256,35 @@ export function renameNote(p: Project, noteId: string, title: string): TreeChang
   return { project: touchNotes(p, notes), ops };
 }
 
+/** Troca (ou tira, com null) a imagem da ficha de uma nota. Não mexe em arquivos. */
+export function setNoteImage(p: Project, noteId: string, image: string | null): TreeChange {
+  const notes = p.notes.map((n) => {
+    if (n.id !== noteId) return n;
+    const next = { ...n };
+    if (image) next.image = image;
+    else delete next.image;
+    return next;
+  });
+  return { project: touchNotes(p, notes), ops: [] };
+}
+
+/** Troca os campos da ficha de uma nota (vazio tira). Não mexe em arquivos. */
+export function setNoteFields(
+  p: Project,
+  noteId: string,
+  fields: Record<string, string>,
+): TreeChange {
+  const clean = Object.fromEntries(Object.entries(fields).filter(([, v]) => v.trim()));
+  const notes = p.notes.map((n) => {
+    if (n.id !== noteId) return n;
+    const next = { ...n };
+    if (Object.keys(clean).length) next.fields = clean;
+    else delete next.fields;
+    return next;
+  });
+  return { project: touchNotes(p, notes), ops: [] };
+}
+
 export function removeNote(p: Project, noteId: string): TreeChange {
   const note = p.notes.find((n) => n.id === noteId);
   if (!note) return { project: p, ops: [] };

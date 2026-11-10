@@ -10,7 +10,7 @@ import { ensureChapterDirs, saveProject, sceneFile } from "./vault";
 
 /*
  * Histórico de versões do projeto inteiro. Cada versão é um arquivo JSON em
- * `.inkflow/versoes/` com a estrutura (project.json) e o texto de todas as
+ * `.talia/versoes/` com a estrutura (project.json) e o texto de todas as
  * cenas e notas. Os anexos não entram: eles ficam na pasta anexos/.
  */
 
@@ -254,7 +254,7 @@ export function compareVersion(
 /**
  * Volta o projeto inteiro para uma versão. As pastas manuscrito/ e notas/
  * de agora vão para a lixeira antes (nada é apagado). O estado do editor
- * (.inkflow/ydoc) fica: ao abrir, cada texto percebe que o .md mudou e
+ * (.talia/ydoc) fica: ao abrir, cada texto percebe que o .md mudou e
  * aplica a diferença como uma edição.
  */
 export async function restoreProjectFiles(fs: VaultFs, version: Version): Promise<Project> {

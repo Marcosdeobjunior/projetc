@@ -1,5 +1,7 @@
+import type { NoteKind } from "../manuscript/types";
 import { create } from "zustand";
 import { migrateHomeBg, type HomeBg } from "./backgrounds";
+import { DEFAULT_TEXT_STYLE, sanitizeTextStyle, type TextStyle } from "../editor/textStyle";
 
 /*
  * Preferências do app (valem para todos os projetos), guardadas no
@@ -68,10 +70,10 @@ export const MINIMAP_POSITIONS: MinimapPos[] = [
 ];
 
 export type { HomeBg } from "./backgrounds";
-export { THEME_BACKGROUNDS, migrateHomeBg, themeBackgroundUrl } from "./backgrounds";
+export { migrateHomeBg } from "./backgrounds";
 
 /** Seções da barra lateral que podem ser recolhidas. */
-export type SectionId = "manuscrito" | "notas" | "personagens" | "lugares" | "ideias" | "anexos";
+export type SectionId = "manuscrito" | "notas" | NoteKind | "anexos";
 
 interface Prefs {
   palette: PaletteId;
@@ -80,6 +82,8 @@ interface Prefs {
   /** Conta as menções automáticas (nomes no texto) no minimapa. */
   minimapMentions: boolean;
   collapsed: SectionId[];
+  /** Capítulos recolhidos no Manuscrito, por id do projeto. */
+  collapsedChapters: Record<string, string[]>;
   /** Nome do escritor, mostrado no topo da tela de projetos. */
   userName: string;
   /** De quantos em quantos minutos sincronizar com o Drive (0 = só quando pedir). */
@@ -88,6 +92,8 @@ interface Prefs {
   homeBg: HomeBg;
   /** Quanto a imagem de fundo é suavizada (0 a 85, em %), para o texto continuar legível. */
   homeBgDim: number;
+  /** Fonte, tamanho e espaçamentos do texto no editor. */
+  textStyle: TextStyle;
 }
 
 interface SettingsState extends Prefs {
@@ -95,13 +101,15 @@ interface SettingsState extends Prefs {
   homeBgImage: string | null;
   set(patch: Partial<Prefs>): void;
   toggleSection(id: SectionId): void;
+  /** Guarda quais capítulos do projeto estão recolhidos. */
+  setCollapsedChapters(projectId: string, ids: string[]): void;
   /** Troca a imagem de fundo. Devolve false se não couber no armazenamento. */
   setHomeBgImage(image: string | null): boolean;
 }
 
-const KEY = "inkflow.settings";
-const OLD_THEME_KEY = "inkflow.theme";
-const BG_IMAGE_KEY = "inkflow.homeBgImage";
+const KEY = "talia.settings";
+const OLD_THEME_KEY = "talia.theme";
+const BG_IMAGE_KEY = "talia.homeBgImage";
 
 const DEFAULTS: Prefs = {
   palette: "ambar",
@@ -109,10 +117,12 @@ const DEFAULTS: Prefs = {
   minimapPos: "bottom-right",
   minimapMentions: true,
   collapsed: [],
+  collapsedChapters: {},
   userName: "",
   syncEvery: 5,
-  homeBg: "tema",
+  homeBg: "liso",
   homeBgDim: 45,
+  textStyle: DEFAULT_TEXT_STYLE,
 };
 
 function loadImage(): string | null {
@@ -140,6 +150,7 @@ function load(): Prefs {
       ...pick(saved ?? {}),
       palette,
       homeBg: migrateHomeBg(saved?.homeBg),
+      textStyle: sanitizeTextStyle(saved?.textStyle),
     };
   } catch {
     return DEFAULTS;
@@ -183,6 +194,12 @@ export const useSettings = create<SettingsState>((set, get) => ({
     const c = get().collapsed;
     set({ collapsed: c.includes(id) ? c.filter((x) => x !== id) : [...c, id] });
   },
+  setCollapsedChapters(projectId, ids) {
+    const all = { ...get().collapsedChapters };
+    if (ids.length) all[projectId] = ids;
+    else delete all[projectId];
+    set({ collapsedChapters: all });
+  },
 }));
 
 applyPalette(useSettings.getState().palette);
@@ -194,10 +211,12 @@ useSettings.subscribe((s, prev) => {
     minimapPos: s.minimapPos,
     minimapMentions: s.minimapMentions,
     collapsed: s.collapsed,
+    collapsedChapters: s.collapsedChapters,
     userName: s.userName,
     syncEvery: s.syncEvery,
     homeBg: s.homeBg,
     homeBgDim: s.homeBgDim,
+    textStyle: s.textStyle,
   };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));

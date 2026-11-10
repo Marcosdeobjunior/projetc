@@ -14,6 +14,14 @@ import {
   type IParagraphOptions,
   type ParagraphChild,
 } from "docx";
+
+/** Alinhamento escolhido no editor (o padrão do parágrafo fica com o estilo do livro). */
+const DOCX_ALIGN: Record<string, (typeof AlignmentType)[keyof typeof AlignmentType]> = {
+  left: AlignmentType.LEFT,
+  center: AlignmentType.CENTER,
+  right: AlignmentType.RIGHT,
+  justify: AlignmentType.JUSTIFIED,
+};
 import type { PMNode } from "../markdown/types";
 import { chapterHeading, type Book, type BookImage, type ExportOptions } from "./book";
 
@@ -105,6 +113,9 @@ export async function docx(
           if (!c.length) break;
           para({
             children: runs(c, { italics: quote }),
+            ...(DOCX_ALIGN[String(b.attrs?.textAlign ?? "")]
+              ? { alignment: DOCX_ALIGN[String(b.attrs?.textAlign)] }
+              : {}),
             indent: quote
               ? { left: 10 * MM, right: 10 * MM }
               : first
@@ -117,7 +128,7 @@ export async function docx(
           para({
             children: runs(c),
             heading: HeadingLevel.HEADING_3,
-            alignment: AlignmentType.CENTER,
+            alignment: DOCX_ALIGN[String(b.attrs?.textAlign ?? "")] ?? AlignmentType.CENTER,
           });
           first = true;
           break;

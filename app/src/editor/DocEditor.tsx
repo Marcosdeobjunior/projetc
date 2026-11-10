@@ -17,10 +17,19 @@ import { registerFlush, serial } from "../state/writes";
 import { registerOpenEditor, setActiveEditor } from "../state/openEditors";
 import { insertAttachments } from "./attachments";
 import { linkEdits } from "../links/links";
-import { allDocs, findDoc } from "../manuscript/tree";
+import { allDocs, findDoc, findScene } from "../manuscript/tree";
+import { countWords } from "../manuscript/wordCount";
+import { useWriting } from "../state/writing";
 import { createLinksExtension, REFRESH_LINKS } from "./links";
+import { Icon } from "../ui/Icon";
+import { NoteQuickEdit } from "./NoteQuickEdit";
+import { useWorldNav } from "../state/worldNav";
 import { createLinkContext } from "../links/context";
 import { Toolbar } from "./Toolbar";
+import { textStyleVars } from "./textStyle";
+import { CommentAnchors, REFRESH_COMMENTS } from "./commentAnchors";
+import { CommentComposer, CommentsPanel, startComment, type Draft } from "./Comments";
+import { useComments } from "../state/comments";
 import { ContextMenu } from "./ContextMenu";
 import { REFRESH_SEARCH, SearchHighlight, searchHits } from "./searchHighlight";
 import { useSearch } from "../state/search";
@@ -90,6 +99,17 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   /** O que o app sabe que está no .md agora (para notar mudanças feitas por fora). */
   const diskText = useRef(loaded.diskText);
   const textTimer = useRef<number | undefined>(undefined);
+  /** Palavras do texto na última contagem, para o calendário de escrita. */
+  const lastWords = useRef<number | null>(null);
+  /** Soma ao calendário de escrita as palavras novas (só em cenas do manuscrito). */
+  const countWritten = (text: string) => {
+    const n = countWords(text);
+    const before = lastWords.current;
+    lastWords.current = n;
+    const project = useApp.getState().session?.project;
+    if (before === null || !project || !findScene(project, sceneId)) return;
+    useWriting.getState().add(n - before);
+  };
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const minimap = useSettings((s) => s.minimap);
@@ -101,6 +121,40 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
     if (ed && !ed.isDestroyed && added.length) insertAttachments(ed, added, at);
   };
   const minimapPos = useSettings((s) => s.minimapPos);
+  const textStyle = useSettings((s) => s.textStyle);
+  const textVars = useMemo(() => textStyleVars(textStyle), [textStyle]);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  /** Cartão de nome e tipo ao passar o mouse numa menção ou link. */
+  const [hoverCard, setHoverCard] = useState<{
+    id: string;
+    title: string;
+    label: string;
+    icon: string;
+    note: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+  /** O cartão espera um pouco antes de sumir, para o mouse chegar até ele. */
+  const cardTimer = useRef<number | undefined>(undefined);
+  const hideCardSoon = () => {
+    window.clearTimeout(cardTimer.current);
+    cardTimer.current = window.setTimeout(() => setHoverCard(null), 250);
+  };
+  /** Nota aberta na edição rápida (sem sair do texto). */
+  const [quick, setQuick] = useState<{ id: string; title: string; x: number; y: number } | null>(
+    null,
+  );
+  const closeQuick = useCallback(() => setQuick(null), []);
+  /** Abre a ficha da nota no Mundo (ou a cena, se for cena). */
+  const openProfile = (id: string, note: boolean) => {
+    setHoverCard(null);
+    setQuick(null);
+    if (!note) return useApp.getState().openDoc(id);
+    useWorldNav.getState().setOpenId(id);
+    useApp.getState().setView("world");
+  };
+  const closeDraft = useCallback(() => setDraft(null), []);
+  const commentsOpen = useComments((s) => s.panelOpen);
 
   const editor = useEditor(
     {
@@ -110,6 +164,10 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         Placeholder.configure({ placeholder: "Comece a escrever…" }),
         createLinksExtension(linkContext),
         SearchHighlight,
+        CommentAnchors.configure({
+          comments: () => useComments.getState().comments,
+          focused: () => useComments.getState().focused,
+        }),
       ],
       editorProps: {
         // Arquivos soltos ou colados no texto viram anexos.
@@ -120,6 +178,47 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
           const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
           void attach(files, at);
           return true;
+        },
+        // Passar o mouse numa menção ou link mostra nome e tipo (Personagem, Lugar…).
+        handleDOMEvents: {
+          mouseover: (_view, event) => {
+            const el = (event.target as HTMLElement).closest?.<HTMLElement>(
+              ".mention[data-doc], .wikilink[data-doc]:not(.unresolved)",
+            );
+            if (!el || !el.dataset.doc) return false;
+            const info = linkContext.describe(el.dataset.doc);
+            if (!info) return false;
+            window.clearTimeout(cardTimer.current);
+            const r = el.getBoundingClientRect();
+            setHoverCard({ ...info, id: el.dataset.doc, x: r.left, y: r.bottom });
+            return false;
+          },
+          mouseout: (_view, event) => {
+            const to = event.relatedTarget as HTMLElement | null;
+            if (to?.closest?.(".mention, .wikilink, .mention-card")) return false;
+            hideCardSoon();
+            return false;
+          },
+        },
+        // Clicar num trecho comentado mostra o comentário na lista.
+        handleClick: (_view, _pos, event) => {
+          const el = (event.target as HTMLElement).closest?.("[data-comment]");
+          if (el) {
+            const c = useComments.getState();
+            c.focus(el.getAttribute("data-comment"));
+            c.setPanel(true);
+          }
+          return false;
+        },
+        // Ctrl/⌘ + Alt + M: comentar o trecho selecionado.
+        handleKeyDown: (_view, event) => {
+          if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === "KeyM") {
+            const ed = editorRef.current;
+            const d = ed ? startComment(ed) : null;
+            if (d) setDraft(d);
+            return true;
+          }
+          return false;
         },
         handlePaste: (_view, event) => {
           const files = [...(event.clipboardData?.files ?? [])];
@@ -142,12 +241,28 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
         if (!editor.isInitialized) return;
         window.clearTimeout(textTimer.current);
         textTimer.current = window.setTimeout(() => {
-          if (!editor.isDestroyed) setDocText(sceneId, editor.getText());
+          if (editor.isDestroyed) return;
+          const text = editor.getText();
+          setDocText(sceneId, text);
+          countWritten(text);
         }, TEXT_DELAY_MS);
       },
     },
     [doc],
   );
+
+  // Comentários da cena: carrega ao abrir e redesenha os trechos quando a lista muda.
+  useEffect(() => {
+    void useComments.getState().load(sceneId);
+  }, [sceneId]);
+  useEffect(() => {
+    if (!editor) return;
+    return useComments.subscribe((s, prev) => {
+      if (s.comments === prev.comments && s.focused === prev.focused) return;
+      if (!editor.isDestroyed)
+        editor.view.dispatch(editor.state.tr.setMeta(REFRESH_COMMENTS, true));
+    });
+  }, [editor]);
 
   useEffect(() => {
     editorRef.current = editor;
@@ -160,6 +275,7 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
   useEffect(() => {
     if (!editor) return;
     setDocText(sceneId, editor.getText());
+    lastWords.current = countWords(editor.getText());
     // Ao sair do texto, a contagem fica com o que foi digitado por último.
     const timer = textTimer;
     return () => {
@@ -313,25 +429,92 @@ function LoadedEditor({ loaded, session, sceneId }: Props & { loaded: LoadedScen
 
   return (
     <>
-      <Toolbar editor={editor} onAttach={(files) => void attach(files)} />
-      <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
-        <div
-          className="page"
-          onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
-        >
-          <EditorContent
-            editor={editor}
-            className="page-body"
-            onContextMenu={(e) => {
-              // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
-              if (!editor || e.shiftKey || editor.state.selection.empty) return;
-              e.preventDefault();
-              setMenu({ x: e.clientX, y: e.clientY });
-            }}
-          />
+      <Toolbar
+        editor={editor}
+        onAttach={(files) => void attach(files)}
+        onComment={() => {
+          const d = editor ? startComment(editor) : null;
+          if (d) setDraft(d);
+        }}
+      />
+      <div className={"editor-split" + (commentsOpen ? " with-comments" : "")}>
+        <div className={"page-wrap" + (minimap ? " mm-" + minimapPos : "")}>
+          <div
+            className="page"
+            style={textVars}
+            onClick={(e) => e.target === e.currentTarget && editor?.commands.focus("end")}
+          >
+            <EditorContent
+              editor={editor}
+              className="page-body"
+              onContextMenu={(e) => {
+                // Sem seleção ou com Shift: menu do sistema (com a correção ortográfica).
+                if (!editor || e.shiftKey || editor.state.selection.empty) return;
+                e.preventDefault();
+                setMenu({ x: e.clientX, y: e.clientY });
+              }}
+            />
+          </div>
+          {minimap && <MiniMap session={session} docId={sceneId} />}
         </div>
-        {minimap && <MiniMap session={session} docId={sceneId} />}
+        {commentsOpen && <CommentsPanel editor={editor} />}
       </div>
+      {draft && <CommentComposer draft={draft} onClose={closeDraft} />}
+      {hoverCard && (
+        <div
+          className="mention-card"
+          role="dialog"
+          aria-label={hoverCard.title}
+          style={{
+            left: Math.min(hoverCard.x, window.innerWidth - 300),
+            top: hoverCard.y + 6,
+          }}
+          onMouseEnter={() => window.clearTimeout(cardTimer.current)}
+          onMouseLeave={hideCardSoon}
+        >
+          <button
+            type="button"
+            className="mention-card-main"
+            title={hoverCard.note ? "Abrir a ficha" : "Abrir a cena"}
+            onClick={() => openProfile(hoverCard.id, hoverCard.note)}
+          >
+            <Icon name={hoverCard.icon} size={15} />
+            <span>
+              <b>{hoverCard.title}</b>
+              <small>{hoverCard.label}</small>
+            </span>
+          </button>
+          {hoverCard.note && (
+            <button
+              type="button"
+              className="icon-btn sm"
+              title="Edição rápida, sem sair do texto"
+              aria-label={`Editar ${hoverCard.title} aqui`}
+              onClick={() => {
+                setQuick({
+                  id: hoverCard.id,
+                  title: hoverCard.title,
+                  x: hoverCard.x,
+                  y: hoverCard.y,
+                });
+                setHoverCard(null);
+              }}
+            >
+              <Icon name="edit" size={14} />
+            </button>
+          )}
+        </div>
+      )}
+      {quick && (
+        <NoteQuickEdit
+          noteId={quick.id}
+          title={quick.title}
+          x={quick.x}
+          y={quick.y}
+          onClose={closeQuick}
+          onOpenProfile={() => openProfile(quick.id, true)}
+        />
+      )}
       {menu && editor && (
         <ContextMenu
           editor={editor}

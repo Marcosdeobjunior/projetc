@@ -11,13 +11,14 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import type { Graph, GraphEdge, GraphNode } from "../links/links";
-import { clockFor, cycleAt, drawStar, isLightTheme, type StarClock } from "./starGlyph";
 
 /*
  * Desenho interativo do grafo num <canvas>, usado pelo grafo completo e pelo
  * minimapa: arrastar pontos, mover a visão, zoom com a roda, destacar os
- * vizinhos ao passar o mouse e clicar para abrir. Cada texto é uma estrela
- * (veja starGlyph.ts) de quatro pontas cujo brilho muda de cor no próprio ritmo.
+ * vizinhos ao passar o mouse e clicar para abrir. Visual de grafo de notas:
+ * cada texto é um ponto liso (maior quanto mais conexões), as ligações são
+ * linhas finas e neutras, e o ponto sob o mouse acende na cor de destaque junto
+ * com as ligações dele, enquanto o resto esmaece.
  */
 
 type SimNode = GraphNode & SimulationNodeDatum;
@@ -71,7 +72,7 @@ export function mountGraph(
       ? 9
       : compact
         ? 5 + Math.min(n.degree, 9) * 0.5
-        : 5 + Math.sqrt(n.degree) * 2.6;
+        : 4 + Math.sqrt(n.degree) * 1.8;
 
   let hover: SimNode | null = null;
   /** Depois que a pessoa move ou dá zoom, o grafo não se reenquadra sozinho. */
@@ -115,8 +116,6 @@ export function mountGraph(
 
   const fresh = nodes.some((n) => n.x === undefined);
   const css = (name: string) => getComputedStyle(box).getPropertyValue(name).trim();
-  const clocks = new Map<string, StarClock>(nodes.map((n) => [n.id, clockFor(n.id)]));
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)");
   // Cores da paleta ativa, resolvidas pelo navegador (as variáveis podem usar
   // color-mix(), que o canvas não entende em todo WebView).
   const probe = document.createElement("span");
@@ -139,8 +138,9 @@ export function mountGraph(
     const focus = hover ? (neighbors.get(hover.id) ?? new Set<string>()) : null;
     const lit = (id: string) => !focus || id === hover!.id || focus.has(id);
 
-    const edge = css("--edge");
-    const edgeHi = css("--accent");
+    // Linhas neutras: o tom dos textos secundários, bem transparente.
+    const edge = color("--muted");
+    const edgeHi = color("--accent");
     // As linhas são desenhadas em poucos traços (um por tipo), não uma a uma:
     // com milhares de ligações isso é o que mais pesa em cada quadro.
     const strokeAll = (
@@ -167,25 +167,25 @@ export function mountGraph(
     const touches = (l: SimLink) =>
       !!hover && ((l.source as SimNode).id === hover.id || (l.target as SimNode).id === hover.id);
     const dash = [4 / k, 3 / k];
-    const thin = 1.2 / Math.max(0.6, k);
+    const thin = 1 / k;
     const rest = links.filter((l) => !touches(l));
     strokeAll(
       rest.filter((l) => l.kind === "link"),
       edge,
-      focus ? 0.12 : 0.9,
+      focus ? 0.08 : 0.42,
       thin,
       [],
     );
     strokeAll(
       rest.filter((l) => l.kind === "mention"),
       edge,
-      focus ? 0.12 : 0.5,
+      focus ? 0.06 : 0.28,
       thin,
       dash,
     );
     if (hover) {
       const on = links.filter(touches);
-      const wide = 1.8 / Math.max(0.6, k);
+      const wide = 1.6 / k;
       strokeAll(
         on.filter((l) => l.kind === "link"),
         edgeHi,
@@ -205,20 +205,27 @@ export function mountGraph(
 
     const fg = color("--fg");
     const muted = color("--muted");
-    const light = isLightTheme();
-    const now = performance.now();
-    // A sombra borrada pesa; em grafos grandes o halo sozinho já dá o brilho.
-    const blur = nodes.length <= 80;
+    const accent = color("--accent");
+    const bg = color("--bg");
     for (const n of nodes) {
-      const R = radius(n) * 2;
-      ctx.globalAlpha = lit(n.id) ? 1 : 0.2;
-      // O texto aberto e a estrela sob o mouse brilham mais.
-      const lead = n.id === activeId || n === hover;
-      drawStar(ctx, n.x!, n.y!, R, cycleAt(clocks.get(n.id)!, now, still.matches), {
-        light,
-        boost: lead ? 1.5 : 1,
-        blur,
-      });
+      const r = radius(n);
+      const on = lit(n.id);
+      ctx.globalAlpha = on ? 1 : 0.2;
+      // Ponto liso: cinza neutro; o texto aberto e o ponto sob o mouse na cor de destaque.
+      ctx.fillStyle = n === hover || n.id === activeId ? accent : on && focus ? fg : muted;
+      ctx.beginPath();
+      ctx.arc(n.x!, n.y!, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (n.id === activeId && n !== hover) {
+        // Anel fino em volta do texto aberto, separado do ponto pela cor de fundo.
+        ctx.lineWidth = 1.5 / k;
+        ctx.strokeStyle = bg;
+        ctx.stroke();
+        ctx.strokeStyle = accent;
+        ctx.beginPath();
+        ctx.arc(n.x!, n.y!, r + 2.5 / k, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Nomes: só a partir de um zoom (LABEL_K), surgindo aos poucos, para o
@@ -226,7 +233,7 @@ export function mountGraph(
     // sob o mouse, os vizinhos dele e o texto aberto mostram o nome sempre.
     // Nomes que encostariam em outro já desenhado ficam de fora.
     const zoomAlpha = compact ? 1 : Math.min(1, Math.max(0, (k - LABEL_K) / LABEL_FADE));
-    const size = compact ? 11 : 12;
+    const size = compact ? 11 : 11.5;
     const fontPx = size / Math.max(0.75, k);
     ctx.font = `500 ${fontPx}px ${css("--font-ui")}`;
     ctx.textAlign = "center";
@@ -241,7 +248,7 @@ export function mountGraph(
       const forced = must(n);
       const alpha = forced ? 1 : zoomAlpha;
       if (alpha <= 0.01) continue;
-      const R = radius(n) * 2;
+      const R = radius(n);
       const w = ctx.measureText(n.title).width;
       const rect = {
         x0: n.x! - w / 2 - pad,
@@ -253,7 +260,7 @@ export function mountGraph(
         continue;
       taken.push(rect);
       ctx.globalAlpha = (lit(n.id) ? 0.95 : 0.15) * alpha;
-      ctx.fillStyle = compact && !forced ? muted : fg;
+      ctx.fillStyle = forced ? fg : muted;
       ctx.fillText(n.title, n.x!, n.y! + R + 2 / k);
     }
     ctx.globalAlpha = 1;
@@ -261,18 +268,6 @@ export function mountGraph(
   const schedule = () => {
     if (!frame) frame = requestAnimationFrame(draw);
   };
-
-  // O brilho das estrelas é animado: redesenha ~30 vezes por segundo enquanto
-  // a página está visível, a menos que o sistema peça menos movimento.
-  let twinkle = 0;
-  let last = 0;
-  const animate = (t: number) => {
-    twinkle = requestAnimationFrame(animate);
-    if (still.matches || document.hidden || t - last < 33) return;
-    last = t;
-    schedule();
-  };
-  twinkle = requestAnimationFrame(animate);
 
   sim.on("tick", () => {
     for (const n of nodes) positions.set(n.id, { x: n.x!, y: n.y! });
@@ -292,7 +287,7 @@ export function mountGraph(
       y1 = Math.max(y1, n.y!);
     }
     // Margem para os nomes embaixo de cada ponto.
-    const [padX, padY, max] = compact ? [140, 60, 1.4] : [120, 120, 2.2];
+    const [padX, padY, max] = compact ? [140, 60, 1.4] : [120, 120, 1.5];
     const k = Math.min(
       max,
       Math.max(0.3, Math.min(width / (x1 - x0 + padX), height / (y1 - y0 + padY))),
@@ -477,7 +472,6 @@ export function mountGraph(
       mq.removeEventListener("change", schedule);
       cancelAnimationFrame(frame);
       probe.remove();
-      cancelAnimationFrame(twinkle);
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);

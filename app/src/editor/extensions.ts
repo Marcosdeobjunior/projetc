@@ -2,6 +2,7 @@ import { getSchema } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Highlight from "@tiptap/extension-highlight";
 import { Attachment } from "./attachments";
+import { TextAlign } from "./textAlign";
 
 /** Nome do fragmento Yjs onde o texto da cena fica guardado. */
 export const YDOC_FIELD = "default";
@@ -25,6 +26,8 @@ export const textExtensions = [
   Highlight,
   // Imagens, vídeos, áudios e outros arquivos da pasta anexos/.
   Attachment,
+  // Alinhamento de parágrafos e títulos, salvo como <!-- alinhar: … --> no .md.
+  TextAlign,
 ];
 
 export const textSchema = getSchema(textExtensions);

@@ -1,3 +1,4 @@
+import { fieldRefs } from "../manuscript/fields";
 import type { DocRef, NoteKind, Project } from "../manuscript/types";
 import { allDocs } from "../manuscript/tree";
 
@@ -43,8 +44,8 @@ export function resolveLink(index: Map<string, DocRef>, target: string): DocRef 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Procura onde os nomes das notas aparecem no texto. Diferencia maiúsculas
- * ("Rosa" a personagem, não "rosa" a cor) e só conta palavras inteiras.
+ * Procura onde os nomes das notas aparecem no texto, sem diferenciar
+ * maiúsculas ("Lucas", "lucas" e "LUCAS" contam), e só palavras inteiras.
  */
 export function mentionMatcher(project: Project): RegExp | null {
   const titles = project.notes
@@ -55,7 +56,7 @@ export function mentionMatcher(project: Project): RegExp | null {
   // Sem lookbehind: o macOS antes da versão 13.3 não suporta.
   return new RegExp(
     `(^|[^\\p{L}\\p{N}])(${titles.map(escapeRegex).join("|")})(?![\\p{L}\\p{N}])`,
-    "gu",
+    "giu",
   );
 }
 
@@ -71,12 +72,12 @@ export function findMentions(project: Project, text: string, matcher = mentionMa
   if (!matcher) return [];
   let byTitle = titlesCache.get(project);
   if (!byTitle) {
-    byTitle = new Map(project.notes.map((n) => [n.title.trim(), n.id]));
+    byTitle = new Map(project.notes.map((n) => [n.title.trim().toLocaleLowerCase("pt-BR"), n.id]));
     titlesCache.set(project, byTitle);
   }
   const out: Mention[] = [];
   for (const m of text.matchAll(matcher)) {
-    const noteId = byTitle.get(m[2]!);
+    const noteId = byTitle.get(m[2]!.toLocaleLowerCase("pt-BR"));
     const from = m.index + m[1]!.length;
     if (noteId) out.push({ noteId, from, to: from + m[2]!.length });
   }
@@ -133,6 +134,10 @@ export function buildGraph(
     }
     for (const m of findMentions(project, text, matcher)) add(d.id, m.noteId, "mention");
   }
+  // Campos de referência da ficha (onde vive, organização…) também ligam as notas.
+  const ids = new Set(docs.map((d) => d.id));
+  for (const n of project.notes)
+    for (const ref of fieldRefs(n)) if (ids.has(ref)) add(n.id, ref, "link");
 
   const degree = new Map<string, number>();
   for (const e of edges.values()) {

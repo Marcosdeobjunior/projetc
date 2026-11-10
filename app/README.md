@@ -68,7 +68,7 @@ Configurações → aba **Diagramação**. Abas:
 A prévia mostra o **livro em 3D** (arraste para girar), a **capa aberta** e uma página do miolo.
 Arquivos gerados: **PDF do miolo**, **PDF da capa aberta** (300 dpi, com 3 mm de sangria) e a
 **capa para e-book** (PNG de 1600 px de largura). Com o projeto gráfico feito, a capa entra no EPUB
-e a exportação em PDF usa a diagramação. Tudo fica em `.inkflow/livro.json`.
+e a exportação em PDF usa a diagramação. Tudo fica em `.talia/livro.json`.
 
 Limites do PDF gerado pelo app (motor de impressão do Chromium): só o 1º capítulo tem garantia de
 começar na página da direita, e o cabeçalho aparece também na página de abertura de capítulo.
@@ -87,7 +87,7 @@ use **Baixar** em "No Google Drive", na tela inicial.
 - Mudanças na estrutura (capítulos, cenas, notas) dos dois lados são juntadas pelo id.
 - Outros arquivos alterados nos dois lados: fica o deste computador; o do Drive vai para a Lixeira.
 - O que for excluído em outro computador vai para a Lixeira deste, em vez de sumir.
-- A Lixeira e `.inkflow/sync.json` ficam só no computador.
+- A Lixeira e `.talia/sync.json` ficam só no computador.
 
 ### Credenciais do Google (uma vez só)
 
@@ -156,7 +156,7 @@ A Casa das Marés/
     ideias/o-segredo-do-pai.md
   anexos/
     mapa-da-vila.png          ← imagens, vídeos, áudios e outros arquivos
-  .inkflow/
+  .talia/
     project.json              ← título, ordem dos capítulos e das cenas
     ydoc/<id-da-cena>.yjs     ← estado do editor de cada cena (para o sync)
     versoes/                  ← histórico: uma versão do projeto inteiro por arquivo
@@ -183,12 +183,12 @@ Regras:
 - **A ordem** de capítulos e cenas fica no `project.json`, não no nome dos arquivos.
   Assim, reordenar não renomeia arquivos (melhor para o sync).
 - **Renomear** uma cena ou capítulo renomeia o arquivo ou a pasta junto.
-- **Nada é apagado de verdade:** excluir move para `.inkflow/lixeira/`.
+- **Nada é apagado de verdade:** excluir move para `.talia/lixeira/`.
 - **Formatação:** negrito, itálico, ~~tachado~~, ==destaque== (como no Obsidian), títulos,
   listas, citações e o separador de cena `* * *` ficam em Markdown comum.
 - **Anexos** ficam em `anexos/` e entram no texto como `![nome](anexos/arquivo.ext)` numa
   linha própria (a mesma sintaxe de imagem do Markdown e do Obsidian).
-- **Histórico:** cada versão em `.inkflow/versoes/` guarda a estrutura e o texto de todas as
+- **Histórico:** cada versão em `.talia/versoes/` guarda a estrutura e o texto de todas as
   cenas e notas (os anexos não). O app guarda versões ao abrir e fechar o projeto e a cada
   10 minutos, só quando algo mudou; das automáticas antigas fica uma por dia. Restaurar o
   projeto inteiro guarda antes a situação atual e manda `manuscrito/` e `notas/` para a lixeira.

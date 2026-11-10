@@ -17,7 +17,7 @@ const FORMATS: { id: ExportFormat; name: string; hint: string; icon: string }[] 
   { id: "txt", name: "Texto", hint: "Só o texto, sem formatação", icon: "file" },
 ];
 
-const KEY = (projectId: string) => `inkflow.export.${projectId}`;
+const KEY = (projectId: string) => `talia.export.${projectId}`;
 
 function load(session: Session): ExportOptions {
   const p = session.project;

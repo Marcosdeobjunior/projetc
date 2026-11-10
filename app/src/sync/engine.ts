@@ -38,7 +38,7 @@ import type { Drive, RemoteFile } from "./drive";
  * Arquivos excluídos pelo Drive vão para a lixeira local, não somem.
  */
 
-export const SYNC_FILE = ".inkflow/sync.json";
+export const SYNC_FILE = ".talia/sync.json";
 const VERSION_INDEX = `${HISTORY_DIR}/indice.json`;
 
 export interface SyncState {
@@ -65,7 +65,7 @@ export function excluded(path: string): boolean {
     path === SYNC_FILE ||
     path === VERSION_INDEX ||
     path.startsWith(TRASH_DIR + "/") ||
-    path.endsWith(".inkflow-tmp") ||
+    path.endsWith(".talia-tmp") ||
     /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini)$/i.test(path)
   );
 }
@@ -104,7 +104,7 @@ export interface Plan {
   local: Map<string, string>;
 }
 
-const ydocId = (path: string) => path.match(/^\.inkflow\/ydoc\/(.+)\.yjs$/)?.[1] ?? null;
+const ydocId = (path: string) => path.match(/^\.talia\/ydoc\/(.+)\.yjs$/)?.[1] ?? null;
 
 /** Compara local, Drive e base e decide o que fazer com cada arquivo. */
 export function decide(
@@ -326,7 +326,7 @@ export async function applySync(
       case "deleteLocal":
         result.changed = true;
         if (a.path.startsWith(HISTORY_DIR + "/")) versionsChanged = true;
-        if (a.path.startsWith(".inkflow/")) await fs.remove(a.path);
+        if (a.path.startsWith(".talia/")) await fs.remove(a.path);
         else
           await moveToTrash(fs, a.path, {
             kind: "backup",

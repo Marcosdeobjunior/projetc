@@ -3,11 +3,11 @@ import { useApp, type Session } from "../state/store";
 import { useSearch } from "../state/search";
 import { searchProject, snippet } from "../search/search";
 import { formatCount } from "../manuscript/wordCount";
-import { KIND_LABEL } from "../links/context";
+import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { shortcut } from "../editor/formatting";
 import { Icon } from "./Icon";
 
-const KIND_ICON = { scene: "file", personagens: "person", lugares: "pin", ideias: "bulb" };
+const KIND_ICON = DOC_ICON;
 /** Trechos mostrados por texto antes do "mais N". */
 const MAX_SNIPPETS = 30;
 

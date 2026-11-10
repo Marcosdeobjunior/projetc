@@ -6,7 +6,7 @@ import { findAll, type Hit } from "../search/search";
 import { useSearch } from "../state/search";
 
 /** Meta de transação para redesenhar os destaques quando a busca muda. */
-export const REFRESH_SEARCH = "inkflowRefreshSearch";
+export const REFRESH_SEARCH = "taliaRefreshSearch";
 
 /** Ocorrências da busca atual no documento do editor, em posições do documento. */
 export function searchHits(doc: PMNode): Hit[] {
@@ -27,7 +27,7 @@ export function searchHits(doc: PMNode): Hit[] {
   return out;
 }
 
-const key = new PluginKey<DecorationSet>("inkflowSearch");
+const key = new PluginKey<DecorationSet>("taliaSearch");
 
 /** Destaca no texto aberto o que está sendo procurado no painel de busca. */
 export const SearchHighlight = Extension.create({

@@ -1,6 +1,6 @@
 import type { KeyValueStore } from "./kvFs";
 
-const DB_NAME = "inkflow";
+const DB_NAME = "talia";
 const STORE = "files";
 
 function request<T>(req: IDBRequest<T>): Promise<T> {
