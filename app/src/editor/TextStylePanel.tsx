@@ -18,6 +18,11 @@ const SLIDERS: {
   { key: "line", label: "Espaço entre as linhas", show: (v) => v.toFixed(2).replace(".", ",") },
   { key: "letter", label: "Espaço entre as letras", show: (v) => pct(v) },
   { key: "word", label: "Espaço entre as palavras", show: (v) => pct(v) },
+  {
+    key: "indent",
+    label: "Recuo da primeira linha",
+    show: (v) => (v === 0 ? "sem recuo" : `${String(v).replace(".", ",")} em`),
+  },
 ];
 
 /** Espaçamento extra (em em) como porcentagem do tamanho da letra. */

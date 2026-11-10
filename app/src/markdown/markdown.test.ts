@@ -21,6 +21,16 @@ describe("toMarkdown", () => {
     );
   });
 
+  it("mantém listas com itens recuados (aninhadas)", () => {
+    const md = "- Personagens\n  - Helena\n  - Lucas\n- Lugares\n";
+    const doc = parseMarkdown(md);
+    const outer = doc.content![0]!;
+    expect(outer.type).toBe("bulletList");
+    const inner = outer.content![0]!.content!.find((n) => n.type === "bulletList");
+    expect(inner?.content).toHaveLength(2);
+    expect(toMarkdown(doc)).toBe(md);
+  });
+
   it("mantém marcações aninhadas", () => {
     expect(toMarkdown(doc(p(t("a", "bold"), t("b", "bold", "italic"), t("c", "bold"))))).toBe(
       "**a*b*c**\n",

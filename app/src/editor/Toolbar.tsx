@@ -41,6 +41,8 @@ export function Toolbar({
             ordered: e.isActive("orderedList"),
             quote: e.isActive("blockquote"),
             selected: !e.state.selection.empty,
+            canIndent: e.can().sinkListItem("listItem"),
+            canOutdent: e.can().liftListItem("listItem"),
           }
         : null,
   });
@@ -65,6 +67,22 @@ export function Toolbar({
       icon: "listOrdered",
       on: state.ordered,
       run: () => chain().toggleOrderedList().run(),
+    },
+    {
+      id: "indent",
+      label: "Aumentar recuo do item da lista (Tab)",
+      icon: "indent",
+      on: false,
+      disabled: !state.canIndent,
+      run: () => chain().sinkListItem("listItem").run(),
+    },
+    {
+      id: "outdent",
+      label: "Diminuir recuo do item da lista (Shift+Tab)",
+      icon: "outdent",
+      on: false,
+      disabled: !state.canOutdent,
+      run: () => chain().liftListItem("listItem").run(),
     },
     {
       id: "quote",
@@ -109,7 +127,14 @@ export function Toolbar({
       ))}
       <span className="toolbar-sep" />
       {blocks.map((t) => (
-        <ToolButton key={t.id} label={t.label} icon={t.icon} on={t.on} run={t.run} />
+        <ToolButton
+          key={t.id}
+          label={t.label}
+          icon={t.icon}
+          on={t.on}
+          disabled={"disabled" in t ? t.disabled : false}
+          run={t.run}
+        />
       ))}
       <ToolButton label="Limpar formatação" icon="clear" run={() => clearFormatting(editor)} />
       <span className="toolbar-sep" />
@@ -198,11 +223,13 @@ function ToolButton({
   label,
   icon,
   on,
+  disabled,
   run,
 }: {
   label: string;
   icon: string;
   on?: boolean;
+  disabled?: boolean;
   run: () => void;
 }) {
   return (
@@ -212,6 +239,7 @@ function ToolButton({
       title={label}
       aria-label={label}
       aria-pressed={on}
+      disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={run}
     >

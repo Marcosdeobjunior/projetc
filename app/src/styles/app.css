@@ -1257,6 +1257,11 @@ p {
 .prose p {
   margin: 0 0 0.9em;
 }
+/* Recuo da primeira linha (Aparência do texto): só nos parágrafos que seguem
+   outro parágrafo, como nos livros (o primeiro depois de um título fica sem). */
+.prose > p + p {
+  text-indent: var(--prose-indent, 0);
+}
 .prose h1,
 .prose h2,
 .prose h3 {

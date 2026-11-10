@@ -110,7 +110,8 @@ export function parseMarkdown(markdown: string): PMNode {
   return { type: "doc", content: parseBlocks(lines) };
 }
 
-function parseBlocks(lines: string[]): PMNode[] {
+/** `inList`: o conteúdo de um item de lista, onde um "- " no começo da linha abre uma sublista. */
+function parseBlocks(lines: string[], inList = false): PMNode[] {
   const out: PMNode[] = [];
   let i = 0;
   const isBlank = (l: string | undefined) => l === undefined || l.trim() === "";
@@ -188,7 +189,7 @@ function parseBlocks(lines: string[]): PMNode[] {
           itemLines.push(l.replace(new RegExp(`^ {1,${Math.max(2, indent)}}`), ""));
           i++;
         }
-        const inner = parseBlocks(itemLines);
+        const inner = parseBlocks(itemLines, true);
         items.push({ type: "listItem", content: inner.length ? inner : [{ type: "paragraph" }] });
         while (isBlank(lines[i]) && lines[i + 1]?.match(/^([-+*]|\d+[.)])\s+/)) i++;
       }
@@ -202,6 +203,9 @@ function parseBlocks(lines: string[]): PMNode[] {
     while (i < lines.length && !isBlank(lines[i])) {
       const l = lines[i]!;
       if (para.length && (/^(#{1,6})\s/.test(l) || l.startsWith(">"))) break;
+      // Dentro de um item, a linha recuada que começa com marcador é uma sublista
+      // (fora de listas não: um "- " no meio do texto pode ser fala de personagem).
+      if (inList && para.length && /^([-+*]|\d+[.)])\s+\S/.test(l)) break;
       para.push(l);
       i++;
     }

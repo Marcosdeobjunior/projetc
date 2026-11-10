@@ -10,6 +10,8 @@ const PATHS: Record<string, string> = {
   redo: "m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3",
   plus: "M12 5v14M5 12h14",
   chevron: "m9 6 6 6-6 6",
+  indent: "M4 6h16M11 12h9M11 18h9M4 9.5l3.5 2.5L4 14.5",
+  outdent: "M4 6h16M11 12h9M11 18h9M7.5 9.5L4 12l3.5 2.5",
   calendar: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
   language: "M4 5h9M8.5 5v2c0 4-2 7-5 8M6 10c1.5 2.5 4 4 7 5M13 21l4-9 4 9M14.5 18h5",
   organization: "M4 21V8l8-5 8 5v13M9 21v-5h6v5M8 11h.01M12 11h.01M16 11h.01",

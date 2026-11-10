@@ -112,7 +112,7 @@ function block(node: PMNode, prefix = ""): string[] {
         c
           .map((item, i) => {
             const marker = ordered ? `${start + i}. ` : "- ";
-            const body = blocks(item.content ?? [])
+            const body = itemBlocks(item.content ?? [])
               .split("\n")
               .map((l, j) => (j === 0 ? marker + l : l ? " ".repeat(marker.length) + l : l))
               .join("\n");
@@ -132,6 +132,21 @@ function block(node: PMNode, prefix = ""): string[] {
     default:
       return c.length ? [blocks(c)] : [];
   }
+}
+
+/**
+ * Conteúdo de um item de lista: uma sublista logo depois do texto do item fica
+ * colada (sem linha em branco), como numa lista recuada comum.
+ */
+function itemBlocks(nodes: PMNode[]): string {
+  let out = "";
+  nodes.forEach((n, i) => {
+    const text = block(n).join("\n\n");
+    if (!text) return;
+    const list = n.type === "bulletList" || n.type === "orderedList";
+    out += (i === 0 || !out ? "" : list ? "\n" : "\n\n") + text;
+  });
+  return out;
 }
 
 function blocks(nodes: PMNode[]): string {
