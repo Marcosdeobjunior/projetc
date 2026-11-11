@@ -78,3 +78,28 @@ describe("brasão e bandeira", () => {
     expect(parseEmblemOptions("{}")).toBeNull();
   });
 });
+
+describe("prévia fiel ao mapa-múndi", () => {
+  const geo = { seed: 77, coast: 0, river: Math.PI / 2, roads: [Math.PI, -Math.PI / 2] };
+  it("mar do lado certo, rio e estradas nas direções do mapa", () => {
+    const m = generateVillage({ ...defaultMapOptions(1), geo });
+    expect(m.sea).not.toBeNull();
+    // Mar a leste (ângulo 0): o lado direito do mapa é água, o esquerdo não.
+    expect(insidePoly([m.width - 5, m.height / 2], m.sea!.poly)).toBe(true);
+    expect(insidePoly([5, m.height / 2], m.sea!.poly)).toBe(false);
+    // Nenhuma casa no mar.
+    for (const b of m.buildings) expect(insidePoly(b.center, m.sea!.poly)).toBe(false);
+    // Estrada para oeste: a primeira termina à esquerda do centro.
+    const r = m.roads[0]!.points;
+    expect(r[r.length - 1]![0]).toBeLessThan(m.center[0]);
+  });
+
+  it("gerar de novo mantém a geografia e muda casas e ruas", () => {
+    const a = generateVillage({ ...defaultMapOptions(1), geo });
+    const b = generateVillage({ ...defaultMapOptions(2), geo });
+    expect(b.sea).toEqual(a.sea);
+    expect(b.river).toEqual(a.river);
+    expect(b.roads[0]).toEqual(a.roads[0]);
+    expect(JSON.stringify(b.buildings)).not.toBe(JSON.stringify(a.buildings));
+  });
+});

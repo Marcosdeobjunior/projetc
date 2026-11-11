@@ -1,6 +1,6 @@
 import { hashSeed } from "./geom";
-import { cellOf, COLS, SEA, type Burg, type Derived } from "./worldgen";
-import { parseMapOptions, type MapOptions, type MapSize } from "./village";
+import { cellOf, COLS, dCol, ROWS, SEA, type Burg, type Derived } from "./worldgen";
+import { parseMapOptions, type MapOptions, type MapSize, type VillageGeo } from "./village";
 
 /*
  * Dados de um povoado do mapa-múndi (o "Editar povoado"). Ficam nos campos do
@@ -134,6 +134,7 @@ export function settlementInfo(
             ? "Montanha"
             : "Genérico");
   const saved = parseMapOptions(fields.mapa);
+  const geo = localGeo(burg, d);
   const preview: MapOptions = {
     ...(saved ?? {
       seed,
@@ -142,6 +143,7 @@ export function settlementInfo(
       river,
       fields: true,
     }),
+    geo,
     walls: elements.has("muralhas"),
     citadel: elements.has("cidadela"),
     plaza: elements.has("praca"),
@@ -162,3 +164,101 @@ export function settlementInfo(
     preview,
   };
 }
+
+/** Cor do chão e árvores da prévia, pelo bioma do mapa-múndi. */
+const BIOME_LOOK: { ground: string; trees: number; farmland: boolean }[] = [
+  { ground: "#ece2c9", trees: 1, farmland: true }, // mar (não usado)
+  { ground: "#efdcab", trees: 0.08, farmland: false }, // deserto quente
+  { ground: "#e3dcc0", trees: 0.12, farmland: false }, // deserto frio
+  { ground: "#ebdfb2", trees: 0.45, farmland: true }, // savana
+  { ground: "#e6e3c0", trees: 0.45, farmland: true }, // campos
+  { ground: "#e1e3bc", trees: 1.2, farmland: true }, // floresta tropical sazonal
+  { ground: "#dfe2bf", trees: 1.4, farmland: true }, // floresta temperada
+  { ground: "#d8e0b8", trees: 1.9, farmland: true }, // floresta tropical
+  { ground: "#d9e0bf", trees: 1.8, farmland: true }, // floresta úmida temperada
+  { ground: "#dfe1cf", trees: 1.5, farmland: false }, // taiga
+  { ground: "#e6e5da", trees: 0.15, farmland: false }, // tundra
+  { ground: "#f1f4f4", trees: 0, farmland: false }, // geleira
+  { ground: "#dbe0c4", trees: 0.9, farmland: false }, // pântano
+  { ground: "#e3ddcf", trees: 0.35, farmland: false }, // montanha
+];
+
+/**
+ * Geografia em volta da cidade, lida do mapa-múndi: de que lado está a água,
+ * para onde o rio corre e em que direções saem as estradas.
+ */
+export function localGeo(burg: Burg, d: Derived): VillageGeo {
+  const c = cellOf(burg.x, burg.y);
+  const cx = c % COLS;
+  const cy = Math.floor(c / COLS);
+  // Água por perto (mar ou lago): direção média das células de água num raio de 3.
+  let wx = 0;
+  let wy = 0;
+  for (let dy = -3; dy <= 3; dy++)
+    for (let dx = -3; dx <= 3; dx++) {
+      const y = cy + dy;
+      if (y < 0 || y >= ROWS || (!dx && !dy)) continue;
+      const j = y * COLS + ((cx + dx + COLS) % COLS);
+      if (d.land[j]) continue;
+      const w = 1 / (dx * dx + dy * dy);
+      wx += dx * w;
+      wy += dy * w;
+    }
+  const coast = Math.hypot(wx, wy) > 0.05 ? Math.atan2(wy, wx) : null;
+  // Rio: a célula de rio mais perto e para onde ela escorre.
+  let river: number | null = null;
+  let bestR = Infinity;
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      const y = cy + dy;
+      if (y < 0 || y >= ROWS) continue;
+      const j = y * COLS + ((cx + dx + COLS) % COLS);
+      if (!d.land[j] || d.flux[j]! < d.riverMin) continue;
+      const dist = dx * dx + dy * dy;
+      if (dist >= bestR) continue;
+      let to = j;
+      for (let k = 0; k < 3 && d.down[to]! >= 0; k++) to = d.down[to]!;
+      if (to === j) continue;
+      const ddx = dCol(to % COLS, j % COLS);
+      const ddy = Math.floor(to / COLS) - Math.floor(j / COLS);
+      river = Math.atan2(ddy, ddx);
+      bestR = dist;
+    }
+  // Estradas: em cada estrada que passa pela cidade, a direção de um ponto adiante e atrás.
+  const roads: number[] = [];
+  const addDir = (a: number) => {
+    if (!roads.some((b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < 0.6))
+      roads.push(a);
+  };
+  const order = [...d.roads].sort((a, b) => ROAD_RANK[a.type] - ROAD_RANK[b.type]);
+  for (const r of order) {
+    let k = -1;
+    let best = Infinity;
+    r.cells.forEach((cell, i) => {
+      const dist = Math.hypot(dCol(cell % COLS, cx), Math.floor(cell / COLS) - cy);
+      if (dist < best) {
+        best = dist;
+        k = i;
+      }
+    });
+    if (best > 1.5) continue;
+    for (const step of [-4, 4]) {
+      const cell = r.cells[Math.max(0, Math.min(r.cells.length - 1, k + step))]!;
+      const ddx = dCol(cell % COLS, cx);
+      const ddy = Math.floor(cell / COLS) - cy;
+      if (Math.hypot(ddx, ddy) >= 1.5) addDir(Math.atan2(ddy, ddx));
+    }
+  }
+  const look = BIOME_LOOK[d.land[c] ? d.biome[c]! : 4] ?? BIOME_LOOK[4]!;
+  return {
+    seed: hashSeed(burg.id + "#geo"),
+    coast,
+    river,
+    roads,
+    ground: look.ground,
+    trees: look.trees,
+    farmland: look.farmland,
+  };
+}
+
+const ROAD_RANK = { principal: 0, estrada: 1, trilha: 2, maritima: 3 } as const;

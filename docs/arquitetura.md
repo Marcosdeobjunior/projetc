@@ -444,6 +444,13 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   sombreamento) e monta caminhos vetoriais (costa e fronteiras por marching squares, rios e
   estradas suavizados); o canvas desenha isso com zoom/arraste e os rótulos em pixels de tela, sem
   sobreposição.
+- Prévia da cidade (`world/village.ts`, `generateFromGeo`): com `geo` (de `localGeo` em
+  `world/settlement.ts`: direção da água num raio de 3 células, do rio pelo `down` e das estradas
+  geradas que passam pela cidade, e o visual do bioma), a vila tem mar/lago, rio e estradas nas
+  direções reais. A geografia usa uma semente fixa da cidade e casas/ruas/lavouras a semente das
+  opções; `geo` não é gravada (`serializeMapOptions`). Cidades do mapa são escolhidas por
+  habitabilidade do bioma, clima, declive, rios (mais em confluências) e costa, com metade das
+  vagas reservadas ao interior.
 - Mapa ↔ Mundo (`world/worldNotes.ts`, chamado por `useWorldMap.reconcile`): cada estado e cidade
   tem um lugar (`noteId`). `syncWorldNotes` liga/cria os lugares (aproveitando título igual), puxa
   os nomes das fichas e tira do mapa o que foi apagado no Mundo (ou recria, ao desfazer);
@@ -478,7 +485,9 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   tem nome; `bridges` guarda posição e direção das pontes. `cellsPath` suaviza os traçados
   (Chaikin). O relevo é girado para a borda de 180° cair no meridiano com menos terra, e a faixa da
   borda e as latitudes acima de ~58° viram mar no fim da geração.
-- Globo: a tabela por pixel (linha da textura, longitude sem giro, luz, borda) fica em cache e só é
+- Globo: `ui/GlobeView.tsx` usa WebGL (shader de esfera ortográfica sobre a textura do mapa plano,
+  luz, atmosfera e estrelas na GPU; nomes e cidades numa camada 2D por cima; giro em refs, um
+  desenho por quadro). Sem WebGL, cai em `ui/GlobeCpu.tsx`, onde a tabela por pixel (linha da textura, longitude sem giro, luz, borda) fica em cache e só é
   refeita quando muda tamanho, zoom ou inclinação; girar para os lados só desloca a longitude; ao
   arrastar, desenha em meia resolução; o efeito de desenho tem dependências explícitas (o mouse
   parado sobre o globo não redesenha).

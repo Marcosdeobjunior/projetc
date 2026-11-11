@@ -23,6 +23,28 @@ export interface MapOptions {
   plaza?: boolean;
   temple?: boolean;
   shanty?: boolean;
+  /**
+   * Geografia local tirada do mapa-múndi (não é gravada: é recalculada do mapa).
+   * Com ela, a prévia é fiel ao lugar e "gerar outra" só redistribui casas e ruas.
+   */
+  geo?: VillageGeo;
+}
+
+/** O que o mapa-múndi diz sobre o lugar da cidade. Ângulos em radianos (y para baixo). */
+export interface VillageGeo {
+  /** Semente da geografia (fixa por cidade: costa, rio, estradas, árvores). */
+  seed: number;
+  /** Direção em que fica o mar ou lago (se a cidade está na margem). */
+  coast?: number | null;
+  /** Direção em que o rio corre (se passa pela cidade). */
+  river?: number | null;
+  /** Direções em que as estradas da região saem da cidade. */
+  roads?: number[];
+  /** Cor do chão (bioma) e quantidade de árvores (0 a 2). */
+  ground?: string;
+  trees?: number;
+  /** Bioma permite lavouras? */
+  farmland?: boolean;
 }
 
 export const MAP_SIZES: { value: MapSize; label: string }[] = [
@@ -33,6 +55,13 @@ export const MAP_SIZES: { value: MapSize; label: string }[] = [
 
 export function defaultMapOptions(seed: number): MapOptions {
   return { seed: seed >>> 0, size: "vila", road: true, river: true, fields: true };
+}
+
+/** Opções para gravar: sem a geografia (ela é recalculada do mapa-múndi). */
+export function serializeMapOptions(o: MapOptions): string {
+  const { geo: _geo, ...rest } = o;
+  void _geo;
+  return JSON.stringify(rest);
 }
 
 /** Lê as opções gravadas (texto JSON); qualquer coisa estranha vira null. */
@@ -101,6 +130,10 @@ export interface VillageMap {
   citadel: Pt[] | null;
   /** Praça: círculo livre no centro. */
   plaza: { x: number; y: number; r: number } | null;
+  /** Mar ou lago (polígono) e a linha da costa. */
+  sea: { poly: Pt[]; coast: Pt[] } | null;
+  /** Cor do chão (pelo bioma). */
+  ground?: string;
 }
 
 export const MAP_W = 480;
@@ -155,6 +188,7 @@ function lineLength(line: Pt[]): number {
 }
 
 export function generateVillage(o: MapOptions): VillageMap {
+  if (o.geo) return generateFromGeo(o, o.geo);
   const rand = rng(o.seed);
   const between = (a: number, b: number) => a + rand() * (b - a);
   const cfg = SIZE[o.size];
@@ -197,6 +231,126 @@ export function generateVillage(o: MapOptions): VillageMap {
     };
   }
 
+  return buildTown(o, rand, rand, center, main, roads, river, null);
+}
+
+/**
+ * Mapa fiel ao mapa-múndi: o mar/lago fica do lado certo, o rio corre na direção
+ * certa e as estradas saem para onde vão as da região. A geografia usa a semente
+ * do lugar (fixa); casas, ruas e lavouras usam a semente das opções (sorteável).
+ */
+function generateFromGeo(o: MapOptions, g: VillageGeo): VillageMap {
+  const geo = rng(g.seed);
+  const lay = rng(o.seed);
+  const gb = (a: number, b: number) => a + geo() * (b - a);
+  const W = MAP_W;
+  const H = MAP_H;
+  const center: Pt = [W / 2, H / 2];
+
+  // Mar ou lago: a costa é uma linha ondulada perpendicular à direção da água.
+  let sea: VillageMap["sea"] = null;
+  if (g.coast !== null && g.coast !== undefined) {
+    const a = g.coast;
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+    const base = gb(42, 62);
+    const coast: Pt[] = [];
+    let off = 0;
+    for (let s = -520; s <= 520; s += 20) {
+      off = Math.max(-18, Math.min(18, off + gb(-7, 7)));
+      const d = base + off;
+      coast.push([center[0] + dx * d - dy * s, center[1] + dy * d + dx * s]);
+    }
+    const smoothCoast = smooth(coast, 2);
+    const far = 900;
+    const poly: Pt[] = [
+      ...smoothCoast,
+      [
+        smoothCoast[smoothCoast.length - 1]![0] + dx * far,
+        smoothCoast[smoothCoast.length - 1]![1] + dy * far,
+      ],
+      [smoothCoast[0]![0] + dx * far, smoothCoast[0]![1] + dy * far],
+    ];
+    sea = { poly, coast: smoothCoast };
+  }
+  const inSea = (p: Pt) => !!sea && insidePoly(p, sea.poly);
+
+  // Rio: atravessa o mapa na direção em que corre, passando junto da cidade; termina no mar.
+  let river: VillageMap["river"] = null;
+  if (o.river && g.river !== null && g.river !== undefined) {
+    const a = g.river;
+    const lateral = gb(14, 30) * (geo() < 0.5 ? -1 : 1);
+    const start: Pt = [
+      center[0] - Math.cos(a) * 420 - Math.sin(a) * lateral,
+      center[1] - Math.sin(a) * 420 + Math.cos(a) * lateral,
+    ];
+    let pts = wander(geo, start, a, 840, 26);
+    if (sea) {
+      const k = pts.findIndex((p) => inSea(p));
+      if (k > 0) pts = pts.slice(0, k + 1);
+    }
+    river = { points: pts, width: gb(9, 14) };
+  }
+
+  // Estradas da região: saem do centro na direção real de cada uma (nunca para o mar).
+  const roads: Road[] = [];
+  const dirs = (o.road ? (g.roads ?? []) : []).filter((a) => {
+    if (!sea) return true;
+    const p: Pt = [center[0] + Math.cos(a) * 60, center[1] + Math.sin(a) * 60];
+    return !inSea(p);
+  });
+  dirs.forEach((a, k) => {
+    let pts = wander(geo, center, a, 420, 22);
+    if (sea) {
+      const cut = pts.findIndex((p) => inSea(p));
+      if (cut > 0) pts = pts.slice(0, cut);
+    }
+    roads.push({ points: pts, width: k === 0 ? 8 : 6, main: k === 0 });
+  });
+  // Sem estrada regional: uma rua local cruzando o centro (sorteada a cada geração).
+  const lb = (x: number, y: number) => x + lay() * (y - x);
+  if (!roads.length) {
+    const a =
+      sea && g.coast !== null && g.coast !== undefined ? g.coast + Math.PI / 2 : lb(-0.5, 0.5);
+    const start: Pt = [center[0] - Math.cos(a) * 130, center[1] - Math.sin(a) * 130];
+    let pts = wander(lay, start, a, 260, 20);
+    if (sea) pts = pts.filter((p) => !inSea(p));
+    if (pts.length > 1) roads.push({ points: pts, width: 5, main: true });
+  }
+  const main = roads[0]?.points ?? [center, [center[0] + 1, center[1]] as Pt];
+  return buildTown(o, lay, geo, center, main, roads, river, sea, g);
+}
+
+/** Ruas, muralha, casas, lavouras e árvores em volta do centro (comum aos dois modos). */
+function buildTown(
+  o: MapOptions,
+  rand: () => number,
+  treeRand: () => number,
+  center: Pt,
+  main: Pt[],
+  roads: Road[],
+  river: VillageMap["river"],
+  sea: VillageMap["sea"],
+  g?: VillageGeo,
+): VillageMap {
+  const between = (a: number, b: number) => a + rand() * (b - a);
+  const cfg = SIZE[o.size];
+  const W = MAP_W;
+  const H = MAP_H;
+  const inSea = (p: Pt) => !!sea && insidePoly(p, sea.poly);
+  // Ruas locais (sorteadas): saem da principal para os dois lados.
+  if (g) {
+    for (let i = 0; i < cfg.branches; i++) {
+      const at = along(main, Math.min(lineLength(main) * 0.9, between(20, cfg.radius)));
+      if (!at) continue;
+      const side = i % 2 === 0 ? 1 : -1;
+      const dir = at.angle + side * (Math.PI / 2 + between(-0.45, 0.45));
+      let pts = wander(rand, at.p, dir, between(cfg.radius * 0.7, cfg.radius * 1.3), 18);
+      const cut = pts.findIndex((p) => inSea(p));
+      if (cut > 0) pts = pts.slice(0, cut);
+      if (pts.length > 1) roads.push({ points: pts, width: 5, main: false });
+    }
+  }
   // Praça, cidadela e muralha (antes das casas, que se desviam deles).
   const plaza = o.plaza ? { x: center[0], y: center[1], r: o.size === "cidade" ? 18 : 13 } : null;
   let citadel: Pt[] | null = null;
@@ -219,11 +373,20 @@ export function generateVillage(o: MapOptions): VillageMap {
       return [center[0] + Math.cos(a) * r * 1.15, center[1] + Math.sin(a) * r * 0.85] as Pt;
     });
   }
+  // Muralha não entra na água: o vértice que cai no mar recua até a margem.
+  if (wall && sea)
+    wall = wall.map((p) => {
+      let q = p;
+      for (let k = 0; k < 20 && (inSea(q) || distToPolyline(q, sea.coast) < 4); k++)
+        q = [q[0] + (center[0] - q[0]) * 0.1, q[1] + (center[1] - q[1]) * 0.1];
+      return q;
+    });
   const wallLine = wall ? [...wall, wall[0]!] : null;
 
   const blocked = (poly: Pt[]) => {
     if (citadel && overlaps(citadel, poly, 3)) return true;
     for (const p of poly) {
+      if (sea && (inSea(p) || distToPolyline(p, sea.coast) < 3)) return true;
       if (plaza && Math.hypot(p[0] - plaza.x, p[1] - plaza.y) < plaza.r + 1.5) return true;
       if (wallLine && distToPolyline(p, wallLine) < 2.5) return true;
       for (const r of roads) if (distToPolyline(p, r.points) < r.width / 2 + 0.8) return true;
@@ -307,7 +470,7 @@ export function generateVillage(o: MapOptions): VillageMap {
 
   // Campos cultivados em volta da área construída.
   const fields: Field[] = [];
-  if (o.fields) {
+  if (o.fields && g?.farmland !== false) {
     for (let tries = 0; tries < 160 && fields.length < 26; tries++) {
       const road = roads[Math.floor(rand() * roads.length)]!;
       const at = along(road.points, rand() * lineLength(road.points));
@@ -331,13 +494,14 @@ export function generateVillage(o: MapOptions): VillageMap {
 
   // Árvores, mais para fora do centro.
   const trees: Tree[] = [];
-  const nTrees = o.size === "cidade" ? 140 : 220;
+  // Quantidade de árvores pelo bioma; posições pela geografia (ficam ao regenerar).
+  const nTrees = Math.round((o.size === "cidade" ? 140 : 220) * (g?.trees ?? 1));
   for (let tries = 0; tries < nTrees * 6 && trees.length < nTrees; tries++) {
-    const x = rand() * W;
-    const y = rand() * H;
+    const x = treeRand() * W;
+    const y = treeRand() * H;
     const dist = Math.hypot(x - center[0], y - center[1]);
-    if (rand() > Math.min(1, (dist / cfg.radius) ** 2 * 0.6)) continue;
-    const r = between(2.4, 4.4);
+    if (treeRand() > Math.min(1, (dist / cfg.radius) ** 2 * 0.6)) continue;
+    const r = 2.4 + treeRand() * 2;
     const box = rect(x, y, r * 2, r * 2, 0);
     if (blocked(box) || !free(box)) continue;
     if (fields.some((f) => insidePoly([x, y], f.corners))) continue;
@@ -357,5 +521,7 @@ export function generateVillage(o: MapOptions): VillageMap {
     wall,
     citadel,
     plaza,
+    sea,
+    ground: g?.ground,
   };
 }

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 import type { Note } from "../manuscript/types";
 import type { Burg, Derived } from "../world/worldgen";
-import { generateVillage } from "../world/village";
+import { generateVillage, serializeMapOptions } from "../world/village";
 import { generateEmblem, parseEmblemOptions } from "../world/heraldry";
 import { hashSeed } from "../world/geom";
 import {
@@ -91,14 +91,14 @@ export function BurgDialog({
       temple: next.has("templo"),
       shanty: next.has("favela"),
     };
-    onFields({ elementos: [...next].join(","), mapa: JSON.stringify(preview) });
+    onFields({ elementos: [...next].join(","), mapa: serializeMapOptions(preview) });
   };
   const setPopulation = (raw: string) => {
     const n = Math.max(1, Math.round(Number(raw.replace(/[^\d]/g, "")) || 0));
     if (!n || n === info.population) return;
     const patch: Record<string, string> = {
       populacao: String(n),
-      mapa: JSON.stringify({ ...info.preview, size: sizeFor(n) }),
+      mapa: serializeMapOptions({ ...info.preview, size: sizeFor(n) }),
     };
     // O grupo acompanha a população, a não ser que tenha sido escolhido à mão.
     if (!fields.grupo) patch.grupo = groupFor(n);
@@ -133,7 +133,9 @@ export function BurgDialog({
           type="button"
           aria-label="Gerar outra prévia"
           title="Gerar outra prévia"
-          onClick={() => onFields({ mapa: JSON.stringify({ ...info.preview, seed: newSeed() }) })}
+          onClick={() =>
+            onFields({ mapa: serializeMapOptions({ ...info.preview, seed: newSeed() }) })
+          }
         >
           <Icon name="refresh" size={14} />
         </button>

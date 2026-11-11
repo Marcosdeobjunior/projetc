@@ -421,15 +421,40 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
   const d = deriveWorld({ ...map });
   const rand = rng(o.seed ^ 0xabcdef);
   const namer = makeNamer(o.seed);
-  // Lugares bons para cidades: terra baixa, perto do mar ou de rio, clima ameno.
-  const scored: { i: number; s: number }[] = [];
+  // Lugares bons para cidades (como num mundo real): bioma habitável, clima ameno,
+  // terreno plano, água por perto — rio (mais ainda num encontro de rios), lago ou
+  // mar. A costa ajuda, mas não domina: o interior também recebe cidades.
+  const HABITABLE = [0, 0.35, 0.25, 0.75, 1, 0.85, 1, 0.7, 0.8, 0.45, 0.2, 0, 0.3, 0.15];
+  const scored: { i: number; s: number; inland: boolean }[] = [];
   for (let i = 0; i < COLS * ROWS; i++) {
     if (!d.land[i]) continue;
     const e = (heights[i]! - SEA) / 127;
-    if (e > 0.6 || d.temp[i]! < 0.12) continue;
-    const coast = d.oceanDist[i]! <= 1 ? 0.5 : d.coastDist[i]! <= 1 ? 0.25 : 0;
-    const river = d.flux[i]! > d.riverMin ? 0.7 : 0;
-    scored.push({ i, s: d.moist[i]! * 0.4 + coast + river - e * 0.8 + rand() * 0.35 });
+    if (e > 0.62 || d.temp[i]! < 0.12) continue;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    // Declive local (terreno plano é melhor para cidade).
+    let slope = 0;
+    for (const [dx, dy] of N8) {
+      const ny = y + dy;
+      if (ny < 0 || ny >= ROWS) continue;
+      slope = Math.max(slope, Math.abs(heights[ny * COLS + wrapCol(x + dx)]! - heights[i]!));
+    }
+    const flux = d.flux[i]! / d.riverMin;
+    const river = flux >= 1 ? 0.35 + Math.min(0.45, Math.sqrt(flux) * 0.12) : 0;
+    const coast = d.oceanDist[i]! <= 1 ? 0.3 : d.coastDist[i]! <= 1 ? 0.25 : 0;
+    const climate = 1 - Math.abs(d.temp[i]! - 0.62) * 1.4;
+    scored.push({
+      i,
+      s:
+        HABITABLE[d.biome[i]!]! * 0.8 +
+        climate * 0.4 +
+        river +
+        coast -
+        slope / 40 -
+        e * 0.6 +
+        rand() * 0.3,
+      inland: d.oceanDist[i]! > 3,
+    });
   }
   scored.sort((a, b) => b.s - a.s);
   const landCells = scored.length || 1;
@@ -453,16 +478,26 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
     color: stateColor(k),
     capital: b.id,
   }));
-  for (const { i } of scored) {
-    if (placed.length >= o.burgs) break;
-    if (near(i, 6)) continue;
-    placed.push({
-      id: newId("c"),
-      name: namer(),
-      x: (i % COLS) + 0.5,
-      y: Math.floor(i / COLS) + 0.5,
-    });
-  }
+  // Demais cidades: pelo menos metade no interior (longe do mar), o resto onde for melhor.
+  const spacing = Math.max(4, Math.min(8, Math.sqrt(landCells / Math.max(1, o.burgs)) * 0.6));
+  const place = (pool: typeof scored, until: number) => {
+    for (const { i } of pool) {
+      if (placed.length >= until) break;
+      if (near(i, spacing)) continue;
+      placed.push({
+        id: newId("c"),
+        name: namer(),
+        x: (i % COLS) + 0.5,
+        y: Math.floor(i / COLS) + 0.5,
+      });
+    }
+  };
+  const towns = o.burgs - placed.length;
+  place(
+    scored.filter((c) => c.inland),
+    placed.length + Math.ceil(towns * 0.5),
+  );
+  place(scored, o.burgs);
   map.burgs = placed;
   return map;
 }

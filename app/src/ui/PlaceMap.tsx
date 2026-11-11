@@ -125,7 +125,19 @@ export function PlaceMap({
             </pattern>
           ))}
         </defs>
-        <rect width={map.width} height={map.height} fill={MAP_COLORS.ground} />
+        <rect width={map.width} height={map.height} fill={map.ground ?? MAP_COLORS.ground} />
+        {map.sea && (
+          <>
+            <path d={poly(map.sea.poly)} fill={MAP_COLORS.water} />
+            <path
+              d={path(map.sea.coast)}
+              fill="none"
+              stroke={MAP_COLORS.waterEdge}
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+            />
+          </>
+        )}
         {map.fields.map((f, i) => (
           <path
             key={i}

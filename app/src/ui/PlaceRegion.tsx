@@ -8,6 +8,7 @@ import {
   generateVillage,
   MAP_SIZES,
   parseMapOptions,
+  serializeMapOptions,
   type MapOptions,
   type VillageMap,
 } from "../world/village";
@@ -64,10 +65,9 @@ export function PlaceRegion({ note }: { note: Note }) {
   const world = useWorldMap((w) => w.map);
   const noteFields = note.fields;
   const opts = useMemo(() => {
-    const own = parseMapOptions(raw);
-    if (own) return own;
+    // Cidade do mapa-múndi: sempre com a geografia de lá (mar, rio, estradas, bioma).
     const burg = world?.burgs.find((b) => b.noteId === note.id);
-    if (!world || !burg) return null;
+    if (!world || !burg) return parseMapOptions(raw);
     const capital = world.states.some((s) => s.capital === burg.id);
     return settlementInfo(burg, capital, world.heights, deriveWorld(world), noteFields ?? {})
       .preview;
@@ -81,7 +81,7 @@ export function PlaceRegion({ note }: { note: Note }) {
 
   const update = (o: Partial<MapOptions>) => {
     const next = { ...(opts ?? defaultMapOptions(hashSeed(note.title))), ...o };
-    save("mapa", JSON.stringify(next));
+    save("mapa", serializeMapOptions(next));
     setViewer(null);
   };
 

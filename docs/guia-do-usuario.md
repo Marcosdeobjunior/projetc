@@ -1115,11 +1115,11 @@ inventados) e **estradas** entre elas.
   o mapa para nas bordas (não rola sem fim). O botão de mapa inteiro volta a 100%. **Tela cheia**,
   no alto, põe o mapa (plano ou globo) na tela toda do computador; **Esc** ou **Sair da tela
   cheia** volta.
-- **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**. No globo,
-  arraste para girar, a roda do mouse (ou **+**/**−**) aproxima e **⟳** faz o planeta girar
-  sozinho; nomes de reinos e cidades aparecem no lado visível, com luz, atmosfera e as linhas de
-  latitude e longitude. Clicar numa cidade abre o **Editar povoado**; num reino, seleciona o reino.
-  As ferramentas de edição ficam no modo Plano.
+- **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**, desenhado
+  na placa de vídeo (gira sem atraso). Arraste para girar, a roda do mouse (ou **+**/**−**)
+  aproxima e **⟳** faz o planeta girar sozinho; nomes de reinos e cidades aparecem no lado
+  visível, com luz, atmosfera e as linhas de latitude e longitude. Clicar numa cidade abre o
+  **Editar povoado**; num reino, seleciona o reino. As ferramentas de edição ficam no modo Plano.
 - **Navegar:** roda do mouse aproxima (no ponto do mouse), arrastar move; **+**, **−** e o botão
   de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
   ponto sob o mouse.
@@ -1149,7 +1149,9 @@ inventados) e **estradas** entre elas.
   desligar — Capital cria ou desfaz o reino), **Etiquetas** e a **Prévia do povoado**: o mapa da
   cidade, que muda com a população e os elementos (muralha com torres, cidadela, praça, templo,
   casebres do lado de fora). O botão de recarregar no título sorteia outro desenho. Tudo fica na
-  ficha do lugar; a prévia é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
+  ficha do lugar; a prévia é fiel ao mapa-múndi — o mar ou lago fica do lado em que está no mapa, o rio corre
+  na mesma direção, as estradas saem para onde vão as da região, e o chão e as árvores seguem o
+  bioma; **gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
   **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,

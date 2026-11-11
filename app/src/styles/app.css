@@ -8890,3 +8890,10 @@ select option {
   font: 600 11px/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
+.globe canvas.globe-gl {
+  pointer-events: none;
+}
+.globe canvas {
+  width: 100%;
+  height: 100%;
+}

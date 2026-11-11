@@ -61,6 +61,12 @@ function strip(points: Pt[], width: number, color: [number, number, number], lif
 /** Monta as faces do mundo 3D uma vez por mapa. */
 export function buildScene(map: VillageMap) {
   const faces: Face[] = [];
+  if (map.sea)
+    faces.push({
+      pts: map.sea.poly.map(([x, y]) => [x, y, 0.008] as V3),
+      color: hex(MAP_COLORS.water),
+      ground: true,
+    });
   if (map.river)
     faces.push(...strip(map.river.points, map.river.width, hex(MAP_COLORS.water), 0.01));
   for (const f of map.fields)
@@ -155,6 +161,7 @@ function mix(a: number[], b: number[], t: number): string {
 /** Pode ficar nesse ponto? (fora das casas e do rio) */
 export function walkable(map: VillageMap, p: Pt): boolean {
   if (p[0] < 0 || p[1] < 0 || p[0] > map.width || p[1] > map.height) return false;
+  if (map.sea && insidePoly(p, map.sea.poly)) return false;
   if (map.river && distToPolyline(p, map.river.points) < map.river.width / 2 - 0.5) {
     // Atravessa o rio só pela ponte (onde há rua).
     if (!map.roads.some((r) => distToPolyline(p, r.points) < r.width / 2)) return false;
@@ -211,8 +218,10 @@ export function StreetView({
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, Math.max(0, horizon));
     const ground = ctx.createLinearGradient(0, horizon, 0, H);
-    ground.addColorStop(0, mix(GROUND, FOG, 0.75));
-    ground.addColorStop(1, mix(GROUND, GROUND, 0));
+    // Chão no tom do bioma (areia no deserto, branco no gelo, verde no resto).
+    const soil = map.ground ? (hex(map.ground).map((v) => v * 0.74) as number[]) : GROUND;
+    ground.addColorStop(0, mix(soil, FOG, 0.75));
+    ground.addColorStop(1, mix(soil, soil, 0));
     ctx.fillStyle = ground;
     ctx.fillRect(0, horizon, W, H - horizon);
 
