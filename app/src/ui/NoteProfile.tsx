@@ -16,6 +16,7 @@ import { EmblemPanel, PlaceRegion } from "./PlaceRegion";
 import { CharacterPanel, FieldSectionNav, NoteFields } from "./NoteFields";
 import { BirthEditor, TravelEditor, useYearLength } from "./ContinuityEditors";
 import { useTimeline } from "../state/timeline";
+import { useWorldMap } from "../state/worldMap";
 import { ageOn } from "../timeline/timeline";
 
 const KIND_ICON = DOC_ICON;
@@ -83,6 +84,11 @@ export function NoteProfile({
     .filter(Boolean);
 
   const timeline = useTimeline((t) => t.data);
+  // Cidade do mapa-múndi ligada a este lugar (para "Ver no mapa-múndi").
+  const worldBurg = useWorldMap((w) => w.map?.burgs.find((b) => b.noteId === note.id));
+  useEffect(() => {
+    if (note.kind === "lugares") void useWorldMap.getState().load();
+  }, [note.kind, session.root]);
   const { yearLen } = useYearLength();
   /** "Dia 12 · 17 anos" ao lado de cada cena (quando há data e nascimento). */
   const sceneInfo = (sceneId: string) => {
@@ -212,6 +218,18 @@ export function NoteProfile({
             {note.fields?.papel && <span className="profile-role">{note.fields.papel}</span>}
           </p>
           <h2>{note.title}</h2>
+          {worldBurg && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => {
+                useWorldMap.getState().focus(worldBurg.id);
+                useApp.getState().setView("map");
+              }}
+            >
+              <Icon name="planet" size={14} /> Ver no mapa-múndi
+            </button>
+          )}
           <div className="profile-stats">
             <span>
               <b>{scenes.length}</b> {scenes.length === 1 ? "cena" : "cenas"}

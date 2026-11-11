@@ -432,6 +432,18 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   telhado de quatro águas, projeção em perspectiva, recorte no plano próximo, descarte de faces
   de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
   `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
+- Mapa-múndi (`ui/WorldMapView.tsx`, view `"map"`): `world/worldgen.ts` gera e deriva o mundo numa
+  grade de 320×200 células. Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
+  (`state/worldMap.ts`, via `serial()` com espera de 600 ms e `registerFlush`; `load` não relê o
+  disco se o projeto já está carregado, para não perder edições pendentes). Derivado em
+  `deriveWorld` (~100 ms): distância à costa (BFS), temperatura e umidade (ruído fractal +
+  latitude/altitude/costa), priority-flood para tirar depressões, vazão e rios, biomas
+  (Whittaker simplificado), estados por Dijkstra multi-fonte a partir das capitais (custo por
+  bioma, subida e rios) e estradas pelos predecessores desse Dijkstra (cidade → capital e entre
+  capitais vizinhas). `world/worldRender.ts` assa a imagem de fundo (biomas/relevo/político com
+  sombreamento) e monta caminhos vetoriais (costa e fronteiras por marching squares, rios e
+  estradas suavizados); o canvas desenha isso com zoom/arraste e os rótulos em pixels de tela, sem
+  sobreposição.
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

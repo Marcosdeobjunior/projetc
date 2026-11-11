@@ -6,6 +6,7 @@ import { KIND_LABEL } from "../links/context";
 import { DocEditor } from "../editor/DocEditor";
 import { ManuscriptTree } from "./ManuscriptTree";
 import { GraphView } from "./GraphView";
+import { WorldMapView } from "./WorldMapView";
 import { WorldView } from "./WorldView";
 import { VaultSwitcher } from "./VaultSwitcher";
 import { InlineEdit } from "./InlineEdit";
@@ -260,6 +261,7 @@ export function Workspace({ session }: { session: Session }) {
               [
                 ["attachments", "image", "Anexos", "Galeria de imagens, vídeos e arquivos"],
                 ["world", "globe", "Mundo", "Personagens, lugares e ideias do projeto"],
+                ["map", "planet", "Mapa", "Mapa-múndi: gere e edite o mapa do seu mundo"],
               ] as const
             ).map(([v, icon, label, title]) => (
               <button
@@ -347,13 +349,15 @@ export function Workspace({ session }: { session: Session }) {
                   ? "Elo"
                   : view === "world"
                     ? "Mundo"
-                    : view === "attachments"
-                      ? "Anexos"
-                      : view === "history"
-                        ? "Histórico de versões"
-                        : view === "trash"
-                          ? "Lixeira"
-                          : "Configurações"}
+                    : view === "map"
+                      ? "Mapa-múndi"
+                      : view === "attachments"
+                        ? "Anexos"
+                        : view === "history"
+                          ? "Histórico de versões"
+                          : view === "trash"
+                            ? "Lixeira"
+                            : "Configurações"}
               </span>
             </div>
           ) : active ? (
@@ -405,6 +409,8 @@ export function Workspace({ session }: { session: Session }) {
             <GraphView session={session} />
           ) : view === "world" ? (
             <WorldView session={session} />
+          ) : view === "map" ? (
+            <WorldMapView session={session} />
           ) : view === "attachments" ? (
             <GalleryView session={session} />
           ) : view === "settings" ? (

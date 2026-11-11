@@ -1092,3 +1092,34 @@ gravar, para você não perder texto.
 
 A lista de recentes guarda o caminho antigo. Use **Abrir projeto existente** e escolha a pasta no
 lugar novo; se quiser, tire a entrada antiga da lista com o **×**.
+
+## Mapa-múndi
+
+**Mapa**, na barra lateral, abre o mapa do mundo do projeto. Na primeira vez, escolha o **tipo de
+mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
+**cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
+(desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que
+descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
+inventados) e **estradas** entre elas.
+
+- **Navegar:** roda do mouse aproxima (no ponto do mouse), arrastar move; **+**, **−** e o botão
+  de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
+  ponto sob o mouse.
+- **Estilo:** **Biomas**, **Relevo** (cores de altitude) ou **Político** (estados em cores
+  chapadas, como num atlas). **Camadas** liga e desliga rios, estradas, fronteiras, a cor dos
+  estados, cidades e nomes.
+- **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade ou num estado para
+  editar; arraste uma cidade para mudá-la de lugar), **Elevar** e **Rebaixar** (pincel de relevo:
+  pinte terra no mar para criar ilhas, ou mar na terra; o tamanho do pincel aparece embaixo),
+  **Suavizar** e **Cidade** (clique em terra para criar uma). Rios, biomas, fronteiras e estradas
+  se refazem sozinhos depois de cada mudança. **Desfazer** e **Refazer** (Ctrl+Z, Ctrl+Shift+Z)
+  voltam até 30 passos.
+- **Cidade selecionada:** mude o nome, marque **Capital de um estado** (cria um estado novo a
+  partir dela; desmarcar desfaz o estado), ligue a um **Lugar no Mundo** ou **Crie o lugar** com o
+  nome dela, e **Abra a ficha**. Na ficha do lugar ligado aparece **Ver no mapa-múndi**, que volta
+  ao mapa com a cidade no centro.
+- **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
+  quantas cidades tem e a capital.
+- **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.
+
+O mapa fica em `.talia/mapa-mundi.json` e vai junto no sync.

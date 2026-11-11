@@ -572,3 +572,24 @@ Na prévia, cada arquivo é uma entrada do IndexedDB `talia` / `files` com a cha
 `browser:<uuid>` + `\0` + caminho relativo, e o valor é o texto ou os bytes. As pastas não
 existem de fato: valem enquanto houver arquivos com aquele prefixo. O formato dos arquivos é o
 mesmo descrito acima.
+
+## `.talia/mapa-mundi.json`
+
+Mapa-múndi do projeto (opcional; só existe depois de gerado). Guarda só o que é editável; clima,
+biomas, rios, fronteiras e estradas são recalculados ao abrir (`world/worldgen.ts`,
+`deriveWorld`).
+
+| Campo     | Tipo   | Descrição                                                                                                                 |
+| --------- | ------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `format`  | número | Sempre `1`                                                                                                                |
+| `name`    | string | Nome do mundo                                                                                                             |
+| `cols`    | número | Colunas da grade (320)                                                                                                    |
+| `rows`    | número | Linhas da grade (200)                                                                                                     |
+| `options` | objeto | Opções usadas para gerar: `seed`, `template` (`continentes`/`ilhas`/`pangeia`), `land` (0,15 a 0,6), `states`, `burgs`    |
+| `heights` | string | Altura de cada célula (0 a 255; 128 ou mais é terra), linha por linha, em base64                                          |
+| `burgs`   | array  | Cidades: `id`, `name`, `x`, `y` (em células) e, opcional, `noteId` (o lugar do Mundo ligado)                              |
+| `states`  | array  | Estados: `id`, `name`, `color` (`#rrggbb`) e `capital` (o `id` da cidade capital; o território é calculado a partir dela) |
+
+Ao abrir, um arquivo de outro tamanho ou formato é ignorado (como se não houvesse mapa); cidades
+fora da grade e estados cuja capital não existe são descartados. No sync, segue a regra dos outros
+arquivos de `.talia/`.
