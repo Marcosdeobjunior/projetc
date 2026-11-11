@@ -7476,6 +7476,35 @@ div.row-title {
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
+.field-section {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font: 700 12px/1.3 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.field-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.field-section small {
+  font: italic 400 12px/1.3 var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.note-fields.compact .field-section {
+  margin-top: 4px;
+  padding-top: 6px;
+}
 .field {
   display: flex;
   flex-direction: column;

@@ -223,8 +223,18 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
     remove da ficha (o arquivo continua em Anexos);
   - o nome, o tipo e os **campos da ficha**, que mudam conforme o tipo:
-    - **personagem:** nome completo, apelidos, idade, gênero, ocupação, onde vive, organização,
-      aparência, personalidade, objetivo, medos e conflitos, background;
+    - **personagem:** uma ficha em 12 seções, para construir o personagem por dentro: **1. Base**
+      (papel na história — protagonista, antagonista ou coadjuvante —, nome completo, apelidos,
+      idade, gênero, ocupação, onde vive, organização, aparência); **2. Desejo** (o que quer, e o
+      que faz numa cena comum para conseguir); **3. Mentira** (no que acredita de errado, e se o
+      desejo nasce dela); **4. Fantasma** (o evento do passado que fez a mentira parecer verdade);
+      **5. Necessidade** (a verdade que precisa aceitar); **6. Fraqueza** (psicológica e moral);
+      **7. Oponente** (quem ataca essa fraqueza); **8. Torcida** (por que o leitor torce por ele);
+      **9. Contradição**; **10. Voz** (como fala); **11. Arco** (positivo, negativo ou plano, com
+      início, ponto de virada e fim); **12. Função** (para coadjuvantes: o que quer e para que serve
+      à história). Cada seção traz a referência (Vonnegut, Truby, Weiland, Forster) e, onde cabe,
+      um teste embaixo do campo. Fichas antigas com personalidade, medos e conflitos ou background
+      preenchidos mostram esses campos no fim, em **Outros**;
     - **lugar:** tipo, onde fica, quem governa, população, clima, descrição, história;
     - **organização:** tipo, líder, sede, objetivo, membros, história;
     - **idioma:** falado por, onde se fala, escrita, palavras e frases, regras;

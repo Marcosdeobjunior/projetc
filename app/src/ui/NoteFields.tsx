@@ -1,5 +1,5 @@
 import type { Note, Project } from "../manuscript/types";
-import { fieldsOf, type FieldDef } from "../manuscript/fields";
+import { visibleFields, type FieldDef } from "../manuscript/fields";
 import { setNoteFields } from "../manuscript/tree";
 import { useApp } from "../state/store";
 import { useTimeline } from "../state/timeline";
@@ -7,8 +7,8 @@ import { KIND_LABEL } from "../links/context";
 import { useYearLength } from "./ContinuityEditors";
 
 /**
- * Os campos da ficha (nome completo, idade, onde vive, organização…). Cada
- * campo grava ao sair dele; campos de referência escolhem outra nota.
+ * Os campos da ficha (no personagem, em seções: base, desejo, mentira…). Cada
+ * campo grava ao sair dele; campos de referência e de escolha usam uma lista.
  */
 export function NoteFields({
   note,
@@ -25,9 +25,9 @@ export function NoteFields({
   const change = useApp((s) => s.change);
   const birth = useTimeline((s) => s.data.births[note.id]);
   const { yearLen } = useYearLength();
-  const defs = fieldsOf(note.kind);
-  if (!defs.length) return null;
   const values = note.fields ?? {};
+  const defs = visibleFields(note.kind, values);
+  if (!defs.length) return null;
 
   const save = (key: string, value: string) => {
     if ((values[key] ?? "") === value.trim()) return;
@@ -76,6 +76,25 @@ export function NoteFields({
           )}
         </div>
       );
+    } else if (d.type === "choice") {
+      const options = d.options ?? [];
+      input = (
+        <select
+          id={id}
+          className="text-input"
+          value={v}
+          onChange={(e) => save(d.key, e.target.value)}
+        >
+          <option value="">—</option>
+          {/* Valor que não está mais entre as opções continua visível. */}
+          {v && !options.includes(v) && <option value={v}>{v}</option>}
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      );
     } else if (d.type === "long") {
       input = (
         <textarea
@@ -105,14 +124,20 @@ export function NoteFields({
     const hint =
       d.key === "idade" && birth !== undefined
         ? `Pela linha do tempo: ${Math.floor((1 - birth) / yearLen)} anos no dia 1`
-        : null;
-    return (
+        : d.hint;
+    return [
+      d.section && (
+        <h4 key={`s-${d.key}`} className="field-section">
+          {d.section.title}
+          {d.section.source && <small>{d.section.source}</small>}
+        </h4>
+      ),
       <div key={d.key} className={"field" + (d.type === "long" ? " wide" : "")}>
         <label htmlFor={id}>{d.label}</label>
         {input}
         {hint && <small className="muted">{hint}</small>}
-      </div>
-    );
+      </div>,
+    ];
   };
 
   return <div className={"note-fields" + (compact ? " compact" : "")}>{defs.map(field)}</div>;

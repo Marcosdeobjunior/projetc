@@ -416,7 +416,9 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   transação (o mapeamento do Yjs ainda não foi atualizado ali); são recalculadas pelas âncoras
   quando chega uma transação do `ySyncPluginKey` (abrir, desfazer, Yjs) ou `REFRESH_COMMENTS`.
 - UI em `editor/Comments.tsx` (`CommentComposer`, `CommentsPanel`); atalho Ctrl/⌘+Alt+M.
-- Campos da ficha: `manuscript/fields.ts` (`NOTE_FIELDS` por tipo, `sanitizeFields`,
+- Campos da ficha: `manuscript/fields.ts` (`NOTE_FIELDS` por tipo, com `section` abrindo seções,
+  `hint`, tipo `choice` com `options` e `legacy` para campos antigos que só aparecem preenchidos —
+  `visibleFields` aplica isso —, `sanitizeFields`,
   `mergeFields` campo a campo no `mergeProject`, `fieldRefs`); gravados em `notes[].fields` por
   `setNoteFields` (pela `change`); campos de referência viram arestas "link" em `buildGraph`. A tela
   é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida).

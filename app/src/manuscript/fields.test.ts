@@ -4,7 +4,7 @@ import { createSampleVault } from "../vault/sample";
 import { loadProject, saveProject } from "../vault/vault";
 import { mergeProjects } from "../sync/mergeProject";
 import { buildGraph } from "../links/links";
-import { fieldRefs, mergeFields, sanitizeFields } from "./fields";
+import { fieldRefs, mergeFields, sanitizeFields, visibleFields } from "./fields";
 import { setNoteFields } from "./tree";
 
 async function sample() {
@@ -56,5 +56,23 @@ describe("campos da ficha", () => {
     ).toBe(true);
     const merged = mergeProjects(p, p, withRef);
     expect(merged.notes.find((n) => n.id === hero.id)!.fields).toEqual({ local: place.id });
+  });
+});
+
+describe("visibleFields", () => {
+  it("organiza a ficha de personagem em seções e esconde campos antigos vazios", () => {
+    const defs = visibleFields("personagens", {});
+    const sections = defs.filter((d) => d.section).map((d) => d.section!.title);
+    expect(sections).toHaveLength(12);
+    expect(sections[0]).toBe("1. Base");
+    expect(sections[11]).toBe("12. Função");
+    expect(defs.some((d) => d.key === "personalidade")).toBe(false);
+  });
+
+  it("mostra um campo antigo preenchido, levando o título da seção", () => {
+    const defs = visibleFields("personagens", { background: "Cresceu na vila" });
+    const bg = defs.find((d) => d.key === "background")!;
+    expect(bg.section?.title).toBe("Outros");
+    expect(defs.some((d) => d.key === "personalidade")).toBe(false);
   });
 });
