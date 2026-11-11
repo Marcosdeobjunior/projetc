@@ -7760,12 +7760,16 @@ div.row-title {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+/* Tamanho fixo (3 linhas): o texto maior rola dentro do campo. */
 .field textarea.text-input {
-  resize: vertical;
-  min-height: 64px;
+  resize: none;
+  height: 90px;
+  min-height: 0;
+  overflow-y: auto;
   font: 15px/1.55 var(--font-text);
-  field-sizing: content;
-  max-height: 360px;
+}
+.note-fields.compact .field textarea.text-input {
+  height: 68px;
 }
 /* Lista de escolha própria (ui/Select.tsx). */
 .select {
