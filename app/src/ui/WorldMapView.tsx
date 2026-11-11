@@ -104,6 +104,26 @@ export function WorldMapView({ session }: { session: Session }) {
   return <WorldEditor key={session.root} session={session} map={map} focusBurg={focusBurg} />;
 }
 
+/** Um sim/não lembrado no navegador (localStorage), com valor padrão se não der. */
+function useStoredFlag(key: string, initial: boolean) {
+  const [v, setV] = useState(() => {
+    try {
+      const s = localStorage.getItem(key);
+      return s === null ? initial : s === "1";
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, v ? "1" : "0");
+    } catch {
+      /* sem armazenamento: só não lembra */
+    }
+  }, [key, v]);
+  return [v, setV] as const;
+}
+
 /* ---------- Gerar ---------- */
 
 function GenerateForm({
@@ -221,6 +241,9 @@ function WorldEditor({
     rotulos: true,
   });
   const [brush, setBrush] = useState(8);
+  // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
+  const [toolsOpen, setToolsOpen] = useStoredFlag("talia.mapa.ferramentas", true);
+  const [panelOpen, setPanelOpen] = useStoredFlag("talia.mapa.opcoes", true);
   const [selected, setSelected] = useState<{ kind: "burg" | "state"; id: string } | null>(null);
   const [hover, setHover] = useState<string>("");
   const [showGen, setShowGen] = useState(false);
@@ -684,7 +707,7 @@ function WorldEditor({
   };
 
   return (
-    <div className="wm">
+    <div className={"wm" + (panelOpen ? "" : " panel-closed")}>
       <div className="wm-canvas" ref={wrap}>
         <canvas
           ref={canvas}
@@ -696,7 +719,21 @@ function WorldEditor({
           onPointerLeave={() => setHover("")}
           onWheel={onWheel}
         />
-        <div className="wm-tools" role="toolbar" aria-label="Ferramentas do mapa">
+        <div
+          className={"wm-tools" + (toolsOpen ? "" : " compact")}
+          role="toolbar"
+          aria-label="Ferramentas do mapa"
+        >
+          <button
+            type="button"
+            className="wm-collapse"
+            aria-label={toolsOpen ? "Recolher ferramentas" : "Mostrar nomes das ferramentas"}
+            title={toolsOpen ? "Recolher (só ícones)" : "Mostrar os nomes"}
+            onClick={() => setToolsOpen((v) => !v)}
+          >
+            <Icon name={toolsOpen ? "chevron-left" : "chevron"} size={14} />
+            <span>Recolher</span>
+          </button>
           {TOOLS.map((t) => (
             <button
               key={t.value}
@@ -742,6 +779,16 @@ function WorldEditor({
             <span>Refazer</span>
           </button>
         </div>
+        <button
+          type="button"
+          className="wm-panel-toggle"
+          aria-expanded={panelOpen}
+          title={panelOpen ? "Esconder as opções do mapa" : "Mostrar as opções do mapa"}
+          onClick={() => setPanelOpen((v) => !v)}
+        >
+          <Icon name={panelOpen ? "chevron" : "chevron-left"} size={14} />
+          {panelOpen ? "Esconder opções" : "Opções"}
+        </button>
         <div className="wm-zoom">
           <button type="button" aria-label="Aproximar" onClick={() => zoomAt(1.4)}>
             +
@@ -813,223 +860,226 @@ function WorldEditor({
         )}
       </div>
 
-      <aside className="wm-panel">
-        <section className="profile-card">
-          <input
-            className="wm-title"
-            aria-label="Nome do mundo"
-            defaultValue={map.name}
-            key={map.name}
-            onBlur={(e) =>
-              e.target.value.trim() &&
-              e.target.value !== map.name &&
-              commit({ ...map, name: e.target.value.trim() })
-            }
-          />
-          <p className="wm-meta">
-            {map.states.length} estados · {map.burgs.length} cidades · {derived.rivers.length} rios
-          </p>
-          <div className="wm-modes segmented wide" role="radiogroup" aria-label="Estilo do mapa">
-            {(
-              [
-                ["biomas", "Biomas"],
-                ["relevo", "Relevo"],
-                ["politico", "Político"],
-              ] as const
-            ).map(([v, l]) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={mode === v}
-                onClick={() => setMode(v)}
-              >
-                {l}
+      {panelOpen && (
+        <aside className="wm-panel">
+          <section className="profile-card">
+            <input
+              className="wm-title"
+              aria-label="Nome do mundo"
+              defaultValue={map.name}
+              key={map.name}
+              onBlur={(e) =>
+                e.target.value.trim() &&
+                e.target.value !== map.name &&
+                commit({ ...map, name: e.target.value.trim() })
+              }
+            />
+            <p className="wm-meta">
+              {map.states.length} estados · {map.burgs.length} cidades · {derived.rivers.length}{" "}
+              rios
+            </p>
+            <div className="wm-modes segmented wide" role="radiogroup" aria-label="Estilo do mapa">
+              {(
+                [
+                  ["biomas", "Biomas"],
+                  ["relevo", "Relevo"],
+                  ["politico", "Político"],
+                ] as const
+              ).map(([v, l]) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === v}
+                  onClick={() => setMode(v)}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            <div className="wm-layers">
+              {LAYERS.map(([k, l]) => (
+                <label key={k} className="region-check">
+                  <input
+                    type="checkbox"
+                    checked={layers[k]}
+                    onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })}
+                  />
+                  {l}
+                </label>
+              ))}
+            </div>
+            <div className="wm-actions">
+              <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
+                <Icon name="refresh" size={14} /> Gerar outro mundo
               </button>
-            ))}
-          </div>
-          <div className="wm-layers">
-            {LAYERS.map(([k, l]) => (
-              <label key={k} className="region-check">
-                <input
-                  type="checkbox"
-                  checked={layers[k]}
-                  onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })}
+              <button type="button" className="btn ghost sm" onClick={() => void exportPng()}>
+                <Icon name="export" size={14} /> Exportar imagem
+              </button>
+            </div>
+            {showGen && (
+              <div className="wm-gen">
+                <p className="field-hint">
+                  Substitui o mapa atual (o relevo, as cidades e os estados). Dá para desfazer com
+                  Ctrl+Z.
+                </p>
+                <GenerateForm
+                  initial={{ ...map.options }}
+                  submitLabel="Gerar"
+                  onGenerate={(o) => {
+                    commit(generateWorld(o, map.name));
+                    setSelected(null);
+                    setShowGen(false);
+                  }}
                 />
-                {l}
-              </label>
-            ))}
-          </div>
-          <div className="wm-actions">
-            <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
-              <Icon name="refresh" size={14} /> Gerar outro mundo
-            </button>
-            <button type="button" className="btn ghost sm" onClick={() => void exportPng()}>
-              <Icon name="export" size={14} /> Exportar imagem
-            </button>
-          </div>
-          {showGen && (
-            <div className="wm-gen">
-              <p className="field-hint">
-                Substitui o mapa atual (o relevo, as cidades e os estados). Dá para desfazer com
-                Ctrl+Z.
-              </p>
-              <GenerateForm
-                initial={{ ...map.options }}
-                submitLabel="Gerar"
-                onGenerate={(o) => {
-                  commit(generateWorld(o, map.name));
-                  setSelected(null);
-                  setShowGen(false);
-                }}
-              />
-            </div>
-          )}
-        </section>
+              </div>
+            )}
+          </section>
 
-        {state && (
-          <section className="profile-card wm-sel">
-            <h3>Estado</h3>
-            <div className="wm-state-row">
-              <input
-                type="color"
-                aria-label="Cor do estado"
-                value={state.color}
-                onChange={(e) => {
-                  // Enquanto escolhe, só pinta; o passo de desfazer guarda a cor de antes.
-                  colorBefore.current ??= snapshot();
-                  clearTimeout(colorTimer.current);
-                  colorTimer.current = setTimeout(() => {
-                    const before = colorBefore.current;
-                    colorBefore.current = null;
-                    if (!before) return;
-                    undo.current = [...undo.current.slice(-29), before];
-                    redo.current = [];
-                    syncHist();
-                    setMap(useWorldMap.getState().map!);
-                  }, 400);
-                  useWorldMap.setState({
-                    map: {
-                      ...map,
-                      states: map.states.map((s) =>
-                        s.id === state.id ? { ...s, color: e.target.value } : s,
-                      ),
-                    },
-                  });
-                }}
-              />
-              <input
-                className="text-input"
-                aria-label="Nome do estado"
-                key={state.id + state.name}
-                defaultValue={state.name}
-                onBlur={(e) => {
-                  const name = e.target.value.trim();
-                  if (!name || name === state.name) return;
-                  if (state.noteId && session.project.notes.some((n) => n.id === state.noteId))
-                    void renameLinked(state.noteId, name);
-                  else
-                    commit({
-                      ...map,
-                      states: map.states.map((s) => (s.id === state.id ? { ...s, name } : s)),
+          {state && (
+            <section className="profile-card wm-sel">
+              <h3>Estado</h3>
+              <div className="wm-state-row">
+                <input
+                  type="color"
+                  aria-label="Cor do estado"
+                  value={state.color}
+                  onChange={(e) => {
+                    // Enquanto escolhe, só pinta; o passo de desfazer guarda a cor de antes.
+                    colorBefore.current ??= snapshot();
+                    clearTimeout(colorTimer.current);
+                    colorTimer.current = setTimeout(() => {
+                      const before = colorBefore.current;
+                      colorBefore.current = null;
+                      if (!before) return;
+                      undo.current = [...undo.current.slice(-29), before];
+                      redo.current = [];
+                      syncHist();
+                      setMap(useWorldMap.getState().map!);
+                    }, 400);
+                    useWorldMap.setState({
+                      map: {
+                        ...map,
+                        states: map.states.map((s) =>
+                          s.id === state.id ? { ...s, color: e.target.value } : s,
+                        ),
+                      },
                     });
-                }}
-                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-              />
-            </div>
-            {(() => {
-              const k = map.states.indexOf(state);
-              let cells = 0;
-              for (let i = 0; i < COLS * ROWS; i++) if (derived.owner[i] === k) cells++;
-              const land = derived.land.reduce((a, v) => a + v, 0) || 1;
-              const cities = map.burgs.filter((b) => derived.owner[cellOf(b.x, b.y)] === k);
-              const cap = map.burgs.find((b) => b.id === state.capital);
-              return (
-                <>
-                  <p className="wm-meta">
-                    {Math.round((cells / land) * 100)}% das terras · {cities.length} cidades
-                  </p>
-                  {cap && (
+                  }}
+                />
+                <input
+                  className="text-input"
+                  aria-label="Nome do estado"
+                  key={state.id + state.name}
+                  defaultValue={state.name}
+                  onBlur={(e) => {
+                    const name = e.target.value.trim();
+                    if (!name || name === state.name) return;
+                    if (state.noteId && session.project.notes.some((n) => n.id === state.noteId))
+                      void renameLinked(state.noteId, name);
+                    else
+                      commit({
+                        ...map,
+                        states: map.states.map((s) => (s.id === state.id ? { ...s, name } : s)),
+                      });
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                />
+              </div>
+              {(() => {
+                const k = map.states.indexOf(state);
+                let cells = 0;
+                for (let i = 0; i < COLS * ROWS; i++) if (derived.owner[i] === k) cells++;
+                const land = derived.land.reduce((a, v) => a + v, 0) || 1;
+                const cities = map.burgs.filter((b) => derived.owner[cellOf(b.x, b.y)] === k);
+                const cap = map.burgs.find((b) => b.id === state.capital);
+                return (
+                  <>
+                    <p className="wm-meta">
+                      {Math.round((cells / land) * 100)}% das terras · {cities.length} cidades
+                    </p>
+                    {cap && (
+                      <button
+                        type="button"
+                        className="profile-link"
+                        onClick={() => setSelected({ kind: "burg", id: cap.id })}
+                      >
+                        <Icon name="pin" size={14} /> Capital: {cap.name}
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
+            </section>
+          )}
+
+          {!burg && !state && (
+            <section className="profile-card wm-help">
+              <h3>Como usar</h3>
+              <ul>
+                <li>Roda do mouse aproxima; arraste para mover.</li>
+                <li>Clique numa cidade ou num estado para editar nome, cor e capital.</li>
+                <li>
+                  Elevar e Rebaixar pintam o relevo: crie ilhas, cordilheiras e mares. Rios, biomas
+                  e fronteiras se refazem sozinhos.
+                </li>
+                <li>
+                  Cada estado e cidade é um lugar no Mundo: renomear ou apagar de um lado vale para
+                  o outro. A ficha do lugar tem “Ver no mapa-múndi”.
+                </li>
+              </ul>
+            </section>
+          )}
+          {placing && (
+            <section className="profile-card wm-placing">
+              <p>
+                Clique em terra no mapa para pôr{" "}
+                <b>{session.project.notes.find((n) => n.id === placing)?.title}</b>.
+              </p>
+              <button type="button" className="btn ghost sm" onClick={() => setPlacing(null)}>
+                Cancelar
+              </button>
+            </section>
+          )}
+          {offMap.length > 0 && (
+            <section className="profile-card wm-offmap">
+              <h3>Lugares fora do mapa</h3>
+              <p className="field-hint">
+                Lugares do Mundo que ainda não estão no mapa. Ponha cada um onde fica.
+              </p>
+              <ul>
+                {offMap.map((n) => (
+                  <li key={n.id}>
+                    <span>{n.title}</span>
                     <button
                       type="button"
-                      className="profile-link"
-                      onClick={() => setSelected({ kind: "burg", id: cap.id })}
+                      className="btn ghost sm"
+                      onClick={() => {
+                        setPlacing(n.id);
+                        setTool("cidade");
+                        setSelected(null);
+                      }}
                     >
-                      <Icon name="pin" size={14} /> Capital: {cap.name}
+                      <Icon name="pin" size={13} /> Pôr no mapa
                     </button>
-                  )}
-                </>
-              );
-            })()}
-          </section>
-        )}
-
-        {!burg && !state && (
-          <section className="profile-card wm-help">
-            <h3>Como usar</h3>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <section className="profile-card wm-legend">
+            <h3>Biomas</h3>
             <ul>
-              <li>Roda do mouse aproxima; arraste para mover.</li>
-              <li>Clique numa cidade ou num estado para editar nome, cor e capital.</li>
-              <li>
-                Elevar e Rebaixar pintam o relevo: crie ilhas, cordilheiras e mares. Rios, biomas e
-                fronteiras se refazem sozinhos.
-              </li>
-              <li>
-                Cada estado e cidade é um lugar no Mundo: renomear ou apagar de um lado vale para o
-                outro. A ficha do lugar tem “Ver no mapa-múndi”.
-              </li>
-            </ul>
-          </section>
-        )}
-        {placing && (
-          <section className="profile-card wm-placing">
-            <p>
-              Clique em terra no mapa para pôr{" "}
-              <b>{session.project.notes.find((n) => n.id === placing)?.title}</b>.
-            </p>
-            <button type="button" className="btn ghost sm" onClick={() => setPlacing(null)}>
-              Cancelar
-            </button>
-          </section>
-        )}
-        {offMap.length > 0 && (
-          <section className="profile-card wm-offmap">
-            <h3>Lugares fora do mapa</h3>
-            <p className="field-hint">
-              Lugares do Mundo que ainda não estão no mapa. Ponha cada um onde fica.
-            </p>
-            <ul>
-              {offMap.map((n) => (
-                <li key={n.id}>
-                  <span>{n.title}</span>
-                  <button
-                    type="button"
-                    className="btn ghost sm"
-                    onClick={() => {
-                      setPlacing(n.id);
-                      setTool("cidade");
-                      setSelected(null);
-                    }}
-                  >
-                    <Icon name="pin" size={13} /> Pôr no mapa
-                  </button>
+              {BIOMES.slice(1).map((b) => (
+                <li key={b.name}>
+                  <span style={{ background: b.color }} />
+                  {b.name}
                 </li>
               ))}
             </ul>
           </section>
-        )}
-        <section className="profile-card wm-legend">
-          <h3>Biomas</h3>
-          <ul>
-            {BIOMES.slice(1).map((b) => (
-              <li key={b.name}>
-                <span style={{ background: b.color }} />
-                {b.name}
-              </li>
-            ))}
-          </ul>
-        </section>
-      </aside>
+        </aside>
+      )}
     </div>
   );
 }

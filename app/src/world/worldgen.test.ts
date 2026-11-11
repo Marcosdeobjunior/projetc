@@ -78,3 +78,40 @@ describe("mapa-múndi gravado", () => {
     expect(d.owner.every((v) => v === -1)).toBe(true);
   });
 });
+
+describe("rios e portos", () => {
+  it("rios terminam na costa, sem entrar no mar", () => {
+    for (const seed of [5, 6, 7]) {
+      const m = generateWorld({ ...DEFAULT_OPTIONS, seed });
+      const d = deriveWorld(m);
+      for (const r of d.rivers) {
+        // Todas as células do rio são terra.
+        for (const c of r.cells) expect(d.land[c]).toBe(1);
+        if (r.mouth) {
+          const [x, y] = r.mouth;
+          const last = r.cells[r.cells.length - 1]!;
+          expect(
+            Math.hypot(x - ((last % COLS) + 0.5), y - (Math.floor(last / COLS) + 0.5)),
+          ).toBeLessThan(1.5);
+        }
+      }
+    }
+  });
+
+  it("só cidades à beira do oceano são porto", async () => {
+    const { settlementInfo } = await import("./settlement");
+    const m = generateWorld({ ...DEFAULT_OPTIONS, seed: 8, burgs: 120 });
+    const d = deriveWorld(m);
+    let ports = 0;
+    for (const b of m.burgs) {
+      const info = settlementInfo(b, false, m.heights, d, {});
+      const c = Math.floor(b.y) * COLS + Math.floor(b.x);
+      if (info.elements.has("porto")) {
+        ports++;
+        expect(d.oceanDist[c]).toBeLessThanOrEqual(2);
+      }
+      if (d.oceanDist[c]! > 2) expect(info.type).not.toBe("Porto");
+    }
+    expect(ports).toBeGreaterThan(0);
+  });
+});

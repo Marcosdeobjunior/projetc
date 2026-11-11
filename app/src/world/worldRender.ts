@@ -230,8 +230,15 @@ export function segmentsPath(seg: Float32Array): Path2D {
 }
 
 /** Linha suave pelos centros das células (rios e estradas). */
-export function cellsPath(cells: number[], path = new Path2D()): Path2D {
-  const pts = cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as const);
+export function cellsPath(
+  cells: number[],
+  path = new Path2D(),
+  end?: readonly [number, number],
+): Path2D {
+  const pts: (readonly [number, number])[] = cells.map(
+    (c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as const,
+  );
+  if (end) pts.push(end);
   if (pts.length < 2) return path;
   path.moveTo(pts[0]![0], pts[0]![1]);
   for (let i = 1; i < pts.length - 1; i++) {
@@ -263,7 +270,10 @@ export function buildVectors(map: WorldMap, d: Derived) {
     );
     borders.addPath(segmentsPath(seg));
   }
-  const rivers = d.rivers.map((r) => ({ path: cellsPath(r.cells), width: r.width }));
+  const rivers = d.rivers.map((r) => ({
+    path: cellsPath(r.cells, new Path2D(), r.mouth),
+    width: r.width,
+  }));
   const roads = new Path2D();
   for (const r of d.roads) cellsPath(r, roads);
   // Rótulo de cada estado: a célula dele mais perto do seu centro.

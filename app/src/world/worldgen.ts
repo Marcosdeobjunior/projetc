@@ -276,7 +276,7 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
     if (!d.land[i]) continue;
     const e = (heights[i]! - SEA) / 127;
     if (e > 0.6 || d.temp[i]! < 0.12) continue;
-    const coast = d.coastDist[i]! <= 1 ? 0.5 : 0;
+    const coast = d.oceanDist[i]! <= 1 ? 0.5 : d.coastDist[i]! <= 1 ? 0.25 : 0;
     const river = d.flux[i]! > d.riverMin ? 0.7 : 0;
     scored.push({ i, s: d.moist[i]! * 0.4 + coast + river - e * 0.8 + rand() * 0.35 });
   }
@@ -344,7 +344,11 @@ export interface Derived {
   flux: Float32Array;
   down: Int32Array;
   riverMin: number;
-  rivers: { cells: number[]; width: number }[];
+  /** Rios: células da nascente à foz (`mouth`: ponto na costa, quando chega à água). */
+  rivers: { cells: number[]; width: number; mouth?: [number, number] }[];
+  /** Água ligada à borda do mapa (o resto é lago) e distância até ela. */
+  ocean: Uint8Array;
+  oceanDist: Uint16Array;
   /** Estado de cada célula (índice em `states`) ou -1. */
   owner: Int16Array;
   roads: number[][];
@@ -451,6 +455,56 @@ export function deriveWorld(map: WorldMap): Derived {
     }
   }
 
+  // Oceano: a água ligada à borda do mapa. O resto da água é lago.
+  const ocean = new Uint8Array(n);
+  const oq: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    if (!land[i] && (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1)) {
+      ocean[i] = 1;
+      oq.push(i);
+    }
+  }
+  for (let q = 0; q < oq.length; q++) {
+    const i = oq[q]!;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    for (const [dx, dy] of N8) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+      const j = ny * COLS + nx;
+      if (!land[j] && !ocean[j]) {
+        ocean[j] = 1;
+        oq.push(j);
+      }
+    }
+  }
+  // Distância até o oceano (portos só na costa do oceano, não em lagos nem rios).
+  const oceanDist = new Uint16Array(n).fill(65535);
+  const dq: number[] = [];
+  for (let i = 0; i < n; i++)
+    if (ocean[i]) {
+      oceanDist[i] = 0;
+      dq.push(i);
+    }
+  for (let q = 0; q < dq.length; q++) {
+    const i = dq[q]!;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    for (const [dx, dy] of N8) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+      const j = ny * COLS + nx;
+      if (oceanDist[j]! > oceanDist[i]! + 1) {
+        oceanDist[j] = oceanDist[i]! + 1;
+        dq.push(j);
+      }
+    }
+  }
+
   const rand = rng(map.options.seed ^ 0x77);
   const fbm = makeNoise(rand);
   const temp = new Float32Array(n);
@@ -526,15 +580,30 @@ export function deriveWorld(map: WorldMap): Derived {
     const cells = [i];
     let c = i;
     visited[c] = 1;
+    let mouth: [number, number] | undefined;
     while (down[c]! >= 0) {
       const d = down[c]!;
+      if (!land[d]) {
+        // Foz: termina exatamente na linha da costa, sem entrar na água.
+        const t = Math.max(0, Math.min(1, (h[c]! - (SEA - 0.5)) / (h[c]! - h[d]! || 1)));
+        const cx = (c % COLS) + 0.5;
+        const cy = Math.floor(c / COLS) + 0.5;
+        const dx = (d % COLS) + 0.5 - cx;
+        const dy = Math.floor(d / COLS) + 0.5 - cy;
+        mouth = [cx + dx * t, cy + dy * t];
+        break;
+      }
       cells.push(d);
-      if (!land[d] || visited[d]) break;
+      if (visited[d]) break;
       visited[d] = 1;
       c = d;
     }
     if (cells.length > 3)
-      rivers.push({ cells, width: Math.min(3, 0.6 + Math.sqrt(flux[c]! / riverMin) * 0.55) });
+      rivers.push({
+        cells,
+        mouth,
+        width: Math.min(3, 0.6 + Math.sqrt(flux[c]! / riverMin) * 0.55),
+      });
   }
 
   // Biomas.
@@ -652,7 +721,21 @@ export function deriveWorld(map: WorldMap): Derived {
   }
   for (const [, i, j] of best.values()) roads.push([...trace(i).reverse(), ...trace(j)]);
 
-  return { land, temp, moist, biome, coastDist, flux, down, riverMin, rivers, owner, roads };
+  return {
+    land,
+    temp,
+    moist,
+    biome,
+    coastDist,
+    ocean,
+    oceanDist,
+    flux,
+    down,
+    riverMin,
+    rivers,
+    owner,
+    roads,
+  };
 }
 
 /* ---------- Gravação ---------- */

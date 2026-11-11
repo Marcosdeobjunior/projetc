@@ -8676,3 +8676,44 @@ select option {
   flex-wrap: wrap;
   gap: 6px;
 }
+.wm.panel-closed {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.wm-collapse {
+  color: var(--faint) !important;
+  font-weight: 500 !important;
+}
+.wm-tools.compact button span,
+.wm-tools.compact .wm-brush span {
+  display: none;
+}
+.wm-tools.compact .wm-brush {
+  width: 34px;
+  padding: 6px 4px;
+}
+.wm-tools.compact .wm-brush input {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  height: 80px;
+  width: 20px;
+}
+.wm-panel-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--fg);
+  font: 600 12.5px/1 var(--font-ui);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.wm-panel-toggle:hover {
+  border-color: var(--accent);
+}

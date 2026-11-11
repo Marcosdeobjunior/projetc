@@ -1136,6 +1136,9 @@ inventados) e **estradas** entre elas.
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
   quantas cidades tem e a capital.
+- **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
+  canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
+  lembra a escolha.
 - **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.
 - **Exportar imagem** salva o mapa inteiro como PNG em alta resolução, com as camadas que estão
   ligadas, a escala e a rosa dos ventos.

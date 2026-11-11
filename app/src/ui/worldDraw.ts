@@ -158,11 +158,14 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   ctx.stroke(vectors.coast);
   if (layers.rios) {
     ctx.strokeStyle = "#4f86b8";
+    // Ponta reta: a foz termina na costa, sem avançar sobre o mar.
+    ctx.lineCap = "butt";
     for (const r of vectors.rivers) {
       // Espessura em pixels de tela (cresce pouco com o zoom).
       ctx.lineWidth = px * (0.7 + r.width * 0.8) * Math.min(2, Math.sqrt(view.s / 3));
       ctx.stroke(r.path);
     }
+    ctx.lineCap = "round";
   }
   if (layers.estradas) {
     ctx.strokeStyle = "rgba(92,62,38,0.75)";
@@ -280,7 +283,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   }
   if (o.furniture) {
     scaleBar(ctx, view, size);
-    compass(ctx, size.w - 60, 70, 26);
+    compass(ctx, size.w - 50, 100, 26);
   }
 }
 

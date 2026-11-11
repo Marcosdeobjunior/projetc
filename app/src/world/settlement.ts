@@ -94,7 +94,9 @@ export function settlementInfo(
 ): SettlementInfo {
   const c = cellOf(burg.x, burg.y);
   const seed = hashSeed(burg.id);
-  const coastal = d.coastDist[c]! <= 2;
+  // Porto só à beira do oceano (rio e lago não fazem porto).
+  const coastal = d.oceanDist[c]! <= 2;
+  const lake = !coastal && d.coastDist[c]! <= 2;
   const x = c % COLS;
   let river = false;
   for (let dy = -1; dy <= 1; dy++)
@@ -122,7 +124,15 @@ export function settlementInfo(
   else elements.delete("capital");
   const type =
     fields.tipoPovoado ||
-    (coastal ? "Porto" : river ? "Fluvial" : metres(heights[c]!) > 1800 ? "Montanha" : "Genérico");
+    (coastal
+      ? "Porto"
+      : lake
+        ? "Lacustre"
+        : river
+          ? "Fluvial"
+          : metres(heights[c]!) > 1800
+            ? "Montanha"
+            : "Genérico");
   const saved = parseMapOptions(fields.mapa);
   const preview: MapOptions = {
     ...(saved ?? {
