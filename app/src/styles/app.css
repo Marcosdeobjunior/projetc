@@ -3904,11 +3904,6 @@ p {
   align-items: center;
   gap: 14px;
 }
-.emblem {
-  color: var(--p-teal);
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--p-teal) 55%, transparent));
-  flex: none;
-}
 .projects-brand h1 {
   font: 600 40px/1 var(--font-brand);
   letter-spacing: 0.14em;
@@ -4864,10 +4859,6 @@ div.row-title {
   }
   .cover.lg .cover-title {
     font-size: 19px;
-  }
-  .emblem {
-    width: 52px;
-    height: 52px;
   }
   .projects-brand h1 {
     font-size: 34px;
