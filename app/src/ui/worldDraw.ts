@@ -159,6 +159,31 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   const width = COLS * view.s;
   const placed: [number, number, number, number][] = [];
   if (o.single) {
+    // Sobra da área (o planeta é 2:1): continua o mar polar em cima e embaixo e o
+    // próprio planeta dos lados, sem faixas vazias.
+    const top = view.y;
+    const bottom = view.y + ROWS * view.s;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    if (top > 0) ctx.drawImage(o.base, 0, 0, o.base.width, 1, view.x, 0, width, top + 1);
+    if (bottom < size.h)
+      ctx.drawImage(
+        o.base,
+        0,
+        o.base.height - 1,
+        o.base.width,
+        1,
+        view.x,
+        bottom - 1,
+        width,
+        size.h - bottom + 1,
+      );
+    if (view.x > 0 || view.x + width < size.w) {
+      ctx.globalAlpha = 0.55;
+      for (const k of [-1, 1]) ctx.drawImage(o.base, view.x + k * width, top, width, ROWS * view.s);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
     // Um planeta só, recortado nas bordas; as cópias vizinhas só completam o que
     // atravessa a costura de 180° (rios, estradas e fronteiras que dão a volta).
     ctx.save();

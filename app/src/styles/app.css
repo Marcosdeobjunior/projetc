@@ -8877,3 +8877,13 @@ select option {
     display: none;
   }
 }
+.wm-zoom-level {
+  display: grid;
+  place-items: center;
+  height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--muted);
+  font: 600 11px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}

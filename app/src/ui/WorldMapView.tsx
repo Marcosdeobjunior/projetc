@@ -118,19 +118,22 @@ export function WorldMapView({ session }: { session: Session }) {
 }
 
 /** Menor zoom em que o planeta cobre a área inteira. */
-function coverScale(size: { w: number; h: number }) {
-  return Math.max(size.w / COLS, size.h / ROWS) || 1;
+/** Zoom de 100%: o planeta inteiro cabe na área, sem rolagem. */
+function fitScale(size: { w: number; h: number }) {
+  return Math.min(size.w / COLS, size.h / ROWS) || 1;
 }
 
-/** Mantém o mapa cobrindo a tela: zoom mínimo "cobrir" e sem passar das bordas. */
+/**
+ * Limita a vista: nunca menos que 100% (o planeta inteiro) e sem rolar além das
+ * bordas. Na direção em que o planeta não enche a área, ele fica centralizado
+ * (a sobra é pintada como continuação do mar polar, sem faixas vazias).
+ */
 function clampView(v: { s: number; x: number; y: number }, size: { w: number; h: number }) {
   if (size.w < 1) return v;
-  const s = Math.max(coverScale(size), v.s);
-  return {
-    s,
-    x: Math.min(0, Math.max(size.w - COLS * s, v.x)),
-    y: Math.min(0, Math.max(size.h - ROWS * s, v.y)),
-  };
+  const s = Math.max(fitScale(size), v.s);
+  const axis = (pos: number, span: number, room: number) =>
+    span <= room ? (room - span) / 2 : Math.min(0, Math.max(room - span, pos));
+  return { s, x: axis(v.x, COLS * s, size.w), y: axis(v.y, ROWS * s, size.h) };
 }
 
 /** Um sim/não lembrado no navegador (localStorage), com valor padrão se não der. */
@@ -360,7 +363,7 @@ function WorldEditor({
       // Na primeira vez, mostra o mapa inteiro.
       if (!fitted.current && w > 50) {
         fitted.current = true;
-        const s = Math.max(w / COLS, h / ROWS);
+        const s = Math.min(w / COLS, h / ROWS);
         setViewT({ s, x: (w - COLS * s) / 2, y: (h - ROWS * s) / 2 });
       }
     });
@@ -782,11 +785,11 @@ function WorldEditor({
   const zoomAt = (f: number, mx = size.w / 2, my = size.h / 2) =>
     setViewT((raw) => {
       const v = clampView(raw, size);
-      const s = Math.max(coverScale(size), Math.min(40, v.s * f));
+      const s = Math.max(fitScale(size), Math.min(40, v.s * f));
       return clampView({ s, x: mx - ((mx - v.x) / v.s) * s, y: my - ((my - v.y) / v.s) * s }, size);
     });
   const fit = () => {
-    const s = coverScale(size);
+    const s = fitScale(size);
     setViewT({ s, x: (size.w - COLS * s) / 2, y: (size.h - ROWS * s) / 2 });
   };
 
@@ -946,6 +949,9 @@ function WorldEditor({
         </button>
         {!globe && (
           <div className="wm-zoom">
+            <span className="wm-zoom-level" title="100% = o planeta inteiro">
+              {Math.round((view.s / fitScale(size)) * 100)}%
+            </span>
             <button type="button" aria-label="Aproximar" onClick={() => zoomAt(1.4)}>
               +
             </button>
@@ -954,8 +960,8 @@ function WorldEditor({
             </button>
             <button
               type="button"
-              aria-label="Mostrar o mapa inteiro"
-              title="Mapa inteiro"
+              aria-label="Mostrar o mapa inteiro (100%)"
+              title="Mapa inteiro (100%)"
               onClick={fit}
             >
               <Icon name="expand" size={14} />

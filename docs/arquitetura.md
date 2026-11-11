@@ -462,8 +462,9 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   é assada em 1 px por célula e só a costa é recalculada (`coastPath`); o resto espera soltar.
   Cidades arrastadas só movem o marcador até soltar.
 - Planeta e globo: na tela, o mapa plano é um planeta só (`single`: recortado nas bordas; as cópias
-  vizinhas só completam o que cruza a costura) e a vista é limitada por `clampView` (zoom mínimo
-  que cobre a área, sem passar das bordas); `drawWorld` sem `single` repete na horizontal. As
+  vizinhas só completam o que cruza a costura) e a vista é limitada por `clampView` (zoom mínimo = 100%,
+  o planeta inteiro; centraliza no eixo que sobra, onde `drawWorld` estica a linha polar da
+  imagem de fundo; sem passar das bordas); `drawWorld` sem `single` repete na horizontal. As
   linhas que cruzam a costura são "desembrulhadas" (`unwrap`). `ui/GlobeView.tsx` desenha o globo
   em projeção ortográfica: o mapa plano vira textura (`drawWorld` sem nomes nem cidades) e cada
   pixel do disco é convertido em latitude/longitude para buscar a cor, com luz e atmosfera; nomes,

@@ -1104,9 +1104,12 @@ mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **e
 descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
 inventados) e **estradas** entre elas.
 
-- **Tela cheia:** o mapa plano sempre ocupa a área inteira, sem faixas vazias, e para nas bordas
-  do planeta (não rola sem fim): o menor zoom é o que cobre a tela. **Tela cheia**, no alto, põe o
-  mapa (plano ou globo) na tela toda do computador; **Esc** ou **Sair da tela cheia** volta.
+- **Zoom e tela cheia:** o zoom aparece em % no canto (100% = o planeta inteiro, sem rolagem). Em
+  100% o mapa todo cabe na área, e a sobra (o planeta é duas vezes mais largo que alto) é pintada
+  como continuação do mar polar, sem faixas vazias; não dá para afastar além disso, e ao aproximar
+  o mapa para nas bordas (não rola sem fim). O botão de mapa inteiro volta a 100%. **Tela cheia**,
+  no alto, põe o mapa (plano ou globo) na tela toda do computador; **Esc** ou **Sair da tela
+  cheia** volta.
 - **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**. No globo,
   arraste para girar, a roda do mouse (ou **+**/**−**) aproxima e **⟳** faz o planeta girar
   sozinho; nomes de reinos e cidades aparecem no lado visível, com luz, atmosfera e as linhas de
