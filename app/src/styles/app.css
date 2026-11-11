@@ -8850,3 +8850,30 @@ select option {
   background: var(--accent);
   color: var(--on-accent);
 }
+.wm-fullscreen {
+  position: absolute;
+  top: 12px;
+  right: 168px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--fg);
+  font: 600 12.5px/1 var(--font-ui);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.wm-fullscreen:hover {
+  border-color: var(--accent);
+}
+.wm:fullscreen {
+  background: var(--bg);
+}
+@media (max-width: 900px) {
+  .wm-fullscreen {
+    display: none;
+  }
+}

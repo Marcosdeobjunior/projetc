@@ -45,6 +45,8 @@ export interface DrawOptions {
   brush?: { x: number; y: number; r: number } | null;
   /** Escala e rosa dos ventos. */
   furniture?: boolean;
+  /** Um planeta só (sem repetir na horizontal), recortado nas bordas. */
+  single?: boolean;
 }
 
 /** Quilômetros por célula (1° no equador de um planeta do tamanho da Terra). */
@@ -154,14 +156,26 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   const { view, size } = o;
   ctx.fillStyle = "#1f3a55";
   ctx.fillRect(0, 0, size.w, size.h);
-  // O planeta dá a volta: desenha as cópias à esquerda e à direita que aparecem na tela.
   const width = COLS * view.s;
   const placed: [number, number, number, number][] = [];
-  const first = Math.floor(-view.x / width) - 1;
-  for (let k = first; k <= first + 2 + Math.ceil(size.w / width); k++) {
-    const x = view.x + k * width;
-    if (x > size.w || x + width < 0) continue;
-    drawCopy(ctx, { ...o, view: { ...view, x } }, placed);
+  if (o.single) {
+    // Um planeta só, recortado nas bordas; as cópias vizinhas só completam o que
+    // atravessa a costura de 180° (rios, estradas e fronteiras que dão a volta).
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(view.x, view.y, width, ROWS * view.s);
+    ctx.clip();
+    for (const k of [0, -1, 1])
+      drawCopy(ctx, { ...o, view: { ...view, x: view.x + k * width } }, placed);
+    ctx.restore();
+  } else {
+    // O planeta dá a volta: desenha as cópias à esquerda e à direita que aparecem na tela.
+    const first = Math.floor(-view.x / width) - 1;
+    for (let k = first; k <= first + 2 + Math.ceil(size.w / width); k++) {
+      const x = view.x + k * width;
+      if (x > size.w || x + width < 0) continue;
+      drawCopy(ctx, { ...o, view: { ...view, x } }, placed);
+    }
   }
 }
 

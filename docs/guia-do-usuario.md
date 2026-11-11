@@ -1096,14 +1096,17 @@ lugar novo; se quiser, tire a entrada antiga da lista com o **×**.
 ## Mapa-múndi
 
 **Mapa**, na barra lateral, abre o mapa do planeta inteiro do projeto, em projeção
-equirretangular: a longitude dá a volta (arrastando para o lado, o mundo continua), os polos têm
-mar congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. Na primeira vez, escolha o **tipo de
+equirretangular (rios, reinos e estradas atravessam a linha de 180° sem emenda), os polos têm mar
+congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. Na primeira vez, escolha o **tipo de
 mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
 **cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
 (desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que
 descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
 inventados) e **estradas** entre elas.
 
+- **Tela cheia:** o mapa plano sempre ocupa a área inteira, sem faixas vazias, e para nas bordas
+  do planeta (não rola sem fim): o menor zoom é o que cobre a tela. **Tela cheia**, no alto, põe o
+  mapa (plano ou globo) na tela toda do computador; **Esc** ou **Sair da tela cheia** volta.
 - **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**. No globo,
   arraste para girar, a roda do mouse (ou **+**/**−**) aproxima e **⟳** faz o planeta girar
   sozinho; nomes de reinos e cidades aparecem no lado visível, com luz, atmosfera e as linhas de

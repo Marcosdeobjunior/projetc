@@ -117,6 +117,22 @@ export function WorldMapView({ session }: { session: Session }) {
   return <WorldEditor key={session.root} session={session} map={map} focusBurg={focusBurg} />;
 }
 
+/** Menor zoom em que o planeta cobre a área inteira. */
+function coverScale(size: { w: number; h: number }) {
+  return Math.max(size.w / COLS, size.h / ROWS) || 1;
+}
+
+/** Mantém o mapa cobrindo a tela: zoom mínimo "cobrir" e sem passar das bordas. */
+function clampView(v: { s: number; x: number; y: number }, size: { w: number; h: number }) {
+  if (size.w < 1) return v;
+  const s = Math.max(coverScale(size), v.s);
+  return {
+    s,
+    x: Math.min(0, Math.max(size.w - COLS * s, v.x)),
+    y: Math.min(0, Math.max(size.h - ROWS * s, v.y)),
+  };
+}
+
 /** Um sim/não lembrado no navegador (localStorage), com valor padrão se não der. */
 function useStoredFlag(key: string, initial: boolean) {
   const [v, setV] = useState(() => {
@@ -258,6 +274,13 @@ function WorldEditor({
   const [toolsOpen, setToolsOpen] = useStoredFlag("talia.mapa.ferramentas", true);
   const [panelOpen, setPanelOpen] = useStoredFlag("talia.mapa.opcoes", true);
   const [globe, setGlobe] = useStoredFlag("talia.mapa.globo", false);
+  const root = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const on = () => setFullscreen(document.fullscreenElement === root.current);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
   const [selected, setSelected] = useState<{
     kind: "burg" | "state" | "route";
     id: string;
@@ -321,7 +344,10 @@ function WorldEditor({
   const canvas = useRef<HTMLCanvasElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [view, setViewT] = useState({ s: 3, x: 0, y: 0 }); // tela = mapa * s + (x, y)
+  // tela = mapa * s + (x, y). O mapa plano sempre cobre a área toda e não passa
+  // das bordas do planeta (sem faixas vazias nem rolagem infinita).
+  const [rawView, setViewT] = useState({ s: 3, x: 0, y: 0 });
+  const view = useMemo(() => clampView(rawView, size), [rawView, size]);
   const fitted = useRef(false);
 
   useEffect(() => {
@@ -334,7 +360,7 @@ function WorldEditor({
       // Na primeira vez, mostra o mapa inteiro.
       if (!fitted.current && w > 50) {
         fitted.current = true;
-        const s = Math.min(w / COLS, h / ROWS);
+        const s = Math.max(w / COLS, h / ROWS);
         setViewT({ s, x: (w - COLS * s) / 2, y: (h - ROWS * s) / 2 });
       }
     });
@@ -434,6 +460,7 @@ function WorldEditor({
       highlight,
       brush: painterTool && brushAt ? { ...brushAt, r: brush } : null,
       furniture: true,
+      single: true,
     });
   }, [
     base,
@@ -699,7 +726,9 @@ function WorldEditor({
         // Arrastar uma cidade a muda de lugar (só em terra); o mapa se refaz ao soltar.
         if (heights[cellOf(x, y)]! >= SEA) setDragging({ id: d.burg, x, y });
       } else if (d.moved)
-        setViewT((v) => ({ ...v, x: d.vx + e.clientX - d.x, y: d.vy + e.clientY - d.y }));
+        setViewT((v) =>
+          clampView({ ...v, x: d.vx + e.clientX - d.x, y: d.vy + e.clientY - d.y }, size),
+        );
     }
     if (painterTool) setBrushAt({ x, y });
     const p = painting.current;
@@ -751,13 +780,13 @@ function WorldEditor({
     zoomAt(e.deltaY > 0 ? 1 / 1.15 : 1.15, mx, my);
   };
   const zoomAt = (f: number, mx = size.w / 2, my = size.h / 2) =>
-    setViewT((v) => {
-      const min = Math.min(size.w / COLS, size.h / ROWS) * 0.8;
-      const s = Math.max(min, Math.min(40, v.s * f));
-      return { s, x: mx - ((mx - v.x) / v.s) * s, y: my - ((my - v.y) / v.s) * s };
+    setViewT((raw) => {
+      const v = clampView(raw, size);
+      const s = Math.max(coverScale(size), Math.min(40, v.s * f));
+      return clampView({ s, x: mx - ((mx - v.x) / v.s) * s, y: my - ((my - v.y) / v.s) * s }, size);
     });
   const fit = () => {
-    const s = Math.min(size.w / COLS, size.h / ROWS);
+    const s = coverScale(size);
     setViewT({ s, x: (size.w - COLS * s) / 2, y: (size.h - ROWS * s) / 2 });
   };
 
@@ -788,7 +817,7 @@ function WorldEditor({
   };
 
   return (
-    <div className={"wm" + (panelOpen ? "" : " panel-closed")}>
+    <div className={"wm" + (panelOpen ? "" : " panel-closed")} ref={root}>
       <div className="wm-canvas" ref={wrap}>
         {globe && (
           <GlobeView
@@ -893,6 +922,18 @@ function WorldEditor({
             </button>
           </div>
         )}
+        <button
+          type="button"
+          className="wm-fullscreen"
+          aria-pressed={fullscreen}
+          title={fullscreen ? "Sair da tela cheia (Esc)" : "Tela cheia"}
+          onClick={() => {
+            if (document.fullscreenElement) void document.exitFullscreen();
+            else void root.current?.requestFullscreen?.().catch(() => undefined);
+          }}
+        >
+          <Icon name="expand" size={14} /> {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+        </button>
         <button
           type="button"
           className="wm-panel-toggle"
