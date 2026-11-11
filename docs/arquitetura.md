@@ -421,7 +421,9 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   `visibleFields` aplica isso —, `sanitizeFields`,
   `mergeFields` campo a campo no `mergeProject`, `fieldRefs`); gravados em `notes[].fields` por
   `setNoteFields` (pela `change`); campos de referência viram arestas "link" em `buildGraph`. A tela
-  é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida).
+  é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida), com seções em cartões, o índice
+  `FieldSectionNav` e o `CharacterPanel` (sugestões de `manuscript/characterCheck.ts`); listas de
+  escolha usam `ui/Select.tsx` (combobox próprio, com teclado) no lugar do `<select>` nativo.
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

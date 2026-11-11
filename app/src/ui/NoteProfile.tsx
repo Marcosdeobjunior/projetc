@@ -6,7 +6,7 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
 import { CalendarEditor } from "./CalendarEditor";
-import { FieldSectionNav, NoteFields } from "./NoteFields";
+import { CharacterPanel, FieldSectionNav, NoteFields } from "./NoteFields";
 import { BirthEditor, TravelEditor, useYearLength } from "./ContinuityEditors";
 import { useTimeline } from "../state/timeline";
 import { ageOn } from "../timeline/timeline";
@@ -100,7 +100,7 @@ export function NoteProfile({
         <Icon name="chevron-left" size={15} /> {label.many}
       </button>
 
-      <div className="profile-main">
+      <div className="profile-layout">
         <div className="profile-photo">
           <div
             className={"profile-image" + (image ? "" : " empty")}
@@ -170,7 +170,16 @@ export function NoteProfile({
             </span>
           </div>
           <NoteFields note={note} project={project} onOpenNote={onOpenNote} />
-          <section className="profile-notes">
+          {note.kind === "calendarios" && <CalendarEditor noteId={note.id} />}
+          {note.kind === "personagens" && <BirthEditor note={note} />}
+          {note.kind === "lugares" && (
+            <TravelEditor note={note} places={project.notes.filter((n) => n.kind === "lugares")} />
+          )}
+        </div>
+
+        <aside className="profile-aside">
+          {note.kind === "personagens" && <CharacterPanel note={note} />}
+          <section className="profile-card profile-notes">
             <div className="profile-notes-head">
               <h3>Anotações</h3>
               <button type="button" className="btn ghost sm" onClick={() => openDoc(note.id)}>
@@ -185,53 +194,45 @@ export function NoteProfile({
               )}
             </div>
           </section>
-        </div>
-      </div>
 
-      {note.kind === "calendarios" && <CalendarEditor noteId={note.id} />}
-      {note.kind === "personagens" && <BirthEditor note={note} />}
-      {note.kind === "lugares" && (
-        <TravelEditor note={note} places={project.notes.filter((n) => n.kind === "lugares")} />
-      )}
-
-      <div className="profile-lists">
-        <section>
-          <h3>Aparece em</h3>
-          {scenes.length === 0 ? (
-            <p className="muted small">
-              Nenhuma cena ainda. Escreva o nome “{note.title}” numa cena ou use [[{note.title}]].
-            </p>
-          ) : (
-            <ul>
-              {scenes.map((s) => (
-                <li key={s.id}>
-                  <button type="button" className="profile-link" onClick={() => openDoc(s.id)}>
-                    <Icon name="file" size={14} /> {s.title}
-                    {sceneInfo(s.id) && (
-                      <small className="profile-link-meta">{sceneInfo(s.id)}</small>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section>
-          <h3>Ligado a</h3>
-          {related.length === 0 ? (
-            <p className="muted small">Nenhuma outra nota.</p>
-          ) : (
-            <ul>
-              {related.map((n) => (
-                <li key={n.id}>
-                  <button type="button" className="profile-link" onClick={() => onOpenNote(n.id)}>
-                    <Icon name={KIND_ICON[n.kind]} size={14} /> {n.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+          <section className="profile-card profile-list">
+            <h3>Aparece em</h3>
+            {scenes.length === 0 ? (
+              <p className="muted small">
+                Nenhuma cena ainda. Escreva o nome “{note.title}” numa cena ou use [[{note.title}]].
+              </p>
+            ) : (
+              <ul>
+                {scenes.map((s) => (
+                  <li key={s.id}>
+                    <button type="button" className="profile-link" onClick={() => openDoc(s.id)}>
+                      <Icon name="file" size={14} /> {s.title}
+                      {sceneInfo(s.id) && (
+                        <small className="profile-link-meta">{sceneInfo(s.id)}</small>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="profile-card profile-list">
+            <h3>Ligado a</h3>
+            {related.length === 0 ? (
+              <p className="muted small">Nenhuma outra nota.</p>
+            ) : (
+              <ul>
+                {related.map((n) => (
+                  <li key={n.id}>
+                    <button type="button" className="profile-link" onClick={() => onOpenNote(n.id)}>
+                      <Icon name={KIND_ICON[n.kind]} size={14} /> {n.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </aside>
       </div>
     </div>
   );

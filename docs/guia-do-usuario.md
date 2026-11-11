@@ -244,6 +244,11 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     escolhem outra nota (com **abrir** ao lado) e passam a ligar as duas no Elo. Se o personagem
     tem nascimento na linha do tempo, a idade calculada aparece embaixo do campo Idade.
 
+  - na ficha de personagem, o índice **Seções** embaixo da imagem (leva até cada seção e marca
+    as que já têm conteúdo) e, ao lado, o painel **Construção do personagem**: quantas seções
+    têm conteúdo e as próximas perguntas a responder (desejo → mentira → fantasma → necessidade,
+    fraqueza → oponente, arco, voz…), tiradas da própria ficha. Clique numa pergunta para ir ao
+    campo;
   - **Anotações:** o texto livre da nota, para o que não cabe nos campos; **Editar anotações** abre
     no editor (renomeie pelo nome no alto do texto);
   - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);

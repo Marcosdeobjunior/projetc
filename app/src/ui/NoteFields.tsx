@@ -5,6 +5,9 @@ import { useApp } from "../state/store";
 import { useTimeline } from "../state/timeline";
 import { KIND_LABEL } from "../links/context";
 import { useYearLength } from "./ContinuityEditors";
+import { Select } from "./Select";
+import { Icon } from "./Icon";
+import { characterTips } from "../manuscript/characterCheck";
 
 /**
  * Os campos da ficha (no personagem, em seções: base, desejo, mentira…). Cada
@@ -48,19 +51,12 @@ export function NoteFields({
       const linked = options.find((o) => o.id === v);
       input = (
         <div className="field-ref">
-          <select
+          <Select
             id={id}
-            className="text-input"
             value={v}
-            onChange={(e) => save(d.key, e.target.value)}
-          >
-            <option value="">—</option>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.title}
-              </option>
-            ))}
-          </select>
+            options={options.map((o) => ({ value: o.id, label: o.title }))}
+            onChange={(nv) => save(d.key, nv)}
+          />
           {linked && onOpenNote && (
             <button
               type="button"
@@ -79,23 +75,15 @@ export function NoteFields({
         </div>
       );
     } else if (d.type === "choice") {
+      // Valor que não está mais entre as opções continua visível (o Select mostra o texto).
       const options = d.options ?? [];
       input = (
-        <select
+        <Select
           id={id}
-          className="text-input"
           value={v}
-          onChange={(e) => save(d.key, e.target.value)}
-        >
-          <option value="">—</option>
-          {/* Valor que não está mais entre as opções continua visível. */}
-          {v && !options.includes(v) && <option value={v}>{v}</option>}
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
+          options={options.map((o) => ({ value: o, label: o }))}
+          onChange={(nv) => save(d.key, nv)}
+        />
       );
     } else if (d.type === "long") {
       input = (
@@ -194,12 +182,72 @@ function SectionTitle({ section }: { section: NonNullable<FieldDef["section"]> }
  * Índice das seções da ficha (ao lado da imagem): leva até a seção e marca as
  * que já têm algo preenchido.
  */
-export function FieldSectionNav({ note }: { note: Note }) {
+function sectionProgress(note: Note) {
   const values = note.fields ?? {};
   const groups = groupFields(visibleFields(note.kind, values));
-  if (!groups.some((g) => g.section)) return null;
-  const filled = groups.filter((g) => g.section && g.defs.some((d) => values[d.key])).length;
-  const total = groups.filter((g) => g.section).length;
+  const sections = groups.filter((g) => g.section);
+  const filled = sections.filter((g) => g.defs.some((d) => values[d.key])).length;
+  return { values, groups, filled, total: sections.length };
+}
+
+/** Leva até um campo da ficha e o deixa pronto para digitar. */
+function focusField(noteId: string, key: string) {
+  const el = document.getElementById(`f-${noteId}-${key}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.focus({ preventScroll: true });
+}
+
+/**
+ * Painel ao lado da ficha de personagem: quanto da ficha já tem conteúdo e as
+ * próximas perguntas a responder (tiradas da própria ficha).
+ */
+export function CharacterPanel({ note }: { note: Note }) {
+  const { filled, total } = sectionProgress(note);
+  const tips = characterTips(note.fields).slice(0, 4);
+  const pct = total ? Math.round((filled / total) * 100) : 0;
+  return (
+    <section className="profile-card char-panel">
+      <h3>Construção do personagem</h3>
+      <div className="char-progress">
+        <div
+          className="char-progress-bar"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Seções com conteúdo"
+        >
+          <span style={{ width: `${pct}%` }} />
+        </div>
+        <small>
+          {filled} de {total} seções
+        </small>
+      </div>
+      {tips.length ? (
+        <>
+          <p className="char-panel-sub">Próximas perguntas</p>
+          <ul className="char-tips">
+            {tips.map((t, i) => (
+              <li key={i}>
+                <button type="button" onClick={() => focusField(note.id, t.key)}>
+                  <Icon name="chevron" size={13} />
+                  <span>{t.text}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="char-panel-sub">A ficha está completa. Releia os testes de cada seção.</p>
+      )}
+    </section>
+  );
+}
+
+export function FieldSectionNav({ note }: { note: Note }) {
+  const { values, groups, filled, total } = sectionProgress(note);
+  if (!total) return null;
   return (
     <nav className="field-nav" aria-label="Seções da ficha">
       <p className="field-nav-head">
