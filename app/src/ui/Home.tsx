@@ -312,13 +312,9 @@ function activity(vaults: VaultRef[], stats: Record<string, ProjectStats | null>
 function Emblem() {
   return (
     <svg className="emblem" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="1.4">
-        {Array.from({ length: 12 }, (_, i) => (
-          <path key={i} d="M32 4 35 20 32 24 29 20z" transform={`rotate(${i * 30} 32 32)`} />
-        ))}
-        <circle cx="32" cy="32" r="11" />
-        <circle cx="32" cy="32" r="6" />
-        <path d="M24 32c3-4 13-4 16 0-3 4-13 4-16 0z" />
+      <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+        <path d="M32 4 38.6 22.9 58.6 23.3 42.7 35.5 48.5 54.7 32 43.2 15.5 54.7 21.3 35.5 5.4 23.3 25.4 22.9z" />
+        <path d="M32 17 35.5 27.1 46.3 27.4 37.7 33.9 40.8 44.1 32 38 23.2 44.1 26.3 33.9 17.7 27.4 28.5 27.1z" />
       </g>
       <circle cx="32" cy="32" r="2.4" fill="currentColor" />
     </svg>
