@@ -1,4 +1,4 @@
-import { hashSeed } from "./geom";
+import { hashSeed, rng } from "./geom";
 import { cellOf, COLS, dCol, ROWS, SEA, type Burg, type Derived } from "./worldgen";
 import { parseMapOptions, type MapOptions, type MapSize, type VillageGeo } from "./village";
 
@@ -19,6 +19,7 @@ export const SETTLEMENT_TYPES = [
   "Montanha",
   "Fronteira",
   "Nômade",
+  "Caça",
 ] as const;
 
 export const ELEMENTS = [
@@ -91,6 +92,8 @@ export function settlementInfo(
   heights: Uint8Array,
   d: Derived,
   fields: Record<string, string>,
+  /** Culturas do mapa (para sugerir a cultura do lugar). */
+  cultures?: { name: string }[],
 ): SettlementInfo {
   const c = cellOf(burg.x, burg.y);
   const seed = hashSeed(burg.id);
@@ -108,31 +111,49 @@ export function settlementInfo(
   const population =
     parsePopulation(fields.populacao) ??
     (capital ? 6000 + (seed % 18000) : 200 + (seed % 4800) * (coastal || river ? 1.4 : 1)) | 0;
+  // Elementos pela população (em milhares), com sorteio fixo por cidade: cidades
+  // grandes quase sempre têm muralha e cidadela; favela e templo vêm com o tamanho.
+  const pr = rng(seed ^ 0x5a17);
+  const P = (p: number) => pr() < p;
+  const k = population / 1000;
+  const citadel = capital || (k > 50 && P(0.75)) || (k > 15 && P(0.5)) || P(0.1);
+  const walls = capital || k > 30 || (k > 20 && P(0.75)) || (k > 10 && P(0.5)) || P(0.1);
+  const shanty = k > 60 || (k > 40 && P(0.75)) || (k > 20 && walls && P(0.4));
+  const temple = k > 50 || (k > 35 && P(0.75)) || (k > 20 && P(0.5)) || (k > 3 && P(0.2));
+  const plaza = k > 1 || P(0.5);
   const stored = parseElements(fields.elementos);
   const elements: Set<ElementKey> =
     fields.elementos !== undefined
       ? stored
       : new Set<ElementKey>([
           ...(coastal ? (["porto"] as const) : []),
-          ...(capital || population >= 5000 ? (["muralhas"] as const) : []),
-          ...(capital ? (["cidadela"] as const) : []),
-          ...(population >= 1000 ? (["praca"] as const) : []),
-          ...(population >= 2500 ? (["templo"] as const) : []),
+          ...(walls ? (["muralhas"] as const) : []),
+          ...(citadel ? (["cidadela"] as const) : []),
+          ...(plaza ? (["praca"] as const) : []),
+          ...(temple ? (["templo"] as const) : []),
+          ...(shanty ? (["favela"] as const) : []),
         ]);
   // "Capital" segue o mapa (é ele que diz quem é capital).
   if (capital) elements.add("capital");
   else elements.delete("capital");
+  // Tipo pelo lugar: porto, lago, serra, rio grande; povoados pequenos em campo ou
+  // deserto são nômades, e em mata, de caçadores.
+  const biome = d.land[c] ? d.biome[c]! : 4;
   const type =
     fields.tipoPovoado ||
     (coastal
       ? "Porto"
       : lake
         ? "Lacustre"
-        : river
-          ? "Fluvial"
-          : metres(heights[c]!) > 1800
-            ? "Montanha"
-            : "Genérico");
+        : metres(heights[c]!) > 1800
+          ? "Montanha"
+          : river
+            ? "Fluvial"
+            : population < 1500 && [1, 2, 3, 4].includes(biome)
+              ? "Nômade"
+              : population < 1500 && [5, 6, 7, 8, 9].includes(biome)
+                ? "Caça"
+                : "Genérico");
   const saved = parseMapOptions(fields.mapa);
   const geo = localGeo(burg, d);
   const preview: MapOptions = {
@@ -154,10 +175,10 @@ export function settlementInfo(
     population,
     group: fields.grupo || groupFor(population),
     type,
-    culture: fields.cultura ?? "",
+    culture: fields.cultura ?? cultures?.[d.culture[c]!]?.name ?? "",
     tags: fields.etiquetas ?? "",
     elements,
-    tempC: Math.round(-14 + d.temp[c]! * 42),
+    tempC: Math.round(d.tempC[c]!),
     elevation: metres(heights[c]!),
     coastal,
     river,

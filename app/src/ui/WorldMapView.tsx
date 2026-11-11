@@ -16,6 +16,7 @@ import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
 import { GlobeView } from "./GlobeView";
+import { makeMarkovNamer, nameBase } from "../world/names";
 import {
   BIOMES,
   cellOf,
@@ -32,6 +33,10 @@ import {
   type Burg,
   type Route,
   ROUTE_TYPES,
+  STATE_FORMS,
+  type StateForm,
+  type WorldState,
+  CULTURE_TYPES,
   dCol,
   wrapCol,
   type Template,
@@ -118,6 +123,11 @@ export function WorldMapView({ session }: { session: Session }) {
 }
 
 /** Menor zoom em que o planeta cobre a área inteira. */
+/** "Reino de Faia", "Império de Goura", "República de Seel"… */
+function fullStateName(s: WorldState) {
+  return `${s.form ?? "Reino"} de ${s.name}`;
+}
+
 /** Zoom de 100%: o planeta inteiro cabe na área, sem rolagem. */
 function fitScale(size: { w: number; h: number }) {
   return Math.min(size.w / COLS, size.h / ROWS) || 1;
@@ -595,6 +605,11 @@ function WorldEditor({
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  /** Nome novo no estilo da cultura do lugar (ou um nome genérico, sem cultura). */
+  const nameFor = (cell: number) => {
+    const c = map.cultures?.[derived.culture[cell]!];
+    return c ? makeMarkovNamer(c.base, Date.now() & 0xffffff)() : makeNamer(Date.now())();
+  };
   const toMap = (e: { clientX: number; clientY: number }) => {
     const r = canvas.current!.getBoundingClientRect();
     // A longitude dá a volta: o x volta para dentro do planeta (0 a COLS).
@@ -682,7 +697,7 @@ function WorldEditor({
       const placed = placing ? session.project.notes.find((n) => n.id === placing) : undefined;
       const b: Burg = placed
         ? { id: newId("c"), name: placed.title, x, y, noteId: placed.id }
-        : { id: newId("c"), name: makeNamer(Date.now())(), x, y };
+        : { id: newId("c"), name: nameFor(cellOf(x, y)), x, y };
       commit({ ...map, burgs: [...map.burgs, b] });
       setSelected({ kind: "burg", id: b.id });
       if (placed) {
@@ -699,7 +714,9 @@ function WorldEditor({
     if (x === null || y === null || y < 0 || y >= ROWS) return "";
     const c = cellOf(x, y);
     const h = heights[c]!;
-    const st = derived.owner[c]! >= 0 ? map.states[derived.owner[c]!]?.name : null;
+    const owner = derived.owner[c]! >= 0 ? map.states[derived.owner[c]!] : undefined;
+    const st = owner ? fullStateName(owner) : null;
+    const cu = map.cultures?.[derived.culture[c]!]?.name;
     const metres =
       h >= SEA
         ? Math.round(((h - SEA) / 127) ** 1.6 * 5200)
@@ -714,6 +731,7 @@ function WorldEditor({
           ? "Mar congelado"
           : "Mar",
       st,
+      cu ? `povo ${cu}` : null,
       `${metres.toLocaleString("pt-BR")} m`,
       coord,
     ]
@@ -1008,9 +1026,10 @@ function WorldEditor({
             burg={burg}
             note={session.project.notes.find((n) => n.id === burg.noteId)}
             capital={capitals.has(burg.id)}
-            stateName={burgState?.name ?? null}
+            stateName={burgState ? fullStateName(burgState) : null}
             heights={map.heights}
             derived={derived}
+            cultures={map.cultures ?? []}
             attachments={session.attachments}
             onClose={() => setSelected(null)}
             onRename={(name) => {
@@ -1027,7 +1046,7 @@ function WorldEditor({
                     ...map.states,
                     {
                       id: newId("e"),
-                      name: makeNamer(Date.now())(),
+                      name: nameFor(cellOf(burg.x, burg.y)),
                       color: stateColor(map.states.length),
                       capital: burg.id,
                     },
@@ -1080,6 +1099,7 @@ function WorldEditor({
                   ["biomas", "Biomas"],
                   ["relevo", "Relevo"],
                   ["politico", "Político"],
+                  ["culturas", "Culturas"],
                 ] as const
               ).map(([v, l]) => (
                 <button
@@ -1236,7 +1256,23 @@ function WorldEditor({
 
           {state && (
             <section className="profile-card wm-sel">
-              <h3>Estado</h3>
+              <h3>{fullStateName(state)}</h3>
+              <div className="field">
+                <label>Forma de governo</label>
+                <Select
+                  value={state.form ?? "Reino"}
+                  options={STATE_FORMS.map((f) => ({ value: f, label: f }))}
+                  onChange={(v) =>
+                    v &&
+                    commit({
+                      ...map,
+                      states: map.states.map((s) =>
+                        s.id === state.id ? { ...s, form: v as StateForm } : s,
+                      ),
+                    })
+                  }
+                />
+              </div>
               <div className="wm-state-row">
                 <input
                   type="color"
@@ -1400,6 +1436,24 @@ function WorldEditor({
               <Icon name="link" size={14} /> Traçar rota
             </button>
           </section>
+          {(map.cultures ?? []).length > 0 && (
+            <section className="profile-card wm-legend wm-cultures">
+              <h3>Culturas</h3>
+              <ul>
+                {(map.cultures ?? []).map((c) => (
+                  <li key={c.id} title={`Nomes no estilo ${nameBase(c.base).label.toLowerCase()}`}>
+                    <span style={{ background: c.color }} />
+                    <div>
+                      {c.name}
+                      <small>
+                        {CULTURE_TYPES[c.type]} · {nameBase(c.base).label}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="profile-card wm-legend">
             <h3>Biomas</h3>
             <ul>

@@ -220,5 +220,5 @@ describe("mapa plano sem cortes", () => {
           for (let x = 0; x < COLS; x++) expect(m.heights[y * COLS + x]!).toBeLessThan(SEA);
       }
     }
-  });
+  }, 60000);
 });

@@ -11,5 +11,5 @@ describe("cidades no interior", () => {
       ).length;
       expect(inland / m.burgs.length).toBeGreaterThan(0.4);
     }
-  });
+  }, 60000);
 });

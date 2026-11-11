@@ -1115,6 +1115,23 @@ inventados) e **estradas** entre elas.
   o mapa para nas bordas (não rola sem fim). O botão de mapa inteiro volta a 100%. **Tela cheia**,
   no alto, põe o mapa (plano ou globo) na tela toda do computador; **Esc** ou **Sair da tela
   cheia** volta.
+- **Clima de verdade:** a temperatura cai do equador aos polos e com a altitude, e a chuva é
+  trazida pelos ventos de cada faixa de latitude (alísios, ventos de oeste, ventos polares): chove
+  muito nas encostas voltadas para o vento e pouco atrás das serras e no interior dos continentes.
+  Os biomas saem da combinação de temperatura e chuva, então desertos, savanas, florestas, taiga e
+  tundra aparecem onde fariam sentido.
+- **Culturas:** o mundo tem de 4 a 12 povos, cada um com um jeito de viver (Navegante, Montanhês,
+  Ribeirinho, Lacustre, Nômade, Caçador, Genérico) que define por onde ele se espalha, e um
+  "sotaque" de nomes (Lusitana, Nórdica, Élfica, Desértica, Eslava, Latina, Celta). Cidades e
+  reinos têm nomes inventados no sotaque do povo do lugar (cadeias de Markov). O estilo
+  **Culturas** pinta o território de cada povo, e a legenda lista os povos. No **Editar povoado**,
+  a Cultura vem preenchida com o povo do lugar, e o mouse sobre o mapa mostra o povo.
+- **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
+  República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do
+  reino; os textos mostram o nome completo ("Reino de Faeris").
+- **Cidades:** o tipo vem do lugar (Porto, Lacustre, Montanha, Fluvial, Nômade, Caça, Genérico) e
+  os elementos vêm da população: cidades grandes quase sempre têm muralha e cidadela; templo e
+  favela aparecem com o tamanho.
 - **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**, desenhado
   na placa de vídeo (gira sem atraso). Arraste para girar, a roda do mouse (ou **+**/**−**)
   aproxima e **⟳** faz o planeta girar sozinho; nomes de reinos e cidades aparecem no lado

@@ -33,6 +33,7 @@ export function BurgDialog({
   stateName,
   heights,
   derived,
+  cultures,
   attachments,
   onClose,
   onRename,
@@ -47,6 +48,7 @@ export function BurgDialog({
   stateName: string | null;
   heights: Uint8Array;
   derived: Derived;
+  cultures?: { name: string }[];
   attachments: string[];
   onClose(): void;
   onRename(name: string): void;
@@ -58,8 +60,8 @@ export function BurgDialog({
   const noteFields = note?.fields;
   const fields = noteFields ?? {};
   const info = useMemo(
-    () => settlementInfo(burg, capital, heights, derived, noteFields ?? {}),
-    [burg, capital, heights, derived, noteFields],
+    () => settlementInfo(burg, capital, heights, derived, noteFields ?? {}, cultures),
+    [burg, capital, heights, derived, noteFields, cultures],
   );
   const preview = useMemo(() => generateVillage(info.preview), [info.preview]);
   const [pos, setPos] = useState({ x: 140, y: 12 });

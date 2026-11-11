@@ -1,4 +1,5 @@
 import { rng } from "./geom";
+import { makeMarkovNamer, NAME_BASES } from "./names";
 
 /*
  * Mapa-múndi do projeto: gerador procedural e modelo de dados.
@@ -63,7 +64,21 @@ export interface WorldState {
   capital: string;
   /** Lugar do Mundo que é este estado. */
   noteId?: string;
+  /** Forma de governo (Reino, Império, República…). */
+  form?: StateForm;
 }
+
+export const STATE_FORMS = [
+  "Reino",
+  "Império",
+  "Principado",
+  "Ducado",
+  "República",
+  "Teocracia",
+  "Canato",
+  "Liga",
+] as const;
+export type StateForm = (typeof STATE_FORMS)[number];
 
 /** Tipos de rota, da maior para a menor. */
 export type RouteType = "principal" | "estrada" | "trilha" | "maritima";
@@ -83,6 +98,31 @@ export interface Route {
   points: [number, number][];
 }
 
+/** Tipos de cultura (como cada povo ocupa o terreno). */
+export type CultureType =
+  "navegante" | "montanhes" | "ribeirinho" | "lacustre" | "nomade" | "cacador" | "generico";
+
+export const CULTURE_TYPES: Record<CultureType, string> = {
+  navegante: "Navegante",
+  montanhes: "Montanhês",
+  ribeirinho: "Ribeirinho",
+  lacustre: "Lacustre",
+  nomade: "Nômade",
+  cacador: "Caçador",
+  generico: "Genérico",
+};
+
+/** Um povo: nome, base de nomes (o "sotaque" dos lugares), tipo, cor e centro. */
+export interface Culture {
+  id: string;
+  name: string;
+  base: string;
+  type: CultureType;
+  color: string;
+  x: number;
+  y: number;
+}
+
 export interface WorldMap {
   name: string;
   options: WorldOptions;
@@ -91,6 +131,8 @@ export interface WorldMap {
   states: WorldState[];
   /** Rotas desenhadas (as estradas geradas não ficam aqui: são calculadas). */
   routes?: Route[];
+  /** Culturas (povos); o território de cada uma é calculado a partir do centro. */
+  cultures?: Culture[];
 }
 
 export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
@@ -415,12 +457,107 @@ function generateHeights(o: WorldOptions): Uint8Array {
   return out;
 }
 
+const CULTURE_COLORS = [
+  "#d98c6a",
+  "#7fb0d6",
+  "#b7c46a",
+  "#c08ac9",
+  "#e3c25a",
+  "#6dbfa5",
+  "#d9768f",
+  "#9a9ad6",
+  "#c9a27a",
+  "#8cc47a",
+  "#d6a0c2",
+  "#7ac0c9",
+];
+
+/**
+ * Culturas: centros em lugares bons e afastados; o tipo vem do lugar (costa,
+ * serra, rio, lago, deserto ou campo, mata) e a base de nomes vem do clima.
+ */
+function placeCultures(o: WorldOptions, d: Derived, heights: Uint8Array): Culture[] {
+  const rand = rng(o.seed ^ 0x5eed);
+  const n = COLS * ROWS;
+  const cand: { i: number; s: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    if (!d.land[i] || d.biome[i] === 11 || d.biome[i] === 13) continue;
+    // Centros de povos: clima bom, mas também no interior (não só na costa).
+    const inland = Math.min(1, d.oceanDist[i]! / 8);
+    cand.push({ i, s: d.moist[i]! * 0.4 + d.temp[i]! * 0.4 + inland * 0.4 + rand() * 0.6 });
+  }
+  cand.sort((a, b) => b.s - a.s);
+  const count = Math.max(4, Math.min(12, o.states + 3));
+  const spacing = Math.max(18, Math.sqrt(cand.length / count) * 1.1);
+  const centers: number[] = [];
+  for (const { i } of cand) {
+    if (centers.length >= count) break;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    if (centers.some((c) => Math.hypot(dCol(c % COLS, x), ((c / COLS) | 0) - y) < spacing))
+      continue;
+    centers.push(i);
+  }
+  const usedBases = new Map<string, number>();
+  const pickBase = (options: string[]) => {
+    const sorted = [...options].sort((a, b) => (usedBases.get(a) ?? 0) - (usedBases.get(b) ?? 0));
+    const best = sorted.filter((b) => (usedBases.get(b) ?? 0) === (usedBases.get(sorted[0]!) ?? 0));
+    const base = best[Math.floor(rand() * best.length)]!;
+    usedBases.set(base, (usedBases.get(base) ?? 0) + 1);
+    return base;
+  };
+  return centers.map((i, k) => {
+    const b = d.biome[i]!;
+    const tc = d.tempC[i]!;
+    const type: CultureType =
+      d.oceanDist[i]! <= 1 && rand() < 0.45
+        ? "navegante"
+        : d.coastDist[i]! <= 1 && !d.ocean[i]
+          ? "lacustre"
+          : (heights[i]! - SEA) / 127 > 0.42
+            ? "montanhes"
+            : d.flux[i]! >= d.riverMin * 2
+              ? "ribeirinho"
+              : [1, 2, 3, 4].includes(b)
+                ? "nomade"
+                : [5, 6, 7, 8, 9].includes(b) && d.oceanDist[i]! > 2
+                  ? "cacador"
+                  : "generico";
+    const base =
+      [1, 3].includes(b) || (tc >= 20 && d.moist[i]! < 0.35)
+        ? pickBase(["desertica"])
+        : tc < 6
+          ? pickBase(["nordica", "eslava"])
+          : [7, 8].includes(b)
+            ? pickBase(["elfica", "celta"])
+            : pickBase(["lusitana", "latina", "celta", "eslava"]);
+    const namer = makeMarkovNamer(base, o.seed + k * 104729);
+    return {
+      id: newId("p"),
+      name: namer(),
+      base,
+      type,
+      color: CULTURE_COLORS[k % CULTURE_COLORS.length]!,
+      x: (i % COLS) + 0.5,
+      y: Math.floor(i / COLS) + 0.5,
+    };
+  });
+}
+
 export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
   const heights = generateHeights(o);
   const map: WorldMap = { name, options: o, heights, burgs: [], states: [] };
+  const d0 = deriveWorld({ ...map });
+  map.cultures = placeCultures(o, d0, heights);
   const d = deriveWorld({ ...map });
   const rand = rng(o.seed ^ 0xabcdef);
-  const namer = makeNamer(o.seed);
+  // Nomes no "sotaque" da cultura do lugar (cadeia de Markov da base de nomes dela).
+  const used = new Set<string>();
+  const namers = new Map(
+    map.cultures.map((c, k) => [k, makeMarkovNamer(c.base, o.seed + k * 7919, used)]),
+  );
+  const fallback = makeNamer(o.seed);
+  const nameAt = (i: number) => namers.get(d.culture[i]!)?.() ?? fallback();
   // Lugares bons para cidades (como num mundo real): bioma habitável, clima ameno,
   // terreno plano, água por perto — rio (mais ainda num encontro de rios), lago ou
   // mar. A costa ajuda, mas não domina: o interior também recebe cidades.
@@ -467,14 +604,14 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
     if (near(i, capSpacing)) continue;
     placed.push({
       id: newId("c"),
-      name: namer(),
+      name: nameAt(i),
       x: (i % COLS) + 0.5,
       y: Math.floor(i / COLS) + 0.5,
     });
   }
   map.states = placed.map((b, k) => ({
     id: newId("e"),
-    name: namer(),
+    name: nameAt(cellOf(b.x, b.y)),
     color: stateColor(k),
     capital: b.id,
   }));
@@ -486,7 +623,7 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
       if (near(i, spacing)) continue;
       placed.push({
         id: newId("c"),
-        name: namer(),
+        name: nameAt(i),
         x: (i % COLS) + 0.5,
         y: Math.floor(i / COLS) + 0.5,
       });
@@ -499,6 +636,33 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
   );
   place(scored, o.burgs);
   map.burgs = placed;
+  // Forma de governo pelo tamanho do território e pelo povo da capital.
+  const dd = deriveWorld(map);
+  const areas = map.states.map((_, k) => dd.owner.reduce((a, v) => a + (v === k ? 1 : 0), 0));
+  const sortedAreas = [...areas].sort((a, b) => a - b);
+  const median = sortedAreas[Math.floor(sortedAreas.length / 2)] ?? 1;
+  map.states.forEach((s, k) => {
+    const cap = placed.find((b) => b.id === s.capital)!;
+    const cult = map.cultures?.[dd.culture[cellOf(cap.x, cap.y)]!];
+    const area = areas[k]!;
+    const roll = rand();
+    s.form =
+      cult?.type === "nomade" && roll < 0.6
+        ? "Canato"
+        : area > median * 1.8 && roll < 0.7
+          ? "Império"
+          : roll < 0.08
+            ? "Teocracia"
+            : roll < 0.2
+              ? "República"
+              : cult?.type === "navegante" && roll < 0.3
+                ? "Liga"
+                : area < median * 0.45
+                  ? roll < 0.6
+                    ? "Principado"
+                    : "Ducado"
+                  : "Reino";
+  });
   return map;
 }
 
@@ -523,8 +687,13 @@ export const BIOMES = [
 
 export interface Derived {
   land: Uint8Array;
+  /** Temperatura normalizada (0 = −14 °C ou menos, 1 = 28 °C ou mais) e em °C. */
   temp: Float32Array;
+  tempC: Float32Array;
+  /** Umidade (chuva trazida pelos ventos), de 0 a 1. */
   moist: Float32Array;
+  /** Ruído suave (para detalhes como placas de gelo). */
+  noise: Float32Array;
   biome: Uint8Array;
   coastDist: Uint16Array;
   flux: Float32Array;
@@ -537,6 +706,8 @@ export interface Derived {
   oceanDist: Uint16Array;
   /** Estado de cada célula (índice em `states`) ou -1. */
   owner: Int16Array;
+  /** Cultura de cada célula (índice em `cultures`) ou −1. */
+  culture: Int16Array;
   /** Estradas geradas, por tipo: principal (entre capitais), estrada (cidade → capital), trilha. */
   roads: { cells: number[]; type: RouteType; name: string }[];
   /** Pontes: onde uma estrada cruza um rio (posição em células e direção da estrada). */
@@ -614,6 +785,120 @@ export function cellOf(x: number, y: number): number {
   const cx = wrapCol(Math.floor(x));
   const cy = Math.max(0, Math.min(ROWS - 1, Math.floor(y)));
   return cy * COLS + cx;
+}
+
+/*
+ * Clima. Temperatura: quente e quase constante nos trópicos, caindo até os
+ * polos, e −6,5 °C por quilômetro de altitude. Chuva: os ventos predominantes
+ * de cada faixa de latitude (alísios de leste até 30°, ventos de oeste até 60°,
+ * ventos polares de leste depois) carregam a umidade do oceano; sobre a terra
+ * chove, mais ainda ao subir encostas, e do outro lado da serra o ar chega seco
+ * (sombra de chuva). As faixas de latitude chovem diferente (muita chuva no
+ * equador e por volta de 55°, pouca nos desertos subtropicais e nos polos).
+ */
+const RAIN_BY_LAT = [4, 2, 2, 2, 1, 1, 1.2, 2, 2, 2, 3, 3, 2, 2, 1, 1, 1, 0.5];
+
+function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoise>) {
+  const n = COLS * ROWS;
+  const h = map.heights;
+  const temp = new Float32Array(n);
+  const tempC = new Float32Array(n);
+  const noise = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
+    // Média anual ao nível do mar: ~28 °C no equador, ~16 °C a 40°, ~7 °C a 55°, −17 °C no polo.
+    const sea = 28 - 45 * Math.pow(lat / 90, 1.6);
+    const km = land[i] ? (((h[i]! - SEA) / 127) ** 1.6 * 5200) / 1000 : 0;
+    const t = sea - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
+    tempC[i] = t;
+    temp[i] = Math.max(0, Math.min(1, (t + 14) / 42));
+    noise[i] = fbm(x / 9 + 30, y / 9 + 30, 4) * 0.5 + 0.5;
+  }
+
+  // Ventos: cada linha é percorrida no sentido do vento, dando a volta ao mundo
+  // a partir de um ponto de oceano (o ar chega úmido).
+  const rain = new Float32Array(n);
+  for (let y = 0; y < ROWS; y++) {
+    const lat = 90 - ((y + 0.5) / ROWS) * 180;
+    const a = Math.abs(lat);
+    const dir = a < 30 || a >= 60 ? -1 : 1; // leste→oeste (−1) ou oeste→leste (+1)
+    const band = RAIN_BY_LAT[Math.min(RAIN_BY_LAT.length - 1, (a / 5) | 0)]!;
+    const maxHum = 30 * band;
+    let start = -1;
+    for (let x = 0; x < COLS; x++) if (!land[y * COLS + x]) start = x;
+    if (start < 0) continue; // linha toda de terra: sem fonte de umidade
+    let hum = maxHum;
+    for (let k = 1; k <= COLS * 2; k++) {
+      const x = wrapCol(start + dir * k);
+      const i = y * COLS + x;
+      const prev = y * COLS + wrapCol(x - dir);
+      if (!land[i]) {
+        hum = Math.min(maxHum, hum + 6); // o ar se recarrega sobre a água
+        continue;
+      }
+      const rise = Math.max(0, h[i]! - h[prev]!);
+      const e = (h[i]! - SEA) / 127;
+      // Chuva normal + chuva de encosta (o ar sobe, esfria e chove).
+      let p = Math.max(hum / 22, 0.5) + rise * (0.12 + e * 1.0);
+      if (e > 0.82) p = hum; // cordilheira muito alta: despeja tudo, passa seco
+      p = Math.min(p, hum);
+      if (k > COLS) rain[i]! += p; // só a segunda volta conta (o ar já "deu a volta")
+      // Parte da chuva volta ao ar (rios, lagos e plantas evaporam): a umidade avança.
+      hum = Math.max(0, hum - p * 0.55);
+    }
+  }
+  // Um pouco de chuva do mar em toda costa, e suaviza (o ar não é tão preciso).
+  const moistRaw = new Float32Array(n);
+  for (let i = 0; i < n; i++) moistRaw[i] = rain[i]!;
+  let cur = moistRaw;
+  for (let pass = 0; pass < 2; pass++) {
+    const next = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = i % COLS;
+      const y = (i / COLS) | 0;
+      let sum = cur[i]! * 2;
+      let w = 2;
+      for (const [dx, dy] of N8) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= ROWS) continue;
+        const j = ny * COLS + wrapCol(x + dx);
+        if (!land[j]) continue;
+        sum += cur[j]!;
+        w++;
+      }
+      next[i] = sum / w;
+    }
+    cur = next;
+  }
+  // Normaliza pela distribuição das terras (0 = árido, 1 = muito úmido).
+  const vals: number[] = [];
+  for (let i = 0; i < n; i++) if (land[i]) vals.push(cur[i]!);
+  vals.sort((a, b) => a - b);
+  const p95 = vals[Math.floor(vals.length * 0.95)] ?? 1;
+  const moist = new Float32Array(n);
+  for (let i = 0; i < n; i++)
+    moist[i] = land[i]
+      ? Math.sqrt(Math.min(1, cur[i]! / (p95 || 1))) * 0.92 + noise[i]! * 0.08
+      : 0.6;
+  return { temp, tempC, moist, noise };
+}
+
+/** Bioma pela temperatura (°C), umidade (0–1) e altitude (0–1 acima do mar). */
+export function biomeFor(tc: number, m: number, e: number): number {
+  if (e > 0.84) return tc < -2 ? 11 : 13;
+  if (tc < -8) return 11; // gelo permanente
+  if (m > 0.86 && e < 0.08 && tc > 2) return 12; // pântano
+  const band = Math.min(4, Math.floor(m * 5)); // 0 árido … 4 muito úmido
+  if (tc < 0) return band <= 1 ? 10 : 9; // tundra / taiga
+  if (tc < 6) return band === 0 ? 10 : 9;
+  if (tc < 18) {
+    // temperado
+    return band === 0 ? 2 : band === 1 ? 4 : band <= 3 ? 6 : 8;
+  }
+  // quente
+  return band === 0 ? 1 : band === 1 ? 3 : band === 2 ? 5 : band === 3 ? 5 : 7;
 }
 
 export function deriveWorld(map: WorldMap): Derived {
@@ -705,23 +990,7 @@ export function deriveWorld(map: WorldMap): Derived {
 
   const rand = rng(map.options.seed ^ 0x77);
   const fbm = makeNoise(rand);
-  const temp = new Float32Array(n);
-  const moist = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = i % COLS;
-    const y = (i / COLS) | 0;
-    const lat = Math.abs(y / ROWS - 0.5) * 2;
-    const e = land[i] ? (h[i]! - SEA) / 127 : 0;
-    temp[i] = Math.max(
-      0,
-      Math.min(1, 1 - Math.pow(lat, 1.3) - e * 0.55 + fbm(x / 40, y / 40, 3) * 0.08),
-    );
-    const base = fbm(x / 55 + 50, y / 55 + 50, 4) * 0.5 + 0.5;
-    moist[i] = Math.max(
-      0,
-      Math.min(1, base * 0.65 + 0.4 * Math.exp(-coastDist[i]! / 22) - lat * 0.1),
-    );
-  }
+  const { temp, tempC, moist, noise } = climate(map, land, fbm);
 
   // Preenche depressões (priority-flood) para a água sempre ter para onde escorrer.
   const filled = new Float32Array(n);
@@ -805,41 +1074,71 @@ export function deriveWorld(map: WorldMap): Derived {
       });
   }
 
-  // Biomas.
+  // Biomas: matriz de temperatura (°C) × umidade, como no diagrama de Whittaker.
+  // O rio umedece a célula (mata ciliar). Montanhas altas viram rocha/neve.
   const biome = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
     if (!land[i]) continue;
-    const t = temp[i]!;
-    const m = moist[i]!;
     const e = (h[i]! - SEA) / 127;
-    biome[i] =
-      e > 0.84
-        ? t < 0.35
-          ? 11
-          : 13
-        : t < 0.12
-          ? 11
-          : t < 0.28
-            ? m < 0.3
-              ? 10
-              : 9
-            : m > 0.82 && e < 0.08
-              ? 12
-              : t < 0.6
-                ? m < 0.22
-                  ? 2
-                  : m < 0.45
-                    ? 4
-                    : m < 0.7
-                      ? 6
-                      : 8
-                : m < 0.2
-                  ? 1
-                  : m < 0.38
-                    ? 3
-                    : m < 0.62
-                      ? 5
-                      : 7;
+    const tc = tempC[i]!;
+    let m = moist[i]!;
+    if (flux[i]! >= riverMin) m = Math.min(1, m + 0.12);
+    biome[i] = biomeFor(tc, m, e);
+  }
+
+  // Culturas: cada povo se espalha a partir do centro, com custos do seu jeito de
+  // viver (o nômade avança rápido em campos e desertos, o caçador nas matas, o
+  // montanhês nas serras, o navegante pela costa, o ribeirinho pelos rios).
+  const culture = new Int16Array(n).fill(-1);
+  {
+    const cults = map.cultures ?? [];
+    const BIOME_COST = [0, 4, 3, 1.2, 1, 1.4, 1.4, 1.6, 1.8, 4, 10, 40, 3, 6];
+    const cost = new Float64Array(n).fill(Infinity);
+    const q = new Heap();
+    const native: number[] = [];
+    cults.forEach((c, k) => {
+      const i = cellOf(c.x, c.y);
+      native[k] = biome[i]!;
+      if (!land[i]) return;
+      cost[i] = 0;
+      culture[i] = k;
+      q.push(i, 0);
+    });
+    const landCount = land.reduce((a, v) => a + v, 0);
+    const limit = Math.max(80, Math.sqrt(landCount / Math.max(1, cults.length)) * 20);
+    while (q.size) {
+      const i = q.pop();
+      const ci = q.lastKey;
+      if (ci > cost[i]!) continue;
+      const k = culture[i]!;
+      const type = cults[k]!.type;
+      const x = i % COLS;
+      const y = (i / COLS) | 0;
+      for (const [dx, dy] of N8) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= ROWS) continue;
+        const j = ny * COLS + wrapCol(x + dx);
+        if (!land[j]) continue;
+        const b = biome[j]!;
+        const e = (h[j]! - SEA) / 127;
+        let c = b === native[k] ? 0.4 : BIOME_COST[b]!;
+        if (type === "nomade") c *= [1, 2, 3, 4].includes(b) ? 0.35 : 3;
+        else if (type === "cacador") c *= [5, 6, 7, 8, 9].includes(b) ? 0.5 : 2;
+        if (type === "montanhes") c += e > 0.4 ? 0 : 3;
+        else c += e > 0.6 ? 4 : e > 0.4 ? 1 : 0;
+        const onRiver = flux[j]! >= riverMin;
+        if (type === "ribeirinho") c *= onRiver ? 0.3 : 1.5;
+        else if (onRiver) c += 0.8;
+        if (type === "navegante") c *= coastDist[j]! <= 1 ? 0.4 : 1.6;
+        if (type === "lacustre" && coastDist[j]! <= 1 && !ocean[j]) c *= 0.4;
+        const nc = ci + stepLen(dx, dy, y) * (1 + c);
+        if (nc < cost[j]! && nc < limit) {
+          cost[j] = nc;
+          culture[j] = k;
+          q.push(j, nc);
+        }
+      }
+    }
   }
 
   // Estados: cada capital se espalha pela terra, mais devagar em montanhas e desertos.
@@ -1109,7 +1408,9 @@ export function deriveWorld(map: WorldMap): Derived {
   return {
     land,
     temp,
+    tempC,
     moist,
+    noise,
     biome,
     coastDist,
     ocean,
@@ -1119,6 +1420,7 @@ export function deriveWorld(map: WorldMap): Derived {
     riverMin,
     rivers,
     owner,
+    culture,
     roads,
     bridges,
     routes,
@@ -1156,6 +1458,7 @@ export function serializeWorld(map: WorldMap): string {
         states: map.states,
         burgs: map.burgs,
         routes: map.routes ?? [],
+        cultures: map.cultures ?? [],
       },
       null,
       1,
@@ -1237,6 +1540,7 @@ export function parseWorld(raw: string): WorldMap | null {
       if (!id || !ids.has(capital) || states.some((x) => x.capital === capital)) continue;
       const state: WorldState = { id, name: str(s.name, 80) || "Reino", color, capital };
       if (typeof s.noteId === "string" && s.noteId) state.noteId = s.noteId.slice(0, 64);
+      if (STATE_FORMS.includes(s.form as StateForm)) state.form = s.form as StateForm;
       states.push(state);
     }
     const routes: Route[] = [];
@@ -1261,7 +1565,27 @@ export function parseWorld(raw: string): WorldMap | null {
       if (!id || points.length < 2) continue;
       routes.push({ id, name: str(r.name, 80) || "Rota", type, points });
     }
-    return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states, routes };
+    const cultures: Culture[] = [];
+    for (const c of Array.isArray(d.cultures)
+      ? (d.cultures as Record<string, unknown>[]).slice(0, 40)
+      : []) {
+      const id = str(c.id, 64);
+      const cx = num(c.x);
+      const cy = num(c.y);
+      if (!id || cx === null || cy === null) continue;
+      cultures.push({
+        id,
+        name: str(c.name, 80) || "Povo",
+        base: NAME_BASES.some((b) => b.id === c.base) ? (c.base as string) : "lusitana",
+        type: (Object.keys(CULTURE_TYPES).includes(c.type as string)
+          ? c.type
+          : "generico") as CultureType,
+        color: /^#[0-9a-f]{6}$/i.test(str(c.color, 7)) ? str(c.color, 7) : CULTURE_COLORS[0]!,
+        x: Math.max(0, Math.min(COLS, cx * sx)),
+        y: Math.max(0, Math.min(ROWS, cy * sy)),
+      });
+    }
+    return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states, routes, cultures };
   } catch {
     return null;
   }

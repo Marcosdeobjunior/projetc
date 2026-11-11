@@ -15,7 +15,7 @@ import {
  * fronteiras, por marching squares) desenhados por cima a cada quadro.
  */
 
-export type MapMode = "biomas" | "relevo" | "politico";
+export type MapMode = "biomas" | "relevo" | "politico" | "culturas";
 
 /** Pixels por célula na imagem de fundo. */
 export const PX = 3;
@@ -29,7 +29,6 @@ const BIOME_RGB = BIOMES.map((b) => hex(b.color));
 const DEEP = hex("#26486b");
 const SHALLOW = hex("#5d8fb9");
 const COAST_SEA = hex("#86b2d3");
-const SEA_ICE = hex("#e4eef2");
 const SAND = hex("#e6d6a6");
 const ROCK = hex("#8c8376");
 const SNOW = hex("#f5f7f8");
@@ -124,6 +123,7 @@ export function bakeBase(
   const px = img.data;
   const h = map.heights;
   const stateRgb = map.states.map((s) => hex(s.color));
+  const cultureRgb = (map.cultures ?? []).map((c) => hex(c.color));
   for (let py = 0; py < H; py++) {
     for (let pxx = 0; pxx < W; pxx++) {
       const x = (pxx + 0.5) / res;
@@ -136,19 +136,10 @@ export function bakeBase(
         rgb = lerp3(DEEP, SHALLOW, Math.pow(depth, 1.6));
         // Água rasa perto da costa, suave (pela altura interpolada, não pela célula).
         if (v > SEA - 16) rgb = lerp3(rgb, COAST_SEA, ((v - (SEA - 16)) / 16) * 0.4);
-        // Mar congelado perto dos polos.
-        const temp = d.temp[cell]!;
-        // (leve: placas de gelo sobre o mar, sem esconder o mar nem a costa)
-        if (temp < 0.1) {
-          // Placas soltas: onde o ruído de umidade é alto há gelo; o resto é mar aberto.
-          const m = d.moist[cell]!;
-          const floe = Math.max(0, Math.min(1, (m - 0.42) / 0.12));
-          rgb = lerp3(rgb, SEA_ICE, Math.min(0.3, (0.1 - temp) / 0.15) * floe);
-        }
       } else {
         const e = Math.max(0, (v - SEA) / 127);
         if (mode === "relevo") rgb = relief(e);
-        else if (mode === "politico") rgb = POLITICAL_LAND;
+        else if (mode === "politico" || mode === "culturas") rgb = POLITICAL_LAND;
         else {
           // Bordas orgânicas entre biomas: desloca um pouco o ponto de amostra.
           const jx = Math.sin(x * 1.9 + y * 0.7) * 0.45 + Math.sin(y * 3.1 - x * 0.4) * 0.3;
@@ -177,11 +168,15 @@ export function bakeBase(
         // Sombreamento: luz principal do noroeste e luz ambiente; mais forte nas serras.
         const gx = heightAt(h, x + 0.6, y) - heightAt(h, x - 0.6, y);
         const gy = heightAt(h, x, y + 0.6) - heightAt(h, x, y - 0.6);
-        const strength = mode === "politico" ? 0.012 : 0.026 + e * 0.03;
+        const flat = mode === "politico" || mode === "culturas";
+        const strength = flat ? 0.012 : 0.026 + e * 0.03;
         const shade = Math.max(0.5, Math.min(1.28, 1.02 - (gx + gy) * strength));
         rgb = [rgb[0] * shade, rgb[1] * shade, rgb[2] * shade];
         const o = d.owner[cell]!;
-        if ((states || mode === "politico") && o >= 0 && stateRgb[o])
+        const cu = d.culture[cell]!;
+        if (mode === "culturas") {
+          if (cu >= 0 && cultureRgb[cu]) rgb = lerp3(rgb, cultureRgb[cu]!, 0.6);
+        } else if ((states || mode === "politico") && o >= 0 && stateRgb[o])
           rgb = lerp3(rgb, stateRgb[o]!, mode === "politico" ? 0.55 : 0.32);
       }
       const k = (py * W + pxx) * 4;

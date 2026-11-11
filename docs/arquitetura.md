@@ -444,6 +444,15 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   sombreamento) e monta caminhos vetoriais (costa e fronteiras por marching squares, rios e
   estradas suavizados); o canvas desenha isso com zoom/arraste e os rótulos em pixels de tela, sem
   sobreposição.
+- Clima, culturas e nomes (ideias estudadas no Fantasy Map Generator, de código aberto, e
+  reimplementadas aqui): `climate()` em `world/worldgen.ts` calcula a temperatura em °C (trópicos,
+  queda até os polos, −6,5 °C/km) e a chuva por ventos predominantes em faixas de 30° (umidade
+  ganha sobre o mar, perdida sobre a terra, extra nas subidas, ar seco depois de serras altas),
+  suavizada e normalizada; `biomeFor` escolhe o bioma por temperatura × umidade. `placeCultures`
+  põe os centros dos povos (tipo pelo lugar, base de nomes pelo clima) e `deriveWorld` expande cada
+  cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
+  ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
+  regras de população (`world/settlement.ts`).
 - Prévia da cidade (`world/village.ts`, `generateFromGeo`): com `geo` (de `localGeo` em
   `world/settlement.ts`: direção da água num raio de 3 células, do rio pelo `down` e das estradas
   geradas que passam pela cidade, e o visual do bioma), a vila tem mar/lago, rio e estradas nas
