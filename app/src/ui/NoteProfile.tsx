@@ -6,7 +6,7 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
 import { CalendarEditor } from "./CalendarEditor";
-import { NoteFields } from "./NoteFields";
+import { FieldSectionNav, NoteFields } from "./NoteFields";
 import { BirthEditor, TravelEditor, useYearLength } from "./ContinuityEditors";
 import { useTimeline } from "../state/timeline";
 import { ageOn } from "../timeline/timeline";
@@ -152,11 +152,13 @@ export function NoteProfile({
               e.target.value = "";
             }}
           />
+          <FieldSectionNav note={note} />
         </div>
 
         <div className="profile-info">
           <p className="kicker">
             <Icon name={KIND_ICON[note.kind]} size={13} /> {label.one}
+            {note.fields?.papel && <span className="profile-role">{note.fields.papel}</span>}
           </p>
           <h2>{note.title}</h2>
           <div className="profile-stats">
