@@ -268,6 +268,44 @@ export function setNoteImage(p: Project, noteId: string, image: string | null): 
   return { project: touchNotes(p, notes), ops: [] };
 }
 
+/** Junta as imagens de uma nota numa lista (a principal primeiro), sem repetir. */
+export function noteImages(n: Note): string[] {
+  return [...new Set([...(n.image ? [n.image] : []), ...(n.images ?? [])])];
+}
+
+/** Grava a lista de imagens: a primeira é a principal (a do cartão), as outras, a galeria. */
+function withImages(n: Note, list: string[]): Note {
+  const [main, ...rest] = [...new Set(list)];
+  const next = { ...n };
+  if (main) next.image = main;
+  else delete next.image;
+  if (rest.length) next.images = rest;
+  else delete next.images;
+  return next;
+}
+
+function mapImages(p: Project, noteId: string, f: (list: string[]) => string[]): TreeChange {
+  const notes = p.notes.map((n) => (n.id === noteId ? withImages(n, f(noteImages(n))) : n));
+  return { project: touchNotes(p, notes), ops: [] };
+}
+
+/** Acrescenta imagens à ficha (sem principal, a primeira vira a principal). Não mexe em arquivos. */
+export function addNoteImages(p: Project, noteId: string, srcs: string[]): TreeChange {
+  return mapImages(p, noteId, (list) => [...list, ...srcs]);
+}
+
+/** Tira uma imagem da ficha (se era a principal, a próxima assume). O arquivo fica em anexos/. */
+export function removeNoteImage(p: Project, noteId: string, src: string): TreeChange {
+  return mapImages(p, noteId, (list) => list.filter((s) => s !== src));
+}
+
+/** Faz de uma imagem da galeria a principal (a do cartão). */
+export function setMainNoteImage(p: Project, noteId: string, src: string): TreeChange {
+  return mapImages(p, noteId, (list) =>
+    list.includes(src) ? [src, ...list.filter((s) => s !== src)] : list,
+  );
+}
+
 /** Troca os campos da ficha de uma nota (vazio tira). Não mexe em arquivos. */
 export function setNoteFields(
   p: Project,

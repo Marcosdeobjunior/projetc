@@ -219,9 +219,11 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
   calendário**, **Novo idioma**, **Nova organização**) cria a nota e abre a ficha. Cada tipo fica
   numa subpasta de `notas/` (`calendarios/`, `idiomas/`, `organizacoes/`…).
 - **Ficha:** clique no cartão para abrir a página própria da nota, com:
-  - a **imagem** (retrato do personagem, foto do lugar): **Escolher imagem**, ou arraste uma
-    imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
-    remove da ficha (o arquivo continua em Anexos);
+  - as **imagens** (retratos do personagem, fotos do lugar): **Escolher imagens** (pode marcar
+    várias de uma vez), ou arraste uma ou mais para o quadro. Elas são copiadas para `anexos/`.
+    Com mais de uma, aparecem miniaturas embaixo: clique para ver a imagem em tamanho grande. A
+    **principal** (marcada assim) é a que aparece no cartão; **Tornar principal** troca. **Tirar**
+    remove a imagem da ficha (o arquivo continua em Anexos);
   - o nome, o tipo e os **campos da ficha**, que mudam conforme o tipo:
     - **personagem:** uma ficha em 12 seções, para construir o personagem por dentro: **1. Base**
       (papel na história — protagonista, antagonista ou coadjuvante —, nome completo, apelidos,

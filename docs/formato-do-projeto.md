@@ -111,7 +111,8 @@ A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tál
 | `notes[].title`     | string  | Título da nota (também usado para as menções no texto)                                                                                                                                                                 |
 | `notes[].kind`      | string  | `"personagens"`, `"lugares"`, `"ideias"`, `"calendarios"`, `"idiomas"` ou `"organizacoes"` (a subpasta em `notas/`)                                                                                                    |
 | `notes[].file`      | string  | Nome do `.md` dentro de `notas/<kind>/`                                                                                                                                                                                |
-| `notes[].image`     | string  | Opcional. Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Outro valor é ignorado ao abrir                                                                                                                |
+| `notes[].image`     | string  | Opcional. Imagem principal da ficha (retrato, foto do lugar; a do cartão): `anexos/<arquivo>`. Outro valor é ignorado ao abrir                                                                                         |
+| `notes[].images`    | array   | Opcional. Outras imagens da ficha (galeria), além da principal; cada uma `anexos/<arquivo>`. Inválidas ou repetidas são ignoradas ao abrir; no sync, a lista inteira vale como um valor                                |
 | `notes[].fields`    | objeto  | Opcional. Campos da ficha (`manuscript/fields.ts`): chave → texto; campos de referência guardam o id de outra nota. Chaves inválidas ou valores que não são texto são ignorados ao abrir; no sync, junta campo a campo |
 
 Exemplo:

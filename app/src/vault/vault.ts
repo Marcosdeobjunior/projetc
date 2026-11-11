@@ -67,6 +67,13 @@ export async function loadProject(fs: VaultFs): Promise<Project> {
     notes: (data.notes ?? []).map((n) => {
       const rest = { ...n };
       if (n.image !== undefined && !validNoteImage(n.image)) delete rest.image;
+      const images = Array.isArray(n.images)
+        ? [...new Set(n.images.filter(validNoteImage))]
+            .filter((s) => s !== rest.image)
+            .slice(0, 100)
+        : [];
+      if (images.length) rest.images = images;
+      else delete rest.images;
       const fields = sanitizeFields(n.fields);
       if (fields) rest.fields = fields;
       else delete rest.fields;

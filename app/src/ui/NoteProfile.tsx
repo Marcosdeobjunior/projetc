@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp, type Session } from "../state/store";
-import { findDoc, setNoteImage } from "../manuscript/tree";
+import {
+  addNoteImages,
+  findDoc,
+  noteImages,
+  removeNoteImage,
+  setMainNoteImage,
+} from "../manuscript/tree";
 import type { Note } from "../manuscript/types";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
@@ -49,12 +55,16 @@ export function NoteProfile({
   const change = useApp((s) => s.change);
   const openDoc = useApp((s) => s.openDoc);
   const addAttachments = useApp((s) => s.addAttachments);
-  const image = useAttachmentImage(note.image);
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const { project, texts, attachments } = session;
   const label = KIND_LABEL[note.kind];
-  const missing = note.image ? !attachments.includes(note.image.slice("anexos/".length)) : false;
+  // Todas as imagens (a principal primeiro); a grande mostra a escolhida na galeria.
+  const gallery = noteImages(note);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const shown = viewing && gallery.includes(viewing) ? viewing : (gallery[0] ?? undefined);
+  const image = useAttachmentImage(shown);
+  const missing = shown ? !attachments.includes(shown.slice("anexos/".length)) : false;
 
   const scenes = links
     .map((id) => findDoc(project, id))
@@ -82,13 +92,17 @@ export function NoteProfile({
     return `Dia ${d.day}` + (age !== null ? ` · ${age} ${age === 1 ? "ano" : "anos"}` : "");
   };
 
-  const pickImage = async (files: File[]) => {
-    const file = files.find((f) => f.type.startsWith("image/"));
-    if (!file) return;
+  const pickImages = async (files: File[]) => {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (!images.length) return;
     setBusy(true);
     try {
-      const [added] = await addAttachments([file]);
-      if (added) void change((p) => setNoteImage(p, note.id, added.src));
+      const added = await addAttachments(images);
+      if (added.length) {
+        const srcs = added.map((a) => a.src);
+        void change((p) => addNoteImages(p, note.id, srcs));
+        setViewing(srcs[0]!);
+      }
     } finally {
       setBusy(false);
     }
@@ -107,22 +121,38 @@ export function NoteProfile({
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
-              void pickImage([...e.dataTransfer.files]);
+              void pickImages([...e.dataTransfer.files]);
             }}
           >
             {image ? (
               <img src={image} alt={`Imagem de ${note.title}`} />
+            ) : shown && !missing ? (
+              <span />
             ) : (
               <span>
                 <Icon name={KIND_ICON[note.kind]} size={36} />
                 <small>
                   {missing
                     ? "A imagem não está mais em anexos/."
-                    : "Sem imagem. Escolha uma ou arraste para cá."}
+                    : "Sem imagem. Escolha uma ou mais, ou arraste para cá."}
                 </small>
               </span>
             )}
           </div>
+          {gallery.length > 1 && (
+            <ul className="profile-thumbs" aria-label="Imagens da ficha">
+              {gallery.map((src, i) => (
+                <li key={src}>
+                  <Thumb
+                    src={src}
+                    active={src === shown}
+                    main={i === 0}
+                    onClick={() => setViewing(src)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="profile-photo-actions">
             <button
               type="button"
@@ -130,13 +160,25 @@ export function NoteProfile({
               disabled={busy}
               onClick={() => input.current?.click()}
             >
-              <Icon name="image" size={14} /> {note.image ? "Trocar imagem" : "Escolher imagem"}
+              <Icon name="image" size={14} />{" "}
+              {gallery.length ? "Adicionar imagens" : "Escolher imagens"}
             </button>
-            {note.image && (
+            {shown && gallery[0] !== shown && (
               <button
                 type="button"
                 className="btn ghost sm"
-                onClick={() => void change((p) => setNoteImage(p, note.id, null))}
+                title="Esta passa a ser a imagem do cartão"
+                onClick={() => void change((p) => setMainNoteImage(p, note.id, shown))}
+              >
+                Tornar principal
+              </button>
+            )}
+            {shown && (
+              <button
+                type="button"
+                className="btn ghost sm"
+                title="Tira da ficha (o arquivo continua em Anexos)"
+                onClick={() => void change((p) => removeNoteImage(p, note.id, shown))}
               >
                 Tirar
               </button>
@@ -147,8 +189,9 @@ export function NoteProfile({
             type="file"
             accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
             hidden
+            multiple
             onChange={(e) => {
-              void pickImage([...(e.target.files ?? [])]);
+              void pickImages([...(e.target.files ?? [])]);
               e.target.value = "";
             }}
           />
@@ -235,5 +278,32 @@ export function NoteProfile({
         </aside>
       </div>
     </div>
+  );
+}
+
+/** Miniatura de uma imagem da galeria da ficha. */
+function Thumb({
+  src,
+  active,
+  main,
+  onClick,
+}: {
+  src: string;
+  active: boolean;
+  main: boolean;
+  onClick(): void;
+}) {
+  const url = useAttachmentImage(src);
+  return (
+    <button
+      type="button"
+      className={"profile-thumb" + (active ? " active" : "")}
+      aria-pressed={active}
+      title={main ? "Imagem principal (a do cartão)" : "Ver esta imagem"}
+      onClick={onClick}
+    >
+      {url ? <img src={url} alt="" /> : <Icon name="image" size={16} />}
+      {main && <span className="profile-thumb-main">Principal</span>}
+    </button>
   );
 }
