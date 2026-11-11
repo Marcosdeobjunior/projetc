@@ -444,6 +444,13 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   sombreamento) e monta caminhos vetoriais (costa e fronteiras por marching squares, rios e
   estradas suavizados); o canvas desenha isso com zoom/arraste e os rótulos em pixels de tela, sem
   sobreposição.
+- Mapa ↔ Mundo (`world/worldNotes.ts`, chamado por `useWorldMap.reconcile`): cada estado e cidade
+  tem um lugar (`noteId`). `syncWorldNotes` liga/cria os lugares (aproveitando título igual), puxa
+  os nomes das fichas e tira do mapa o que foi apagado no Mundo (ou recria, ao desfazer);
+  `applyWorldFields` preenche `tipo` e `regiao` só onde estão vazios ou foram postos pelo mapa;
+  `retireNotes` manda para a lixeira os lugares que saíram do mapa e nunca foram mexidos. A
+  reconciliação roda depois de cada mudança no mapa e quando as notas do projeto mudam (com o mapa
+  aberto), dentro de `change` (fila única).
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença
