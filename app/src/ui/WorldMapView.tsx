@@ -43,7 +43,14 @@ import {
   type WorldMap,
   type WorldOptions,
 } from "../world/worldgen";
-import { bakeBase, buildVectors, coastPath, type MapMode } from "../world/worldRender";
+import {
+  bakeBase,
+  buildProvinceVectors,
+  buildVectors,
+  coastPath,
+  type MapMode,
+} from "../world/worldRender";
+import { deriveSociety, MARKER_TYPES } from "../world/society";
 import { settlementInfo } from "../world/settlement";
 import { drawWorld, KM_PER_CELL, stateMask, type BurgMeta } from "./worldDraw";
 import { Icon } from "./Icon";
@@ -87,7 +94,9 @@ const LAYERS = [
   ["estradas", "Rotas e estradas"],
   ["fronteiras", "Fronteiras"],
   ["estados", "Cor dos estados"],
+  ["provincias", "Províncias"],
   ["cidades", "Cidades"],
+  ["marcadores", "Marcadores"],
   ["rotulos", "Nomes"],
 ] as const;
 type Layer = (typeof LAYERS)[number][0];
@@ -281,6 +290,8 @@ function WorldEditor({
     estados: true,
     cidades: true,
     rotulos: true,
+    provincias: true,
+    marcadores: true,
   });
   const [brush, setBrush] = useState(8);
   // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
@@ -327,10 +338,23 @@ function WorldEditor({
     [map.heights, geoKey],
   );
   const derived = useMemo(() => deriveWorld(geo), [geo]);
-  const base = useMemo(
-    () => bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados),
+  // Províncias, religiões e marcadores (dependem também dos nomes e das formas de governo).
+  const socKey =
+    map.states.map((s) => s.form ?? "").join("|") + map.burgs.map((b) => b.name).join("|");
+  const society = useMemo(
+    () => deriveSociety({ ...geo, states: map.states, burgs: map.burgs }, derived),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [geo, derived, mode, layers.estados, colorKey],
+    [geo, derived, socKey],
+  );
+  const provinceVectors = useMemo(() => buildProvinceVectors(society, derived), [society, derived]);
+  const base = useMemo(
+    () =>
+      bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados, undefined, {
+        cells: society.religion,
+        colors: society.religions.map((r) => r.color),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [geo, derived, mode, layers.estados, colorKey, mode === "religioes" ? society : null],
   );
   const fullVectors = useMemo(() => buildVectors(geo, derived), [geo, derived]);
   // Enquanto pinta: só o relevo e a costa são refeitos (em resolução menor);
@@ -340,7 +364,7 @@ function WorldEditor({
       painted
         ? bakeBase(
             { ...geo, heights: painted, states: map.states },
-            derived,
+            { ...derived, eff: painted },
             mode,
             layers.estados,
             1,
@@ -465,6 +489,8 @@ function WorldEditor({
       view,
       size,
       layers,
+      society,
+      provinceVectors,
       capitals,
       meta,
       selectedBurg: selected?.kind === "burg" ? selected.id : null,
@@ -494,6 +520,8 @@ function WorldEditor({
     brush,
     tool,
     draft,
+    society,
+    provinceVectors,
   ]);
 
   /** Exporta o mapa inteiro como imagem PNG (em alta resolução). */
@@ -514,6 +542,8 @@ function WorldEditor({
       view: { s: scale, x: 0, y: 0 },
       size: { w, h },
       layers,
+      society,
+      provinceVectors,
       capitals,
       meta,
       furniture: true,
@@ -568,7 +598,7 @@ function WorldEditor({
   const finishRoute = (pts = draft) => {
     setDraft([]);
     if (pts.length < 2) return;
-    const wet = (p: [number, number]) => map.heights[cellOf(p[0], p[1])]! < SEA;
+    const wet = (p: [number, number]) => !derived.land[cellOf(p[0], p[1])];
     const r: Route = {
       id: newId("r"),
       name: "Nova rota",
@@ -693,7 +723,7 @@ function WorldEditor({
       else setDraft([...draft, pt]);
     } else if (tool === "cidade") {
       const c = cellOf(x, y);
-      if (map.heights[c]! < SEA) return;
+      if (!derived.land[c]) return;
       const placed = placing ? session.project.notes.find((n) => n.id === placing) : undefined;
       const b: Burg = placed
         ? { id: newId("c"), name: placed.title, x, y, noteId: placed.id }
@@ -724,6 +754,19 @@ function WorldEditor({
     const lat = 90 - (y / ROWS) * 180;
     const lon = (x / COLS) * 360 - 180;
     const coord = `${Math.abs(lat).toFixed(0)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(0)}°${lon >= 0 ? "L" : "O"}`;
+    // Marcador sob o mouse: nome e lenda.
+    if (layers.marcadores) {
+      const r = 9 / view.s;
+      const m = society.markers.find((m) => Math.hypot(m.x - x, m.y - y) < r);
+      if (m) return `${MARKER_TYPES[m.type].label}: ${m.name} — ${m.legend}`;
+    }
+    const prov = society.provinces[society.province[c]!]?.name;
+    const rel = society.religions[society.religion[c]!]?.name;
+    const lake = derived.lake[c]! >= 0 ? derived.lakes[derived.lake[c]!] : undefined;
+    if (lake && painted === null)
+      return [lake.name, lake.salty ? "água salgada, sem saída" : "água doce", st, coord]
+        .filter(Boolean)
+        .join(" · ");
     return [
       h >= SEA
         ? BIOMES[derived.biome[c]!]!.name
@@ -731,7 +774,9 @@ function WorldEditor({
           ? "Mar congelado"
           : "Mar",
       st,
+      prov,
       cu ? `povo ${cu}` : null,
+      rel,
       `${metres.toLocaleString("pt-BR")} m`,
       coord,
     ]
@@ -1100,6 +1145,7 @@ function WorldEditor({
                   ["relevo", "Relevo"],
                   ["politico", "Político"],
                   ["culturas", "Culturas"],
+                  ["religioes", "Religiões"],
                 ] as const
               ).map(([v, l]) => (
                 <button
@@ -1332,6 +1378,27 @@ function WorldEditor({
                     <p className="wm-meta">
                       {Math.round((cells / land) * 100)}% das terras · {cities.length} cidades
                     </p>
+                    {society.provinces.some((p) => p.state === k) && (
+                      <div className="wm-provinces">
+                        <span>Províncias</span>
+                        <ul>
+                          {society.provinces
+                            .filter((p) => p.state === k)
+                            .map((p) => (
+                              <li key={p.seat}>
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  onClick={() => setSelected({ kind: "burg", id: p.seat })}
+                                  title="Abrir a sede da província"
+                                >
+                                  {p.name}
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                     {cap && (
                       <button
                         type="button"
@@ -1451,6 +1518,39 @@ function WorldEditor({
                     </div>
                   </li>
                 ))}
+              </ul>
+            </section>
+          )}
+          {mode === "religioes" && society.religions.length > 0 && (
+            <section className="profile-card wm-legend wm-cultures">
+              <h3>Religiões</h3>
+              <ul>
+                {society.religions.map((r) => (
+                  <li key={r.name} title={`Divindade: ${r.deity}`}>
+                    <span style={{ background: r.color }} />
+                    <div>
+                      {r.name}
+                      <small>
+                        {r.type} · {r.form}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {layers.marcadores && society.markers.length > 0 && (
+            <section className="profile-card wm-legend wm-markers">
+              <h3>Marcadores</h3>
+              <ul>
+                {(Object.keys(MARKER_TYPES) as (keyof typeof MARKER_TYPES)[])
+                  .filter((k) => society.markers.some((m) => m.type === k))
+                  .map((k) => (
+                    <li key={k}>
+                      <span className="wm-marker-icon">{MARKER_TYPES[k].icon}</span>
+                      {MARKER_TYPES[k].label}
+                    </li>
+                  ))}
               </ul>
             </section>
           )}

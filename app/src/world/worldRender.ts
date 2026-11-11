@@ -1,3 +1,4 @@
+import type { Society } from "./society";
 import {
   BIOMES,
   COLS,
@@ -15,7 +16,7 @@ import {
  * fronteiras, por marching squares) desenhados por cima a cada quadro.
  */
 
-export type MapMode = "biomas" | "relevo" | "politico" | "culturas";
+export type MapMode = "biomas" | "relevo" | "politico" | "culturas" | "religioes";
 
 /** Pixels por célula na imagem de fundo. */
 export const PX = 3;
@@ -30,6 +31,7 @@ const DEEP = hex("#26486b");
 const SHALLOW = hex("#5d8fb9");
 const COAST_SEA = hex("#86b2d3");
 const SAND = hex("#e6d6a6");
+const SALT_LAKE = hex("#b9d8cf");
 const ROCK = hex("#8c8376");
 const SNOW = hex("#f5f7f8");
 const POLITICAL_LAND = hex("#efe6d0");
@@ -112,6 +114,8 @@ export function bakeBase(
   states: boolean,
   /** Pixels por célula (menos = mais rápido, usado ao pintar o relevo). */
   res = PX,
+  /** Religião de cada célula e as cores (modo "religioes"). */
+  faith?: { cells: Int16Array; colors: string[] },
 ): HTMLCanvasElement {
   const W = COLS * res;
   const H = ROWS * res;
@@ -121,9 +125,11 @@ export function bakeBase(
   const ctx = canvas.getContext("2d")!;
   const img = ctx.createImageData(W, H);
   const px = img.data;
-  const h = map.heights;
+  // Alturas efetivas: os lagos aparecem como água.
+  const h = d.eff;
   const stateRgb = map.states.map((s) => hex(s.color));
   const cultureRgb = (map.cultures ?? []).map((c) => hex(c.color));
+  const faithRgb = (faith?.colors ?? []).map(hex);
   for (let py = 0; py < H; py++) {
     for (let pxx = 0; pxx < W; pxx++) {
       const x = (pxx + 0.5) / res;
@@ -136,10 +142,14 @@ export function bakeBase(
         rgb = lerp3(DEEP, SHALLOW, Math.pow(depth, 1.6));
         // Água rasa perto da costa, suave (pela altura interpolada, não pela célula).
         if (v > SEA - 16) rgb = lerp3(rgb, COAST_SEA, ((v - (SEA - 16)) / 16) * 0.4);
+        // Lago salgado: água mais clara e esverdeada.
+        const lk = d.lake[cell]!;
+        if (lk >= 0 && d.lakes[lk]?.salty) rgb = lerp3(rgb, SALT_LAKE, 0.55);
       } else {
         const e = Math.max(0, (v - SEA) / 127);
         if (mode === "relevo") rgb = relief(e);
-        else if (mode === "politico" || mode === "culturas") rgb = POLITICAL_LAND;
+        else if (mode === "politico" || mode === "culturas" || mode === "religioes")
+          rgb = POLITICAL_LAND;
         else {
           // Bordas orgânicas entre biomas: desloca um pouco o ponto de amostra.
           const jx = Math.sin(x * 1.9 + y * 0.7) * 0.45 + Math.sin(y * 3.1 - x * 0.4) * 0.3;
@@ -168,7 +178,7 @@ export function bakeBase(
         // Sombreamento: luz principal do noroeste e luz ambiente; mais forte nas serras.
         const gx = heightAt(h, x + 0.6, y) - heightAt(h, x - 0.6, y);
         const gy = heightAt(h, x, y + 0.6) - heightAt(h, x, y - 0.6);
-        const flat = mode === "politico" || mode === "culturas";
+        const flat = mode === "politico" || mode === "culturas" || mode === "religioes";
         const strength = flat ? 0.012 : 0.026 + e * 0.03;
         const shade = Math.max(0.5, Math.min(1.28, 1.02 - (gx + gy) * strength));
         rgb = [rgb[0] * shade, rgb[1] * shade, rgb[2] * shade];
@@ -176,6 +186,9 @@ export function bakeBase(
         const cu = d.culture[cell]!;
         if (mode === "culturas") {
           if (cu >= 0 && cultureRgb[cu]) rgb = lerp3(rgb, cultureRgb[cu]!, 0.6);
+        } else if (mode === "religioes") {
+          const r = faith?.cells[cell] ?? -1;
+          if (r >= 0 && faithRgb[r]) rgb = lerp3(rgb, faithRgb[r]!, 0.6);
         } else if ((states || mode === "politico") && o >= 0 && stateRgb[o])
           rgb = lerp3(rgb, stateRgb[o]!, mode === "politico" ? 0.55 : 0.32);
       }
@@ -331,6 +344,53 @@ export function cellsPath(
   return path;
 }
 
+/**
+ * Rio em trechos que engrossam rio abaixo (a largura cresce com a raiz da vazão),
+ * com meandros onde o terreno é plano. Nasce fino (ou na margem de um lago) e
+ * termina na margem, sem entrar na água.
+ */
+function riverPieces(r: Derived["rivers"][number], d: Derived) {
+  const raw = unwrap([
+    ...(r.source ? [[r.source[0], r.source[1]] as [number, number]] : []),
+    ...r.cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as [number, number]),
+    ...(r.mouth ? [[r.mouth[0], r.mouth[1]] as [number, number]] : []),
+  ]);
+  const off = r.source ? 1 : 0;
+  // Vazão em cada ponto (as pontas usam a célula vizinha).
+  const flow = raw.map((_, k) => {
+    const c = r.cells[Math.max(0, Math.min(r.cells.length - 1, k - off))]!;
+    return d.flux[c]!;
+  });
+  // Meandros: desvio lateral suave nos pontos do meio, maior na planície.
+  const pts = raw.map((p, k) => {
+    if (k === 0 || k === raw.length - 1) return p;
+    const [ax, ay] = raw[k - 1]!;
+    const [bx, by] = raw[k + 1]!;
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    const c = r.cells[Math.max(0, Math.min(r.cells.length - 1, k - off))]!;
+    const flat = Math.max(0, 1 - Math.abs(d.eff[c]! - SEA) / 40);
+    const m = Math.sin(c * 1.618 + k * 2.1) * 0.22 * flat;
+    return [p[0] - ((by - ay) / len) * m, p[1] + ((bx - ax) / len) * m] as [number, number];
+  });
+  const smooth = chaikin(pts, 2);
+  const widthAt = (k: number) => {
+    const f = flow[Math.min(flow.length - 1, Math.round(k / 4))]!;
+    return Math.min(3.2, 0.25 + Math.sqrt(f / Math.max(1, d.riverMin)) * 0.75);
+  };
+  // Trechos de ~8 pontos, que se encostam (o último ponto de um é o primeiro do outro).
+  const pieces: { path: Path2D; width: number; butt: boolean }[] = [];
+  for (let s = 0; s < smooth.length - 1; s += 8) {
+    const e = Math.min(smooth.length - 1, s + 8);
+    const path = new Path2D();
+    path.moveTo(smooth[s]![0], smooth[s]![1]);
+    for (let k = s + 1; k <= e; k++) path.lineTo(smooth[k]![0], smooth[k]![1]);
+    // Ponta reta onde encosta na água (foz ou saída de lago); redonda nas emendas.
+    const butt = (e === smooth.length - 1 && !!r.mouth) || (s === 0 && !!r.source);
+    pieces.push({ path, width: widthAt((s + e) / 2), butt });
+  }
+  return { pieces, width: r.width };
+}
+
 /** Só a linha da costa (rápida, para a prévia enquanto pinta). */
 export function coastPath(heights: Uint8Array): Path2D {
   return segmentsPath(contour((i) => heights[i]!, SEA - 0.5));
@@ -338,7 +398,7 @@ export function coastPath(heights: Uint8Array): Path2D {
 
 /** Costa e fronteiras como caminhos vetoriais. */
 export function buildVectors(map: WorldMap, d: Derived) {
-  const h = map.heights;
+  const h = d.eff;
   const coast = segmentsPath(contour((i) => h[i]!, SEA - 0.5));
   const borders = new Path2D();
   for (let k = 0; k < map.states.length; k++) {
@@ -350,10 +410,20 @@ export function buildVectors(map: WorldMap, d: Derived) {
     );
     borders.addPath(segmentsPath(seg));
   }
-  const rivers = d.rivers.map((r) => ({
-    path: cellsPath(r.cells, new Path2D(), r.mouth),
-    width: r.width,
-  }));
+  const rivers = d.rivers.map((r) => riverPieces(r, d));
+  // Nome de cada lago no centro dele.
+  const lakeLabels = d.lakes
+    .filter((lk) => lk.cells.length >= 4)
+    .map((lk) => {
+      let cx = 0;
+      let cy = 0;
+      const pts = unwrap(lk.cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5]));
+      for (const [x, y] of pts) {
+        cx += x;
+        cy += y;
+      }
+      return { name: lk.name, x: cx / pts.length, y: cy / pts.length, area: lk.cells.length };
+    });
   const roads: Record<RouteType, Path2D> = {
     principal: new Path2D(),
     estrada: new Path2D(),
@@ -432,5 +502,56 @@ export function buildVectors(map: WorldMap, d: Derived) {
     }
     return { x: (best % COLS) + 0.5, y: Math.floor(best / COLS) + 0.5, area: s.n };
   });
-  return { coast, borders, rivers, roads, namedRoads, bridges: d.bridges, routes, labels };
+  return {
+    coast,
+    borders,
+    rivers,
+    lakeLabels,
+    roads,
+    namedRoads,
+    bridges: d.bridges,
+    routes,
+    labels,
+  };
+}
+
+/** Fronteiras entre províncias (só dentro de um mesmo estado) e o ponto do nome de cada uma. */
+export function buildProvinceVectors(soc: Society, d: Derived) {
+  const borders = new Path2D();
+  soc.provinces.forEach((_, k) => {
+    const seg = contour(
+      (i) => (soc.province[i] === k ? 1 : 0),
+      0.5,
+      (i) => {
+        const o = d.owner[i];
+        return (
+          !d.land[i] ||
+          !d.land[i + 1] ||
+          !d.land[i + COLS] ||
+          !d.land[i + COLS + 1] ||
+          d.owner[i + 1] !== o ||
+          d.owner[i + COLS] !== o ||
+          d.owner[i + COLS + 1] !== o
+        );
+      },
+    );
+    borders.addPath(segmentsPath(seg));
+  });
+  const sums = soc.provinces.map(() => ({ c: 0, s: 0, y: 0, n: 0 }));
+  for (let i = 0; i < COLS * ROWS; i++) {
+    const p = soc.province[i]!;
+    if (p < 0) continue;
+    const s = sums[p]!;
+    const a = ((i % COLS) / COLS) * Math.PI * 2;
+    s.c += Math.cos(a);
+    s.s += Math.sin(a);
+    s.y += Math.floor(i / COLS);
+    s.n++;
+  }
+  const labels = sums.map((s, k) => {
+    if (!s.n) return null;
+    const x = ((((Math.atan2(s.s, s.c) / (Math.PI * 2)) * COLS) % COLS) + COLS) % COLS;
+    return { name: soc.provinces[k]!.name, x, y: s.y / s.n + 0.5, area: s.n };
+  });
+  return { borders, labels };
 }

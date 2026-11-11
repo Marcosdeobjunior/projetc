@@ -6,7 +6,8 @@ import {
   type RouteType,
   type WorldMap,
 } from "../world/worldgen";
-import type { buildVectors } from "../world/worldRender";
+import type { buildProvinceVectors, buildVectors } from "../world/worldRender";
+import { MARKER_TYPES, type Society } from "../world/society";
 
 /*
  * Desenho do mapa-múndi num canvas (tela ou exportação): fundo assado,
@@ -32,7 +33,11 @@ export interface DrawOptions {
   vectors: ReturnType<typeof buildVectors>;
   view: View;
   size: { w: number; h: number };
-  layers: Record<"rios" | "estradas" | "fronteiras" | "estados" | "cidades" | "rotulos", boolean>;
+  layers: Record<"rios" | "estradas" | "fronteiras" | "estados" | "cidades" | "rotulos", boolean> &
+    Partial<Record<"provincias" | "marcadores", boolean>>;
+  /** Províncias e marcadores (derivados do mapa). */
+  society?: Society | null;
+  provinceVectors?: ReturnType<typeof buildProvinceVectors> | null;
   capitals: Set<string>;
   meta: Map<string, BurgMeta>;
   selectedBurg?: string | null;
@@ -246,13 +251,16 @@ function drawCopy(
   ctx.stroke(vectors.coast);
   if (layers.rios) {
     ctx.strokeStyle = "#4f86b8";
-    // Ponta reta: a foz termina na costa, sem avançar sobre o mar.
-    ctx.lineCap = "butt";
-    for (const r of vectors.rivers) {
-      // Espessura em pixels de tela (cresce pouco com o zoom).
-      ctx.lineWidth = px * (0.7 + r.width * 0.8) * Math.min(2, Math.sqrt(view.s / 3));
-      ctx.stroke(r.path);
-    }
+    // O rio engrossa rio abaixo; ponta reta na foz (termina na margem, sem
+    // avançar sobre o mar ou o lago) e emendas redondas entre os trechos.
+    ctx.lineJoin = "round";
+    const zoom = Math.min(2, Math.sqrt(view.s / 3));
+    for (const r of vectors.rivers)
+      for (const p of r.pieces) {
+        ctx.lineCap = p.butt ? "butt" : "round";
+        ctx.lineWidth = px * (0.45 + p.width * 0.75) * zoom;
+        ctx.stroke(p.path);
+      }
     ctx.lineCap = "round";
   }
   if (layers.estradas) {
@@ -345,6 +353,14 @@ function drawCopy(
     }
     ctx.setLineDash([]);
   }
+  if (layers.provincias && o.provinceVectors) {
+    // Províncias: linha fina pontilhada, mais discreta que a fronteira do estado.
+    ctx.strokeStyle = "rgba(70,40,50,0.45)";
+    ctx.lineWidth = px * 0.8;
+    ctx.setLineDash([px * 1.5, px * 2.5]);
+    ctx.stroke(o.provinceVectors.borders);
+    ctx.setLineDash([]);
+  }
   if (layers.fronteiras) {
     ctx.strokeStyle = "rgba(60,30,40,0.75)";
     ctx.lineWidth = px * 1.6;
@@ -431,6 +447,84 @@ function drawCopy(
       ctx.fillStyle = r.type === "maritima" ? "#16304f" : "#4a2f1a";
       ctx.fillText(r.name, 0, -4);
       ctx.restore();
+    }
+  }
+  if (layers.marcadores && o.society) {
+    // Marcadores: ícone num disco claro, de tamanho fixo na tela.
+    // De longe, ícones menores; os nomes só bem de perto e onde couberem.
+    const r = view.s > 6 ? 9 : view.s > 4 ? 7.5 : 6;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${r * 1.25}px system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+    for (const m of o.society.markers) {
+      const [sx, sy] = toS(m.x, m.y);
+      if (sx < -20 || sy < -20 || sx > size.w + 20 || sy > size.h + 20) continue;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,250,238,0.92)";
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(60,40,30,0.55)";
+      ctx.stroke();
+      ctx.fillStyle = "#2b2a26";
+      ctx.fillText(MARKER_TYPES[m.type].icon, sx, sy + 0.5);
+      placed.push([sx - r, sy - r, sx + r, sy + r]);
+    }
+    for (const m of o.society.markers) {
+      if (!layers.rotulos || view.s < 9) break;
+      const [sx, sy] = toS(m.x, m.y);
+      if (sx < -20 || sy < -20 || sx > size.w + 20 || sy > size.h + 20) continue;
+      ctx.font = `italic 500 10.5px ${SERIF}`;
+      const tw = ctx.measureText(m.name).width;
+      if (!free(sx - tw / 2, sy + r + 2, tw, 12)) continue;
+      placed.push([sx - tw / 2, sy + r + 2, sx + tw / 2, sy + r + 14]);
+      {
+        ctx.save();
+        ctx.font = `italic 500 10.5px ${SERIF}`;
+        ctx.textBaseline = "top";
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255,250,235,0.85)";
+        ctx.strokeText(m.name, sx, sy + r + 2);
+        ctx.fillStyle = "#3b2a1a";
+        ctx.fillText(m.name, sx, sy + r + 2);
+        ctx.restore();
+      }
+    }
+  }
+  if (layers.rotulos && layers.provincias && o.provinceVectors && view.s > 4.5) {
+    // Nome das províncias (pequeno, em itálico), onde couber.
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `italic 500 10.5px ${SERIF}`;
+    for (const l of o.provinceVectors.labels) {
+      if (!l || Math.sqrt(l.area) * view.s < 60) continue;
+      const [sx, sy] = toS(l.x, l.y);
+      const tw = ctx.measureText(l.name).width;
+      if (!free(sx - tw / 2, sy - 6, tw, 12)) continue;
+      placed.push([sx - tw / 2, sy - 6, sx + tw / 2, sy + 6]);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(245,238,220,0.75)";
+      ctx.strokeText(l.name, sx, sy);
+      ctx.fillStyle = "rgba(70,45,50,0.9)";
+      ctx.fillText(l.name, sx, sy);
+    }
+  }
+  if (layers.rotulos && layers.rios) {
+    // Nome dos lagos (os grandes primeiro; os pequenos só de perto).
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const l of [...vectors.lakeLabels].sort((a, b) => b.area - a.area)) {
+      if (Math.sqrt(l.area) * view.s < 14) continue;
+      const [sx, sy] = toS(l.x, l.y);
+      ctx.font = `italic 600 11px ${SERIF}`;
+      const tw = ctx.measureText(l.name).width;
+      if (!free(sx - tw / 2, sy - 7, tw, 14)) continue;
+      placed.push([sx - tw / 2, sy - 7, sx + tw / 2, sy + 7]);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(235,244,250,0.85)";
+      ctx.strokeText(l.name, sx, sy);
+      ctx.fillStyle = "#1f4c73";
+      ctx.fillText(l.name, sx, sy);
     }
   }
   if (layers.rotulos) {

@@ -211,7 +211,7 @@ const ROW_COS = Array.from({ length: 180 }, (_, y) =>
   Math.max(0.12, Math.cos(Math.PI / 2 - ((y + 0.5) / 180) * Math.PI)),
 );
 /** Comprimento de um passo entre células vizinhas, medido sobre a esfera. */
-const stepLen = (dx: number, dy: number, y: number) => Math.hypot(dx * ROW_COS[y]!, dy);
+export const stepLen = (dx: number, dy: number, y: number) => Math.hypot(dx * ROW_COS[y]!, dy);
 
 /** Ponto da esfera unitária no centro de uma célula. */
 export function cellOnSphere(x: number, y: number): [number, number, number] {
@@ -700,7 +700,18 @@ export interface Derived {
   down: Int32Array;
   riverMin: number;
   /** Rios: células da nascente à foz (`mouth`: ponto na costa, quando chega à água). */
-  rivers: { cells: number[]; width: number; mouth?: [number, number] }[];
+  rivers: {
+    cells: number[];
+    width: number;
+    mouth?: [number, number];
+    source?: [number, number];
+  }[];
+  /** Lagos: células, se é salgado (sem saída), profundidade e a célula de saída. */
+  lakes: { cells: number[]; salty: boolean; depth: number; outlet: number; name: string }[];
+  /** Lago de cada célula (índice em `lakes`) ou −1. */
+  lake: Int16Array;
+  /** Alturas para desenhar (lagos como água). */
+  eff: Uint8Array;
   /** Água ligada à borda do mapa (o resto é lago) e distância até ela. */
   ocean: Uint8Array;
   oceanDist: Uint16Array;
@@ -716,7 +727,7 @@ export interface Derived {
   routes: { id: string; points: [number, number][] }[];
 }
 
-const N8 = [
+export const N8 = [
   [-1, -1],
   [0, -1],
   [1, -1],
@@ -728,7 +739,7 @@ const N8 = [
 ] as const;
 
 /** Fila de prioridade (mínimo) com arrays que crescem, sem alocar a cada troca. */
-class Heap {
+export class Heap {
   private items = new Int32Array(1024);
   private keys = new Float64Array(1024);
   size = 0;
@@ -907,6 +918,149 @@ export function deriveWorld(map: WorldMap): Derived {
   const land = new Uint8Array(n);
   for (let i = 0; i < n; i++) land[i] = h[i]! >= SEA ? 1 : 0;
 
+  const rand = rng(map.options.seed ^ 0x77);
+  const fbm = makeNoise(rand);
+  const { temp, tempC, moist, noise } = climate(map, land, fbm);
+
+  // Preenche depressões (priority-flood): a água sempre acha por onde escorrer, e
+  // `filled` é o nível que a água alcança em cada célula.
+  const filled = new Float32Array(n);
+  const done = new Uint8Array(n);
+  const heap = new Heap();
+  for (let i = 0; i < n; i++) {
+    const y = (i / COLS) | 0;
+    if (!land[i] || y === 0 || y === ROWS - 1) {
+      filled[i] = h[i]!;
+      done[i] = 1;
+      if (!land[i]) heap.push(i, h[i]!);
+    }
+  }
+  const down = new Int32Array(n).fill(-1);
+  while (heap.size) {
+    const i = heap.pop();
+    const hi = heap.lastKey;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    for (const [dx, dy] of N8) {
+      const ny = y + dy;
+      if (ny < 0 || ny >= ROWS) continue;
+      const j = ny * COLS + wrapCol(x + dx);
+      if (done[j]) continue;
+      done[j] = 1;
+      filled[j] = Math.max(h[j]!, hi + 0.01);
+      down[j] = i;
+      heap.push(j, filled[j]!);
+    }
+  }
+
+  // A água desce pelo maior declive (pelo nível da água, que nunca sobe rio
+  // abaixo); nas planícies de um lago, segue o caminho do preenchimento.
+  for (let i = 0; i < n; i++) {
+    if (!land[i] || down[i]! < 0) continue;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    let best = down[i]!;
+    let bestS =
+      (filled[best]! - filled[i]!) / stepLen(dCol(best % COLS, x), ((best / COLS) | 0) - y, y);
+    for (const [dx, dy] of N8) {
+      const ny = y + dy;
+      if (ny < 0 || ny >= ROWS) continue;
+      const j = ny * COLS + wrapCol(x + dx);
+      if (filled[j]! >= filled[i]!) continue;
+      const s = (filled[j]! - filled[i]!) / stepLen(dx, dy, y);
+      if (s < bestS) {
+        bestS = s;
+        best = j;
+      }
+    }
+    down[i] = best;
+  }
+
+  // Lagos: depressões fundas o bastante viram água, até o nível de transbordo
+  // (menos onde há cidade: a cidade fica na margem).
+  const burgAt = new Set(map.burgs.map((b) => cellOf(b.x, b.y)));
+  const lakeId = new Int16Array(n).fill(-1);
+  const lakes: Derived["lakes"] = [];
+  {
+    const seen = new Uint8Array(n);
+    for (let s = 0; s < n; s++) {
+      if (!land[s] || seen[s] || filled[s]! - h[s]! < 0.3) continue;
+      const comp = [s];
+      seen[s] = 1;
+      let depth = 0;
+      for (let k = 0; k < comp.length; k++) {
+        const i = comp[k]!;
+        depth = Math.max(depth, filled[i]! - h[i]!);
+        const x = i % COLS;
+        const y = (i / COLS) | 0;
+        for (const [dx, dy] of N8) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= ROWS) continue;
+          const j = ny * COLS + wrapCol(x + dx);
+          if (!seen[j] && land[j] && filled[j]! - h[j]! >= 0.3) {
+            seen[j] = 1;
+            comp.push(j);
+          }
+        }
+      }
+      if (comp.length < 2 || depth < 1 || lakes.length >= 32000) continue;
+      if (comp.some((i) => burgAt.has(i))) continue;
+      const id = lakes.length;
+      for (const i of comp) lakeId[i] = id;
+      lakes.push({ cells: comp, salty: false, depth, outlet: -1, name: "" });
+    }
+    // Saída de cada lago: a célula do lago que escoa para fora dele.
+    for (const lk of lakes)
+      for (const i of lk.cells) {
+        const d = down[i]!;
+        if (d >= 0 && lakeId[d] !== lakeId[i]) {
+          lk.outlet = i;
+          break;
+        }
+      }
+  }
+
+  // Vazão: o que escoa é a chuva menos a evaporação (maior no calor). Desce das
+  // células mais altas (nível da água) para as mais baixas.
+  const order = Array.from({ length: n }, (_, i) => i).filter((i) => land[i]);
+  order.sort((a, b) => filled[b]! - filled[a]!);
+  const runoff = (i: number) => Math.max(0.03, moist[i]! - (0.06 + temp[i]! * 0.32)) * 1.4;
+  const accumulate = (blocked: Uint8Array | null) => {
+    const f = new Float32Array(n);
+    for (const i of order) {
+      f[i]! += runoff(i);
+      if (blocked && blocked[i]) continue; // lago salgado: a água fica nele
+      const d = down[i]!;
+      if (d >= 0 && land[d]) f[d]! += f[i]!;
+    }
+    return f;
+  };
+  let flux = accumulate(null);
+  // Lago que evapora mais do que recebe não transborda (lago salgado, sem saída).
+  const closed = new Uint8Array(n);
+  let anyClosed = false;
+  for (const lk of lakes) {
+    if (lk.outlet < 0) continue;
+    const inflow = flux[lk.outlet]!;
+    const t = lk.cells.reduce((a, i) => a + temp[i]!, 0) / lk.cells.length;
+    // Evaporação da superfície menos a chuva que cai no próprio lago.
+    const m = lk.cells.reduce((a, i) => a + moist[i]!, 0) / lk.cells.length;
+    const evaporation = lk.cells.length * Math.max(0, 0.1 + t * 0.9 - m);
+    if (inflow < evaporation) {
+      lk.salty = true;
+      closed[lk.outlet] = 1;
+      anyClosed = true;
+    }
+  }
+  if (anyClosed) flux = accumulate(closed);
+
+  // Lagos viram água de verdade (a partir daqui, terra é só terra).
+  for (const lk of lakes) for (const i of lk.cells) land[i] = 0;
+  // Alturas "efetivas" para desenhar: lago = água (mais escura onde é mais fundo).
+  const eff = new Uint8Array(h);
+  for (const lk of lakes)
+    for (const i of lk.cells) eff[i] = Math.max(70, Math.round(SEA - 3 - (filled[i]! - h[i]!) * 3));
+
   // Distância até o mar (em células), para umidade e portos.
   const coastDist = new Uint16Array(n).fill(65535);
   const queue: number[] = [];
@@ -988,77 +1142,42 @@ export function deriveWorld(map: WorldMap): Derived {
     }
   }
 
-  const rand = rng(map.options.seed ^ 0x77);
-  const fbm = makeNoise(rand);
-  const { temp, tempC, moist, noise } = climate(map, land, fbm);
+  const landFlux = order
+    .filter((i) => land[i])
+    .map((i) => flux[i]!)
+    .sort((a, b) => b - a);
+  const riverMin = Math.max(6, landFlux[Math.floor(landFlux.length * 0.035)] ?? 6);
 
-  // Preenche depressões (priority-flood) para a água sempre ter para onde escorrer.
-  const filled = new Float32Array(n);
-  const done = new Uint8Array(n);
-  const heap = new Heap();
-  for (let i = 0; i < n; i++) {
-    const x = i % COLS;
-    const y = (i / COLS) | 0;
-    void x;
-    if (!land[i] || y === 0 || y === ROWS - 1) {
-      filled[i] = h[i]!;
-      done[i] = 1;
-      if (!land[i]) heap.push(i, h[i]!);
-    }
-  }
-  const down = new Int32Array(n).fill(-1);
-  while (heap.size) {
-    const i = heap.pop();
-    const hi = heap.lastKey;
-    const x = i % COLS;
-    const y = (i / COLS) | 0;
-    for (const [dx, dy] of N8) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (ny < 0 || ny >= ROWS) continue;
-      const j = ny * COLS + wrapCol(nx);
-      if (done[j]) continue;
-      done[j] = 1;
-      filled[j] = Math.max(h[j]!, hi + 0.01);
-      down[j] = i;
-      heap.push(j, filled[j]!);
-    }
-  }
-
-  // Vazão: cada célula manda a chuva para baixo, das mais altas para as mais baixas.
-  const order = Array.from({ length: n }, (_, i) => i).filter((i) => land[i]);
-  order.sort((a, b) => filled[b]! - filled[a]!);
-  const flux = new Float32Array(n);
-  for (const i of order) {
-    flux[i]! += moist[i]! * 0.6 + 0.1;
-    const d = down[i]!;
-    if (d >= 0 && land[d]) flux[d]! += flux[i]!;
-  }
-  const landFlux = order.map((i) => flux[i]!).sort((a, b) => b - a);
-  const riverMin = Math.max(12, landFlux[Math.floor(landFlux.length * 0.035)] ?? 12);
-
-  // Rios: das nascentes até o mar (ou até encontrar outro rio).
+  // Rios: das nascentes até o mar ou um lago (ou até encontrar outro rio). Um rio
+  // que sai de um lago começa na margem dele.
   const isRiver = (i: number) => land[i] && flux[i]! >= riverMin;
   const hasUp = new Uint8Array(n);
   for (const i of order) if (isRiver(i) && down[i]! >= 0) hasUp[down[i]!] = 1;
   const visited = new Uint8Array(n);
   const rivers: Derived["rivers"] = [];
+  const shore = (from: number, to: number) => {
+    const t = Math.max(0, Math.min(1, (eff[from]! - (SEA - 0.5)) / (eff[from]! - eff[to]! || 1)));
+    const cx = (from % COLS) + 0.5;
+    const cy = Math.floor(from / COLS) + 0.5;
+    return [cx + dCol(to % COLS, from % COLS) * t, cy + (Math.floor(to / COLS) + 0.5 - cy) * t] as [
+      number,
+      number,
+    ];
+  };
   for (const i of order) {
     if (!isRiver(i) || hasUp[i]) continue;
     const cells = [i];
     let c = i;
     visited[c] = 1;
     let mouth: [number, number] | undefined;
+    // Nasce num lago? Começa na margem.
+    let source: [number, number] | undefined;
+    for (const lk of lakes)
+      if (lk.outlet >= 0 && down[lk.outlet] === i) source = shore(i, lk.outlet);
     while (down[c]! >= 0) {
       const d = down[c]!;
       if (!land[d]) {
-        // Foz: termina exatamente na linha da costa, sem entrar na água.
-        const t = Math.max(0, Math.min(1, (h[c]! - (SEA - 0.5)) / (h[c]! - h[d]! || 1)));
-        const cx = (c % COLS) + 0.5;
-        const cy = Math.floor(c / COLS) + 0.5;
-        const dx = dCol(d % COLS, c % COLS);
-        const dy = Math.floor(d / COLS) + 0.5 - cy;
-        mouth = [cx + dx * t, cy + dy * t];
+        mouth = shore(c, d); // foz exatamente na margem
         break;
       }
       cells.push(d);
@@ -1066,10 +1185,11 @@ export function deriveWorld(map: WorldMap): Derived {
       visited[d] = 1;
       c = d;
     }
-    if (cells.length > 3)
+    if (cells.length > 3 || (source && cells.length > 1))
       rivers.push({
         cells,
         mouth,
+        source,
         width: Math.min(3, 0.6 + Math.sqrt(flux[c]! / riverMin) * 0.55),
       });
   }
@@ -1139,6 +1259,37 @@ export function deriveWorld(map: WorldMap): Derived {
         }
       }
     }
+  }
+
+  // Nomes dos lagos, no idioma do povo que vive em volta.
+  {
+    const cults = map.cultures ?? [];
+    const used = new Set<string>();
+    const namers = new Map<number, () => string>();
+    lakes.forEach((lk, k) => {
+      let ci = -1;
+      for (const i of lk.cells) {
+        const x = i % COLS;
+        const y = (i / COLS) | 0;
+        for (const [dx, dy] of N8) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= ROWS) continue;
+          const j = ny * COLS + wrapCol(x + dx);
+          if (culture[j]! >= 0) ci = culture[j]!;
+        }
+        if (ci >= 0) break;
+      }
+      let namer = namers.get(ci);
+      if (!namer) {
+        namer = makeMarkovNamer(
+          cults[ci]?.base ?? NAME_BASES[k % NAME_BASES.length]!.id,
+          map.options.seed + 31337 + ci * 977,
+          used,
+        );
+        namers.set(ci, namer);
+      }
+      lk.name = (lk.salty ? "Lago Salgado " : "Lago ") + namer();
+    });
   }
 
   // Estados: cada capital se espalha pela terra, mais devagar em montanhas e desertos.
@@ -1419,6 +1570,9 @@ export function deriveWorld(map: WorldMap): Derived {
     down,
     riverMin,
     rivers,
+    lakes,
+    lake: lakeId,
+    eff,
     owner,
     culture,
     roads,

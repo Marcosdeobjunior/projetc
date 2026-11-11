@@ -453,6 +453,21 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- Hidrologia (`deriveWorld`): priority-flood dá o nível da água (`filled`); a direção `down` é o
+  maior declive sobre `filled` (sempre desce, então não há ciclos). Componentes de depressão
+  (`filled − h ≥ 0,3`, ≥ 2 células, profundidade ≥ 1, sem cidade dentro) viram lagos (`d.lakes`,
+  `d.lake`; `land = 0`, e `d.eff` são as alturas para desenhar, com o lago abaixo do nível do
+  mar). A vazão acumula o escoamento `chuva − evaporação(temperatura)`; um lago cuja entrada é
+  menor que a evaporação da superfície fica salgado e a saída é bloqueada (a vazão é recalculada).
+  Rios guardam `source` (margem do lago de origem) e `mouth` (margem do mar/lago);
+  `worldRender.riverPieces` desenha trechos que engrossam com √vazão e meandros nas planícies.
+- Províncias, religiões e marcadores (`world/society.ts`, `deriveSociety`): derivados (não
+  gravados). Províncias: sedes = capital + cidades mais afastadas (área/260), Dijkstra restrito ao
+  estado. Religiões: folclórica por cultura, organizadas a partir de capitais (Dijkstra com custo
+  menor dentro do estado de origem), cultos locais. Marcadores por regras de terreno (picos,
+  degraus de rio, serras, estradas, costa, fronteiras) com nomes Markov da cultura local.
+  `buildProvinceVectors` faz as divisas (marching squares dentro do mesmo estado); o modo
+  `religioes` de `bakeBase` recebe a religião de cada célula.
 - Prévia da cidade (`world/village.ts`, `generateFromGeo`): com `geo` (de `localGeo` em
   `world/settlement.ts`: direção da água num raio de 3 células, do rio pelo `down` e das estradas
   geradas que passam pela cidade, e o visual do bioma), a vila tem mar/lago, rio e estradas nas

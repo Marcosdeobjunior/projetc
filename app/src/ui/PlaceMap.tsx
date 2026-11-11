@@ -126,6 +126,27 @@ export function PlaceMap({
           ))}
         </defs>
         <rect width={map.width} height={map.height} fill={map.ground ?? MAP_COLORS.ground} />
+        {map.fields.map((f, i) => (
+          <path
+            key={i}
+            d={poly(f.corners)}
+            fill={`url(#${ids}-f${i})`}
+            stroke={MAP_COLORS.fieldLine}
+            strokeWidth="0.8"
+          />
+        ))}
+        {/* O rio se funde à água: a margem dele fica por baixo do mar (que a
+            cobre), e a água do rio por cima da linha da costa, na mesma cor. */}
+        {map.river && (
+          <path
+            d={path(map.river.points)}
+            fill="none"
+            stroke={MAP_COLORS.waterEdge}
+            strokeWidth={map.river.width + 1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
         {map.sea && (
           <>
             <path d={poly(map.sea.poly)} fill={MAP_COLORS.water} />
@@ -138,34 +159,15 @@ export function PlaceMap({
             />
           </>
         )}
-        {map.fields.map((f, i) => (
-          <path
-            key={i}
-            d={poly(f.corners)}
-            fill={`url(#${ids}-f${i})`}
-            stroke={MAP_COLORS.fieldLine}
-            strokeWidth="0.8"
-          />
-        ))}
         {map.river && (
-          <>
-            <path
-              d={path(map.river.points)}
-              fill="none"
-              stroke={MAP_COLORS.waterEdge}
-              strokeWidth={map.river.width + 1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d={path(map.river.points)}
-              fill="none"
-              stroke={MAP_COLORS.water}
-              strokeWidth={map.river.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </>
+          <path
+            d={path(map.river.points)}
+            fill="none"
+            stroke={MAP_COLORS.water}
+            strokeWidth={map.river.width}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         )}
         {map.roads.map((r, i) => (
           <path

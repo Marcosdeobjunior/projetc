@@ -1126,6 +1126,27 @@ inventados) e **estradas** entre elas.
   reinos têm nomes inventados no sotaque do povo do lugar (cadeias de Markov). O estilo
   **Culturas** pinta o território de cada povo, e a legenda lista os povos. No **Editar povoado**,
   a Cultura vem preenchida com o povo do lugar, e o mouse sobre o mapa mostra o povo.
+- **Rios e lagos:** a chuva que sobra depois da evaporação (que é maior no calor) escorre pelo
+  maior declive do relevo e vai se juntando; onde a vazão é grande nasce um rio, que engrossa rio
+  abaixo e faz meandros nas planícies. Depressões no terreno enchem e viram **lagos**, até o nível
+  em que transbordam: o rio de saída começa na margem. Num lago em lugar quente e seco, que perde
+  mais água por evaporação do que recebe, a água não transborda: ele vira um **lago salgado** (sem
+  saída, de cor mais clara). Lagos têm nome no idioma do povo em volta, e o rio termina na margem
+  do mar ou do lago, sem desenho por cima da água. Na prévia do povoado, o rio desce para o mar
+  quando ele está naquele lado e se funde à água, sem contorno na foz.
+- **Províncias:** cada reino se divide em províncias a partir da capital e das cidades mais
+  afastadas umas das outras; o nome segue a forma de governo (Condado, Província, Marca, Baronato,
+  Distrito, Diocese, Ulus, Cantão). A camada **Províncias** mostra as divisas pontilhadas e, de
+  perto, os nomes; o painel do reino lista as províncias (clique para abrir a sede).
+- **Religiões:** cada povo tem a sua crença (folclórica: xamanismo, animismo, culto aos
+  ancestrais, politeísmo); algumas religiões organizadas nascem em capitais e se espalham (mais
+  depressa dentro do próprio reino), e há pequenos cultos em volta de uma cidade. O estilo
+  **Religiões** pinta onde cada uma predomina, com a legenda (tipo, forma e divindade).
+- **Marcadores:** vulcões, fontes termais, cachoeiras (onde o rio cai de um degrau alto), minas,
+  ruínas, faróis, estalagens nas estradas, cavernas, bosques sagrados e campos de batalha nas
+  fronteiras, cada um com nome e uma pequena lenda (passe o mouse sobre o ícone). A camada
+  **Marcadores** liga e desliga os ícones; os nomes aparecem bem de perto. Províncias, religiões e
+  marcadores saem do mapa e se refazem sozinhos quando ele muda.
 - **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
   República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do
   reino; os textos mostram o nome completo ("Reino de Faeris").
@@ -1140,9 +1161,9 @@ inventados) e **estradas** entre elas.
 - **Navegar:** roda do mouse aproxima (no ponto do mouse), arrastar move; **+**, **−** e o botão
   de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
   ponto sob o mouse.
-- **Estilo:** **Biomas**, **Relevo** (cores de altitude) ou **Político** (estados em cores
-  chapadas, como num atlas). **Camadas** liga e desliga rios, estradas, fronteiras, a cor dos
-  estados, cidades e nomes.
+- **Estilo:** **Biomas**, **Relevo** (cores de altitude), **Político** (estados em cores
+  chapadas, como num atlas), **Culturas** ou **Religiões**. **Camadas** liga e desliga rios,
+  estradas, fronteiras, a cor dos estados, províncias, cidades, marcadores e nomes.
 - **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade ou num estado para
   editar; arraste uma cidade para mudá-la de lugar), **Elevar** e **Rebaixar** (pincel de relevo:
   pinte terra no mar para criar ilhas, ou mar na terra; o tamanho do pincel aparece embaixo),

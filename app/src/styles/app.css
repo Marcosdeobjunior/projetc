@@ -8909,3 +8909,36 @@ select option {
   color: var(--faint);
   font-size: 11px;
 }
+.wm-markers li {
+  grid-template-columns: 16px minmax(0, 1fr);
+}
+.wm-legend li span.wm-marker-icon {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 0;
+  font-size: 13px;
+  line-height: 16px;
+  text-align: center;
+}
+.wm-provinces {
+  margin-top: 8px;
+  font: 12px/1.4 var(--font-ui);
+}
+.wm-provinces > span {
+  color: var(--faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wm-provinces ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wm-provinces .link-btn {
+  text-align: left;
+}

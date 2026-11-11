@@ -278,14 +278,21 @@ function generateFromGeo(o: MapOptions, g: VillageGeo): VillageMap {
   // Rio: atravessa o mapa na direção em que corre, passando junto da cidade; termina no mar.
   let river: VillageMap["river"] = null;
   if (o.river && g.river !== null && g.river !== undefined) {
-    const a = g.river;
+    // Passa junto da cidade: desce de um ponto ao lado do centro nos dois sentidos.
+    // Se o mar fica para o lado em que o rio corre, ele vira para desaguar nele.
+    let a = g.river;
+    const c = g.coast;
+    if (sea && c !== null && c !== undefined && Math.cos(a - c) > -0.2)
+      a = Math.atan2(Math.sin(a) + Math.sin(c) * 1.5, Math.cos(a) + Math.cos(c) * 1.5);
     const lateral = gb(14, 30) * (geo() < 0.5 ? -1 : 1);
-    const start: Pt = [
-      center[0] - Math.cos(a) * 420 - Math.sin(a) * lateral,
-      center[1] - Math.sin(a) * 420 + Math.cos(a) * lateral,
-    ];
-    let pts = wander(geo, start, a, 840, 26);
+    const mid: Pt = [center[0] - Math.sin(a) * lateral, center[1] + Math.cos(a) * lateral];
+    const down = wander(geo, mid, a, 480, 26);
+    const up = wander(geo, mid, a + Math.PI, 480, 26).reverse();
+    let pts = [...up.slice(0, -1), ...down];
     if (sea) {
+      // Nasce em terra e termina um pouco dentro da água (a foz se funde a ela).
+      const s = pts.findIndex((p) => !inSea(p));
+      pts = s > 0 ? pts.slice(s) : pts;
       const k = pts.findIndex((p) => inSea(p));
       if (k > 0) pts = pts.slice(0, k + 1);
     }
