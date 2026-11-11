@@ -15,6 +15,7 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { GlobeView } from "./GlobeView";
 import {
   BIOMES,
   cellOf,
@@ -31,6 +32,8 @@ import {
   type Burg,
   type Route,
   ROUTE_TYPES,
+  dCol,
+  wrapCol,
   type Template,
   type WorldMap,
   type WorldOptions,
@@ -254,6 +257,7 @@ function WorldEditor({
   // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
   const [toolsOpen, setToolsOpen] = useStoredFlag("talia.mapa.ferramentas", true);
   const [panelOpen, setPanelOpen] = useStoredFlag("talia.mapa.opcoes", true);
+  const [globe, setGlobe] = useStoredFlag("talia.mapa.globo", false);
   const [selected, setSelected] = useState<{
     kind: "burg" | "state" | "route";
     id: string;
@@ -562,12 +566,17 @@ function WorldEditor({
 
   const toMap = (e: { clientX: number; clientY: number }) => {
     const r = canvas.current!.getBoundingClientRect();
-    return [(e.clientX - r.left - view.x) / view.s, (e.clientY - r.top - view.y) / view.s] as const;
+    // A longitude dá a volta: o x volta para dentro do planeta (0 a COLS).
+    const x = (e.clientX - r.left - view.x) / view.s;
+    return [((x % COLS) + COLS) % COLS, (e.clientY - r.top - view.y) / view.s] as const;
   };
   const burgAt = (x: number, y: number) =>
-    map.burgs.find((b) => Math.hypot(b.x - x, b.y - y) * view.s < 9);
+    map.burgs.find((b) => Math.hypot(dCol(b.x, x), b.y - y) * view.s < 9);
   const routeAt = (x: number, y: number) =>
-    vectors.routes.find((r) => distToPolyline([x, y], r.points) * view.s < 7);
+    vectors.routes.find(
+      (r) =>
+        Math.min(...[-COLS, 0, COLS].map((k) => distToPolyline([x + k, y], r.points))) * view.s < 7,
+    );
 
   const paint = (h: Uint8Array, x: number, y: number, t: Tool) => {
     const r = brush;
@@ -577,15 +586,11 @@ function WorldEditor({
       cy <= Math.min(ROWS - 1, Math.ceil(y + r));
       cy++
     ) {
-      for (
-        let cx = Math.max(0, Math.floor(x - r));
-        cx <= Math.min(COLS - 1, Math.ceil(x + r));
-        cx++
-      ) {
+      for (let cx = Math.floor(x - r); cx <= Math.ceil(x + r); cx++) {
         const d = Math.hypot(cx + 0.5 - x, cy + 0.5 - y) / r;
         if (d >= 1) continue;
         const f = (1 - d * d) * (1 - d * d);
-        const i = cy * COLS + cx;
+        const i = cy * COLS + wrapCol(cx);
         if (t === "elevar") out[i] = Math.min(255, h[i]! + 6 * f + (h[i]! < SEA ? 4 * f : 0));
         else if (t === "rebaixar") out[i] = Math.max(0, h[i]! - 6 * f - (h[i]! >= SEA ? 4 * f : 0));
         else {
@@ -595,8 +600,8 @@ function WorldEditor({
             for (let dx = -1; dx <= 1; dx++) {
               const nx = cx + dx;
               const ny = cy + dy;
-              if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-              sum += h[ny * COLS + nx]!;
+              if (ny < 0 || ny >= ROWS) continue;
+              sum += h[ny * COLS + wrapCol(nx)]!;
               n++;
             }
           out[i] = Math.round(h[i]! + (sum / n - h[i]!) * 0.5 * f);
@@ -655,26 +660,36 @@ function WorldEditor({
       setHeights(painting.current.h);
     }
   };
+  /** Bioma, reino, altitude e coordenadas do ponto sob o mouse. */
+  const hoverText = (x: number | null, y: number | null) => {
+    if (x === null || y === null || y < 0 || y >= ROWS) return "";
+    const c = cellOf(x, y);
+    const h = heights[c]!;
+    const st = derived.owner[c]! >= 0 ? map.states[derived.owner[c]!]?.name : null;
+    const metres =
+      h >= SEA
+        ? Math.round(((h - SEA) / 127) ** 1.6 * 5200)
+        : -Math.round(((SEA - h) / SEA) * 4000);
+    const lat = 90 - (y / ROWS) * 180;
+    const lon = (x / COLS) * 360 - 180;
+    const coord = `${Math.abs(lat).toFixed(0)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(0)}°${lon >= 0 ? "L" : "O"}`;
+    return [
+      h >= SEA
+        ? BIOMES[derived.biome[c]!]!.name
+        : derived.temp[c]! < 0.16
+          ? "Mar congelado"
+          : "Mar",
+      st,
+      `${metres.toLocaleString("pt-BR")} m`,
+      coord,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  };
+
   const onMove = (e: PointerEvent) => {
     const [x, y] = toMap(e);
-    if (x >= 0 && y >= 0 && x < COLS && y < ROWS) {
-      const c = cellOf(x, y);
-      const h = heights[c]!;
-      const st = derived.owner[c]! >= 0 ? map.states[derived.owner[c]!]?.name : null;
-      const metres =
-        h >= SEA
-          ? Math.round(((h - SEA) / 127) ** 1.6 * 5200)
-          : -Math.round(((SEA - h) / SEA) * 4000);
-      setHover(
-        [
-          h >= SEA ? BIOMES[derived.biome[c]!]!.name : "Mar",
-          st,
-          `${metres.toLocaleString("pt-BR")} m`,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-      );
-    } else setHover("");
+    setHover(hoverText(x, y));
     if (tool === "mover" && !drag.current)
       canvas.current!.style.cursor = burgAt(x, y) ? "pointer" : "";
     const d = drag.current;
@@ -775,8 +790,39 @@ function WorldEditor({
   return (
     <div className={"wm" + (panelOpen ? "" : " panel-closed")}>
       <div className="wm-canvas" ref={wrap}>
+        {globe && (
+          <GlobeView
+            map={map}
+            derived={derived}
+            base={base}
+            vectors={vectors}
+            layers={layers}
+            capitals={capitals}
+            meta={meta}
+            selectedBurg={selected?.kind === "burg" ? selected.id : null}
+            focus={burg ?? null}
+            onHover={(x, y) => setHover(hoverText(x, y))}
+            onPick={(x, y) => {
+              const b = map.burgs.find((q) => q.x === x && q.y === y);
+              if (b) return setSelected({ kind: "burg", id: b.id });
+              const o = derived.owner[cellOf(x, y)]!;
+              setSelected(
+                o >= 0 && map.states[o] ? { kind: "state", id: map.states[o]!.id } : null,
+              );
+            }}
+          />
+        )}
+        <div className="wm-view-toggle segmented wide" role="radiogroup" aria-label="Vista">
+          <button type="button" role="radio" aria-checked={!globe} onClick={() => setGlobe(false)}>
+            Plano
+          </button>
+          <button type="button" role="radio" aria-checked={globe} onClick={() => setGlobe(true)}>
+            Globo
+          </button>
+        </div>
         <canvas
           ref={canvas}
+          hidden={globe}
           className={"tool-" + tool}
           style={{ width: size.w, height: size.h }}
           onPointerDown={onDown}
@@ -785,66 +831,68 @@ function WorldEditor({
           onPointerLeave={() => setHover("")}
           onWheel={onWheel}
         />
-        <div
-          className={"wm-tools" + (toolsOpen ? "" : " compact")}
-          role="toolbar"
-          aria-label="Ferramentas do mapa"
-        >
-          <button
-            type="button"
-            className="wm-collapse"
-            aria-label={toolsOpen ? "Recolher ferramentas" : "Mostrar nomes das ferramentas"}
-            title={toolsOpen ? "Recolher (só ícones)" : "Mostrar os nomes"}
-            onClick={() => setToolsOpen((v) => !v)}
+        {!globe && (
+          <div
+            className={"wm-tools" + (toolsOpen ? "" : " compact")}
+            role="toolbar"
+            aria-label="Ferramentas do mapa"
           >
-            <Icon name={toolsOpen ? "chevron-left" : "chevron"} size={14} />
-            <span>Recolher</span>
-          </button>
-          {TOOLS.map((t) => (
             <button
-              key={t.value}
               type="button"
-              className={tool === t.value ? "on" : ""}
-              aria-pressed={tool === t.value}
-              title={t.hint}
-              onClick={() => setTool(t.value)}
+              className="wm-collapse"
+              aria-label={toolsOpen ? "Recolher ferramentas" : "Mostrar nomes das ferramentas"}
+              title={toolsOpen ? "Recolher (só ícones)" : "Mostrar os nomes"}
+              onClick={() => setToolsOpen((v) => !v)}
             >
-              <Icon name={t.icon} size={16} />
-              <span>{t.label}</span>
+              <Icon name={toolsOpen ? "chevron-left" : "chevron"} size={14} />
+              <span>Recolher</span>
             </button>
-          ))}
-          {(tool === "elevar" || tool === "rebaixar" || tool === "suavizar") && (
-            <label className="wm-brush" title="Tamanho do pincel">
-              <span>Pincel</span>
-              <input
-                type="range"
-                min={2}
-                max={30}
-                value={brush}
-                onChange={(e) => setBrush(+e.target.value)}
-              />
-            </label>
-          )}
-          <div className="wm-tools-sep" />
-          <button
-            type="button"
-            title="Desfazer (Ctrl+Z)"
-            disabled={!hist.undo}
-            onClick={() => restore(undo, redo)}
-          >
-            <Icon name="undo" size={16} />
-            <span>Desfazer</span>
-          </button>
-          <button
-            type="button"
-            title="Refazer (Ctrl+Shift+Z)"
-            disabled={!hist.redo}
-            onClick={() => restore(redo, undo)}
-          >
-            <Icon name="redo" size={16} />
-            <span>Refazer</span>
-          </button>
-        </div>
+            {TOOLS.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                className={tool === t.value ? "on" : ""}
+                aria-pressed={tool === t.value}
+                title={t.hint}
+                onClick={() => setTool(t.value)}
+              >
+                <Icon name={t.icon} size={16} />
+                <span>{t.label}</span>
+              </button>
+            ))}
+            {(tool === "elevar" || tool === "rebaixar" || tool === "suavizar") && (
+              <label className="wm-brush" title="Tamanho do pincel">
+                <span>Pincel</span>
+                <input
+                  type="range"
+                  min={2}
+                  max={30}
+                  value={brush}
+                  onChange={(e) => setBrush(+e.target.value)}
+                />
+              </label>
+            )}
+            <div className="wm-tools-sep" />
+            <button
+              type="button"
+              title="Desfazer (Ctrl+Z)"
+              disabled={!hist.undo}
+              onClick={() => restore(undo, redo)}
+            >
+              <Icon name="undo" size={16} />
+              <span>Desfazer</span>
+            </button>
+            <button
+              type="button"
+              title="Refazer (Ctrl+Shift+Z)"
+              disabled={!hist.redo}
+              onClick={() => restore(redo, undo)}
+            >
+              <Icon name="redo" size={16} />
+              <span>Refazer</span>
+            </button>
+          </div>
+        )}
         <button
           type="button"
           className="wm-panel-toggle"
@@ -855,24 +903,26 @@ function WorldEditor({
           <Icon name={panelOpen ? "chevron" : "chevron-left"} size={14} />
           {panelOpen ? "Esconder opções" : "Opções"}
         </button>
-        <div className="wm-zoom">
-          <button type="button" aria-label="Aproximar" onClick={() => zoomAt(1.4)}>
-            +
-          </button>
-          <button type="button" aria-label="Afastar" onClick={() => zoomAt(1 / 1.4)}>
-            −
-          </button>
-          <button
-            type="button"
-            aria-label="Mostrar o mapa inteiro"
-            title="Mapa inteiro"
-            onClick={fit}
-          >
-            <Icon name="expand" size={14} />
-          </button>
-        </div>
+        {!globe && (
+          <div className="wm-zoom">
+            <button type="button" aria-label="Aproximar" onClick={() => zoomAt(1.4)}>
+              +
+            </button>
+            <button type="button" aria-label="Afastar" onClick={() => zoomAt(1 / 1.4)}>
+              −
+            </button>
+            <button
+              type="button"
+              aria-label="Mostrar o mapa inteiro"
+              title="Mapa inteiro"
+              onClick={fit}
+            >
+              <Icon name="expand" size={14} />
+            </button>
+          </div>
+        )}
         {hover && <div className="wm-status">{hover}</div>}
-        {tool === "rota" && (
+        {tool === "rota" && !globe && (
           <div className="wm-draft">
             <span>
               {draft.length

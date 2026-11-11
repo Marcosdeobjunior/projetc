@@ -433,7 +433,7 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
   `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
 - Mapa-múndi (`ui/WorldMapView.tsx`, view `"map"`): `world/worldgen.ts` gera e deriva o mundo numa
-  grade de 320×200 células. Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
+  grade de 360×180 células (o planeta inteiro, equirretangular, 1° por célula; a longitude dá a volta: vizinhos usam `wrapCol`, distâncias `dCol`, o ruído do relevo é misturado com ele mesmo deslocado de uma volta para não ter emenda, e o oceano é o maior corpo d'água). Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
   (`state/worldMap.ts`, via `serial()` com espera de 600 ms e `registerFlush`; `load` não relê o
   disco se o projeto já está carregado, para não perder edições pendentes). Derivado em
   `deriveWorld` (~100 ms): distância à costa (BFS), temperatura e umidade (ruído fractal +
@@ -461,6 +461,12 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cidades, capitais); renomear ou mudar cor não refaz. Enquanto o pincel pinta, a imagem de fundo
   é assada em 1 px por célula e só a costa é recalculada (`coastPath`); o resto espera soltar.
   Cidades arrastadas só movem o marcador até soltar.
+- Planeta e globo: o mapa plano desenha as cópias vizinhas (`drawWorld` repete na horizontal) e as
+  linhas que cruzam a costura são "desembrulhadas" (`unwrap`). `ui/GlobeView.tsx` desenha o globo
+  em projeção ortográfica: o mapa plano vira textura (`drawWorld` sem nomes nem cidades) e cada
+  pixel do disco é convertido em latitude/longitude para buscar a cor, com luz e atmosfera; nomes,
+  cidades e linhas de latitude/longitude são projetados por cima (só o lado visível). Ao girar,
+  desenha em resolução menor.
 - Rotas: `deriveWorld` classifica as estradas geradas (`principal` entre capitais vizinhas,
   `estrada` cidade → capital cortada onde encontra a rodovia, `trilha` por Dijkstra limitado até a
   cidade mais perto, só se o caminho for majoritariamente novo) e calcula o caminho das rotas

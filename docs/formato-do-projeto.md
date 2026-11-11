@@ -583,14 +583,14 @@ biomas, rios, fronteiras e estradas são recalculados ao abrir (`world/worldgen.
 | --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `format`  | número | Sempre `1`                                                                                                                                                                                                                    |
 | `name`    | string | Nome do mundo                                                                                                                                                                                                                 |
-| `cols`    | número | Colunas da grade (320)                                                                                                                                                                                                        |
-| `rows`    | número | Linhas da grade (200)                                                                                                                                                                                                         |
+| `cols`    | número | Colunas da grade (360: 1° de longitude cada)                                                                                                                                                                                  |
+| `rows`    | número | Linhas da grade (180: 1° de latitude cada, do polo norte ao sul)                                                                                                                                                              |
 | `options` | objeto | Opções usadas para gerar: `seed`, `template` (`continentes`/`ilhas`/`pangeia`), `land` (0,15 a 0,6), `states`, `burgs`                                                                                                        |
 | `heights` | string | Altura de cada célula (0 a 255; 128 ou mais é terra), linha por linha, em base64                                                                                                                                              |
 | `burgs`   | array  | Cidades: `id`, `name`, `x`, `y` (em células) e, opcional, `noteId` (o lugar do Mundo ligado)                                                                                                                                  |
 | `states`  | array  | Estados: `id`, `name`, `color` (`#rrggbb`), `capital` (o `id` da cidade capital; o território é calculado a partir dela) e `noteId` (o lugar do Mundo que é este estado)                                                      |
 | `routes`  | array  | Rotas desenhadas: `id`, `name`, `type` (`principal`/`estrada`/`trilha`/`maritima`) e `points` (pontos de passagem `[x, y]`, em células). O caminho entre os pontos é recalculado ao abrir. As estradas geradas não ficam aqui |
 
-Ao abrir, um arquivo de outro tamanho ou formato é ignorado (como se não houvesse mapa); cidades
+Ao abrir, um arquivo da grade antiga (320×200, só uma região) é convertido para o planeta (as alturas são reamostradas e as posições, escaladas); outro tamanho ou formato é ignorado (como se não houvesse mapa); cidades
 fora da grade e estados cuja capital não existe são descartados. No sync, segue a regra dos outros
 arquivos de `.talia/`.

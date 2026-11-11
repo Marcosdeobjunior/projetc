@@ -1095,13 +1095,20 @@ lugar novo; se quiser, tire a entrada antiga da lista com o **×**.
 
 ## Mapa-múndi
 
-**Mapa**, na barra lateral, abre o mapa do mundo do projeto. Na primeira vez, escolha o **tipo de
+**Mapa**, na barra lateral, abre o mapa do planeta inteiro do projeto, em projeção
+equirretangular: a longitude dá a volta (arrastando para o lado, o mundo continua), os polos têm
+mar congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. Na primeira vez, escolha o **tipo de
 mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
 **cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
 (desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que
 descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
 inventados) e **estradas** entre elas.
 
+- **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**. No globo,
+  arraste para girar, a roda do mouse (ou **+**/**−**) aproxima e **⟳** faz o planeta girar
+  sozinho; nomes de reinos e cidades aparecem no lado visível, com luz, atmosfera e as linhas de
+  latitude e longitude. Clicar numa cidade abre o **Editar povoado**; num reino, seleciona o reino.
+  As ferramentas de edição ficam no modo Plano.
 - **Navegar:** roda do mouse aproxima (no ponto do mouse), arrastar move; **+**, **−** e o botão
   de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
   ponto sob o mouse.
@@ -1155,7 +1162,7 @@ inventados) e **estradas** entre elas.
   ligadas, a escala e a rosa dos ventos.
 - **Detalhes:** o tamanho do marcador da cidade acompanha a população, portos ganham uma âncora,
   e os nomes desviam uns dos outros (e dos nomes dos reinos). No canto há uma **escala** em km
-  (cada célula do mapa vale 10 km) e a **rosa dos ventos**. Com Elevar/Rebaixar/Suavizar, um
+  (cada célula vale 1°, cerca de 111 km no equador) e a **rosa dos ventos**. Com Elevar/Rebaixar/Suavizar, um
   círculo mostra o tamanho do pincel; enquanto pinta, o relevo e a costa mudam na hora, e rios,
   biomas e fronteiras se refazem ao soltar. **Esc** cancela o "Pôr no mapa", fecha a janela da
   cidade ou volta à ferramenta Mover.

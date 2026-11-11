@@ -156,3 +156,45 @@ describe("rotas", () => {
     expect(parseWorld(JSON.stringify(bad))!.routes).toHaveLength(1);
   });
 });
+
+describe("planeta inteiro", () => {
+  it("converte mapas antigos (só uma região) para a grade do planeta", () => {
+    const old = {
+      format: 1,
+      name: "Antigo",
+      cols: 320,
+      rows: 200,
+      options: { seed: 1 },
+      heights: Buffer.from(new Uint8Array(320 * 200).fill(140)).toString("base64"),
+      burgs: [{ id: "c1", name: "Velha", x: 160, y: 100 }],
+      states: [],
+      routes: [
+        {
+          id: "r1",
+          name: "Antiga",
+          type: "estrada",
+          points: [
+            [0, 0],
+            [320, 200],
+          ],
+        },
+      ],
+    };
+    const m = parseWorld(JSON.stringify(old))!;
+    expect(m.heights.length).toBe(COLS * ROWS);
+    expect(m.burgs[0]).toMatchObject({ x: 180, y: 90 });
+    expect(m.routes![0]!.points[1]).toEqual([COLS, ROWS]);
+  });
+
+  it("o relevo emenda na longitude 180° (sem degrau na costura)", () => {
+    const m = generateWorld(opts(31));
+    let jump = 0;
+    let inside = 0;
+    for (let y = 0; y < ROWS; y++) {
+      jump += Math.abs(m.heights[y * COLS]! - m.heights[y * COLS + COLS - 1]!);
+      inside += Math.abs(m.heights[y * COLS + 100]! - m.heights[y * COLS + 99]!);
+    }
+    // A diferença na costura é parecida com a de duas colunas vizinhas quaisquer.
+    expect(jump).toBeLessThan(inside * 3 + ROWS * 4);
+  });
+});

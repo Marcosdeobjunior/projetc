@@ -47,8 +47,8 @@ export interface DrawOptions {
   furniture?: boolean;
 }
 
-/** Quilômetros por célula da grade. */
-export const KM_PER_CELL = 10;
+/** Quilômetros por célula (1° no equador de um planeta do tamanho da Terra). */
+export const KM_PER_CELL = 111;
 
 const SERIF = 'Georgia, "Times New Roman", serif';
 
@@ -90,7 +90,7 @@ function scaleBar(ctx: CanvasRenderingContext2D, view: View, size: { w: number; 
   const x = size.w - len - 72 - half;
   const y = size.h - 70;
   ctx.fillStyle = "rgba(245,238,220,0.85)";
-  ctx.fillRect(x - 12, y - 18, len + 24 + half, 34);
+  ctx.fillRect(x - 12, y - 18, len + 24 + half, 40);
   ctx.strokeStyle = "#2b2a26";
   ctx.fillStyle = "#2b2a26";
   ctx.lineWidth = 1.2;
@@ -106,6 +106,9 @@ function scaleBar(ctx: CanvasRenderingContext2D, view: View, size: { w: number; 
   ctx.textBaseline = "bottom";
   ctx.fillText("0", x, y - 3);
   ctx.fillText(label, x + len, y - 3);
+  ctx.font = `italic 10px ${SERIF}`;
+  ctx.textAlign = "left";
+  ctx.fillText("no equador", x, y + 15);
   ctx.restore();
 }
 
@@ -148,9 +151,26 @@ function compass(ctx: CanvasRenderingContext2D, x: number, y: number, r: number)
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
-  const { map, vectors, view, size, layers } = o;
+  const { view, size } = o;
   ctx.fillStyle = "#1f3a55";
   ctx.fillRect(0, 0, size.w, size.h);
+  // O planeta dá a volta: desenha as cópias à esquerda e à direita que aparecem na tela.
+  const width = COLS * view.s;
+  const placed: [number, number, number, number][] = [];
+  const first = Math.floor(-view.x / width) - 1;
+  for (let k = first; k <= first + 2 + Math.ceil(size.w / width); k++) {
+    const x = view.x + k * width;
+    if (x > size.w || x + width < 0) continue;
+    drawCopy(ctx, { ...o, view: { ...view, x } }, placed);
+  }
+}
+
+function drawCopy(
+  ctx: CanvasRenderingContext2D,
+  o: DrawOptions,
+  placed: [number, number, number, number][],
+) {
+  const { map, vectors, view, size, layers } = o;
   ctx.save();
   ctx.translate(view.x, view.y);
   ctx.scale(view.s, view.s);
@@ -274,7 +294,6 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   // Texto e marcadores em pixels de tela (tamanho fixo ao dar zoom).
   const toS = (x: number, y: number) => [x * view.s + view.x, y * view.s + view.y] as const;
   // Retângulos já ocupados por texto (nomes de reinos primeiro, depois cidades).
-  const placed: [number, number, number, number][] = [];
   const free = (x: number, y: number, w: number, h: number) =>
     placed.every(([a, b, c, d]) => x > c || x + w < a || y > d || y + h < b);
   if (layers.rotulos && layers.estradas) {

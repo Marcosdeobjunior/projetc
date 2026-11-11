@@ -10,8 +10,22 @@ import { rng } from "./geom";
  * relevo ou mudar uma capital refaz rios e fronteiras na hora.
  */
 
-export const COLS = 320;
-export const ROWS = 200;
+/** Planeta inteiro em projeção equirretangular: 1 célula = 1° de longitude e de latitude. */
+export const COLS = 360;
+export const ROWS = 180;
+/** Grade antiga (só uma região), convertida ao abrir. */
+const OLD_COLS = 320;
+const OLD_ROWS = 200;
+
+/** Coluna com volta ao mundo (a longitude dá a volta). */
+export const wrapCol = (x: number) => ((x % COLS) + COLS) % COLS;
+/** Diferença de coluna pelo caminho mais curto (pode atravessar a costura). */
+export const dCol = (a: number, b: number) => {
+  let d = a - b;
+  if (d > COLS / 2) d -= COLS;
+  if (d < -COLS / 2) d += COLS;
+  return d;
+};
 export const SEA = 128;
 
 export type Template = "continentes" | "ilhas" | "pangeia";
@@ -235,37 +249,45 @@ function generateHeights(o: WorldOptions): Uint8Array {
   const rand = rng(o.seed);
   const fbm = makeNoise(rand);
   const between = (a: number, b: number) => a + rand() * (b - a);
-  const aspect = COLS / ROWS;
+  const aspect = COLS / ROWS; // 2: o planeta tem o dobro de largura que altura
   const blobs: { x: number; y: number; r: number }[] = [];
   const add = (n: number, r0: number, r1: number) => {
     for (let i = 0; i < n; i++)
-      blobs.push({ x: between(0.15, 0.85) * aspect, y: between(0.2, 0.8), r: between(r0, r1) });
+      blobs.push({ x: rand() * aspect, y: between(0.18, 0.82), r: between(r0, r1) });
   };
   if (o.template === "pangeia") {
-    blobs.push({ x: aspect / 2 + between(-0.1, 0.1), y: 0.5, r: between(0.42, 0.5) });
-    add(2, 0.1, 0.18);
-  } else if (o.template === "ilhas") add(14 + Math.floor(rand() * 8), 0.05, 0.12);
-  else add(3 + Math.floor(rand() * 3), 0.18, 0.3);
+    blobs.push({ x: rand() * aspect, y: between(0.42, 0.58), r: between(0.4, 0.48) });
+    add(3, 0.08, 0.16);
+  } else if (o.template === "ilhas") add(24 + Math.floor(rand() * 12), 0.05, 0.11);
+  else add(5 + Math.floor(rand() * 3), 0.16, 0.28);
 
   const raw = new Float32Array(COLS * ROWS);
   const ox = rand() * 100;
   const oy = rand() * 100;
+  const span = aspect * 3.2;
+  // Ruído sem emenda na longitude: mistura o ruído com ele mesmo deslocado de uma volta.
+  const seamless = (u: number, v: number, x: number, scale: number, octaves?: number) => {
+    const w = x / COLS;
+    const a = fbm(u * scale, v * scale, octaves);
+    const b = fbm((u - aspect) * scale, v * scale, octaves);
+    return a * (1 - w) + b * w;
+  };
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       const nx = (x / COLS) * aspect;
       const ny = y / ROWS;
       let mask = 0;
       for (const b of blobs) {
-        const d = Math.hypot(nx - b.x, ny - b.y) / b.r;
+        let dx = Math.abs(nx - b.x);
+        if (dx > aspect / 2) dx = aspect - dx;
+        const d = Math.hypot(dx, ny - b.y) / b.r;
         mask = Math.max(mask, 1 - d);
       }
-      // Bordas do mapa viram mar.
-      const edge = Math.min(nx, aspect - nx, ny, 1 - ny) / 0.12;
-      const fall = Math.min(1, Math.max(0, edge));
-      const n = fbm(nx * 3.2 + ox, ny * 3.2 + oy);
-      const ridge = 1 - Math.abs(fbm(nx * 5 + oy, ny * 5 + ox, 4));
-      raw[y * COLS + x] =
-        (mask * 0.55 + n * 0.5 + ridge * ridge * 0.12) * (0.35 + 0.65 * fall) - (1 - fall) * 0.4;
+      // Perto dos polos, um pouco mais de mar (calotas de gelo vêm do clima).
+      const polar = Math.max(0, (Math.abs(ny - 0.5) - 0.36) / 0.14);
+      const n = seamless(nx + ox / span, ny + oy / span, x, 3.2);
+      const ridge = 1 - Math.abs(seamless(nx + oy / span, ny + ox / span, x, 5, 4));
+      raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12 - polar * 0.3;
     }
   }
   // Nível do mar pela fração de terra pedida: o quantil vira 128.
@@ -305,7 +327,7 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
   const capSpacing = Math.max(14, Math.sqrt(landCells / Math.max(1, o.states)) * 0.75);
   const placed: Burg[] = [];
   const near = (i: number, r: number) =>
-    placed.some((b) => Math.hypot(b.x - (i % COLS), b.y - Math.floor(i / COLS)) < r);
+    placed.some((b) => Math.hypot(dCol(b.x, i % COLS), b.y - Math.floor(i / COLS)) < r);
   for (const { i } of scored) {
     if (placed.length >= o.states) break;
     if (near(i, capSpacing)) continue;
@@ -443,7 +465,7 @@ class Heap {
 }
 
 export function cellOf(x: number, y: number): number {
-  const cx = Math.max(0, Math.min(COLS - 1, Math.floor(x)));
+  const cx = wrapCol(Math.floor(x));
   const cy = Math.max(0, Math.min(ROWS - 1, Math.floor(y)));
   return cy * COLS + cx;
 }
@@ -469,8 +491,8 @@ export function deriveWorld(map: WorldMap): Derived {
     for (const [dx, dy] of N8) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const j = ny * COLS + nx;
+      if (ny < 0 || ny >= ROWS) continue;
+      const j = ny * COLS + wrapCol(nx);
       if (coastDist[j]! > coastDist[i]! + 1) {
         coastDist[j] = coastDist[i]! + 1;
         queue.push(j);
@@ -478,31 +500,38 @@ export function deriveWorld(map: WorldMap): Derived {
     }
   }
 
-  // Oceano: a água ligada à borda do mapa. O resto da água é lago.
+  // Oceano: o maior corpo d'água (num planeta, os mares se ligam); o resto é lago.
   const ocean = new Uint8Array(n);
-  const oq: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = i % COLS;
-    const y = (i / COLS) | 0;
-    if (!land[i] && (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1)) {
-      ocean[i] = 1;
-      oq.push(i);
-    }
-  }
-  for (let q = 0; q < oq.length; q++) {
-    const i = oq[q]!;
-    const x = i % COLS;
-    const y = (i / COLS) | 0;
-    for (const [dx, dy] of N8) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const j = ny * COLS + nx;
-      if (!land[j] && !ocean[j]) {
-        ocean[j] = 1;
-        oq.push(j);
+  {
+    const comp = new Int32Array(n).fill(-1);
+    let best = -1;
+    let bestSize = 0;
+    let id = 0;
+    for (let s = 0; s < n; s++) {
+      if (land[s] || comp[s]! >= 0) continue;
+      const q = [s];
+      comp[s] = id;
+      for (let k = 0; k < q.length; k++) {
+        const i = q[k]!;
+        const x = i % COLS;
+        const y = (i / COLS) | 0;
+        for (const [dx, dy] of N8) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= ROWS) continue;
+          const j = ny * COLS + wrapCol(x + dx);
+          if (!land[j] && comp[j]! < 0) {
+            comp[j] = id;
+            q.push(j);
+          }
+        }
       }
+      if (q.length > bestSize) {
+        bestSize = q.length;
+        best = id;
+      }
+      id++;
     }
+    for (let i = 0; i < n; i++) if (comp[i] === best) ocean[i] = 1;
   }
   // Distância até o oceano (portos só na costa do oceano, não em lagos nem rios).
   const oceanDist = new Uint16Array(n).fill(65535);
@@ -519,8 +548,8 @@ export function deriveWorld(map: WorldMap): Derived {
     for (const [dx, dy] of N8) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const j = ny * COLS + nx;
+      if (ny < 0 || ny >= ROWS) continue;
+      const j = ny * COLS + wrapCol(nx);
       if (oceanDist[j]! > oceanDist[i]! + 1) {
         oceanDist[j] = oceanDist[i]! + 1;
         dq.push(j);
@@ -555,7 +584,8 @@ export function deriveWorld(map: WorldMap): Derived {
   for (let i = 0; i < n; i++) {
     const x = i % COLS;
     const y = (i / COLS) | 0;
-    if (!land[i] || x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) {
+    void x;
+    if (!land[i] || y === 0 || y === ROWS - 1) {
       filled[i] = h[i]!;
       done[i] = 1;
       if (!land[i]) heap.push(i, h[i]!);
@@ -570,8 +600,8 @@ export function deriveWorld(map: WorldMap): Derived {
     for (const [dx, dy] of N8) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const j = ny * COLS + nx;
+      if (ny < 0 || ny >= ROWS) continue;
+      const j = ny * COLS + wrapCol(nx);
       if (done[j]) continue;
       done[j] = 1;
       filled[j] = Math.max(h[j]!, hi + 0.01);
@@ -611,7 +641,7 @@ export function deriveWorld(map: WorldMap): Derived {
         const t = Math.max(0, Math.min(1, (h[c]! - (SEA - 0.5)) / (h[c]! - h[d]! || 1)));
         const cx = (c % COLS) + 0.5;
         const cy = Math.floor(c / COLS) + 0.5;
-        const dx = (d % COLS) + 0.5 - cx;
+        const dx = dCol(d % COLS, c % COLS);
         const dy = Math.floor(d / COLS) + 0.5 - cy;
         mouth = [cx + dx * t, cy + dy * t];
         break;
@@ -692,8 +722,8 @@ export function deriveWorld(map: WorldMap): Derived {
     for (const [dx, dy] of N8) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const j = ny * COLS + nx;
+      if (ny < 0 || ny >= ROWS) continue;
+      const j = ny * COLS + wrapCol(nx);
       if (!land[j]) continue;
       const step =
         (dx && dy ? 1.414 : 1) *
@@ -728,8 +758,8 @@ export function deriveWorld(map: WorldMap): Derived {
   for (let i = 0; i < n; i++) {
     if (owner[i]! < 0) continue;
     const x = i % COLS;
-    for (const j of [i + 1, i + COLS]) {
-      if (j >= n || (j === i + 1 && x === COLS - 1)) continue;
+    for (const j of [x === COLS - 1 ? i - (COLS - 1) : i + 1, i + COLS]) {
+      if (j >= n) continue;
       const a = owner[i]!;
       const b = owner[j]!;
       if (b < 0 || a === b) continue;
@@ -814,8 +844,8 @@ export function deriveWorld(map: WorldMap): Derived {
       for (const [dx, dy] of N8) {
         const nx = x + dx;
         const ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-        const j = ny * COLS + nx;
+        if (ny < 0 || ny >= ROWS) continue;
+        const j = ny * COLS + wrapCol(nx);
         if (!land[j]) continue;
         const step =
           (dx && dy ? 1.414 : 1) *
@@ -894,13 +924,39 @@ const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 /** Lê o arquivo gravado; qualquer coisa fora do formato é descartada (null = sem mapa). */
+/** Reamostra (bilinear) uma grade de alturas para COLS × ROWS. */
+function resample(src: Uint8Array, w: number, h: number): Uint8Array {
+  const out = new Uint8Array(COLS * ROWS);
+  for (let y = 0; y < ROWS; y++)
+    for (let x = 0; x < COLS; x++) {
+      const fx = Math.min(w - 1.001, ((x + 0.5) * w) / COLS - 0.5);
+      const fy = Math.min(h - 1.001, ((y + 0.5) * h) / ROWS - 0.5);
+      const x0 = Math.max(0, Math.floor(fx));
+      const y0 = Math.max(0, Math.floor(fy));
+      const tx = Math.max(0, fx - x0);
+      const ty = Math.max(0, fy - y0);
+      const i = y0 * w + x0;
+      const a = src[i]!;
+      const b = src[i + 1]!;
+      const c = src[i + w]!;
+      const dd = src[i + w + 1]!;
+      out[y * COLS + x] = Math.round((a + (b - a) * tx) * (1 - ty) + (c + (dd - c) * tx) * ty);
+    }
+  return out;
+}
+
 export function parseWorld(raw: string): WorldMap | null {
   try {
     const d = JSON.parse(raw) as Record<string, unknown>;
-    if (d.format !== 1 || d.cols !== COLS || d.rows !== ROWS || typeof d.heights !== "string")
-      return null;
-    const heights = fromBase64(d.heights);
-    if (heights.length !== COLS * ROWS) return null;
+    if (d.format !== 1 || typeof d.heights !== "string") return null;
+    // Mapas antigos (só uma região, 320×200) são esticados para o planeta (360×180).
+    const old = d.cols === OLD_COLS && d.rows === OLD_ROWS;
+    if (!old && (d.cols !== COLS || d.rows !== ROWS)) return null;
+    const stored = fromBase64(d.heights);
+    if (stored.length !== (old ? OLD_COLS * OLD_ROWS : COLS * ROWS)) return null;
+    const heights = old ? resample(stored, OLD_COLS, OLD_ROWS) : stored;
+    const sx = old ? COLS / OLD_COLS : 1;
+    const sy = old ? ROWS / OLD_ROWS : 1;
     const o = (d.options ?? {}) as Record<string, unknown>;
     const options: WorldOptions = {
       seed: (num(o.seed) ?? 1) >>> 0,
@@ -915,8 +971,10 @@ export function parseWorld(raw: string): WorldMap | null {
     for (const b of Array.isArray(d.burgs)
       ? (d.burgs as Record<string, unknown>[]).slice(0, 500)
       : []) {
-      const x = num(b.x);
-      const y = num(b.y);
+      const bx = num(b.x);
+      const by = num(b.y);
+      const x = bx === null ? null : bx * sx;
+      const y = by === null ? null : by * sy;
       const id = str(b.id, 64);
       if (!id || x === null || y === null || x < 0 || y < 0 || x > COLS || y > ROWS) continue;
       const burg: Burg = { id, name: str(b.name, 80) || "Cidade", x, y };
@@ -953,10 +1011,10 @@ export function parseWorld(raw: string): WorldMap | null {
             typeof p[1] === "number" &&
             p[0] >= 0 &&
             p[1] >= 0 &&
-            p[0] <= COLS &&
-            p[1] <= ROWS,
+            p[0] * sx <= COLS &&
+            p[1] * sy <= ROWS,
         )
-        .map((p) => [p[0], p[1]] as [number, number]);
+        .map((p) => [p[0] * sx, p[1] * sy] as [number, number]);
       if (!id || points.length < 2) continue;
       routes.push({ id, name: str(r.name, 80) || "Rota", type, points });
     }

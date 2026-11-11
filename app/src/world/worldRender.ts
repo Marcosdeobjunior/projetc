@@ -1,4 +1,13 @@
-import { BIOMES, COLS, ROWS, SEA, type Derived, type RouteType, type WorldMap } from "./worldgen";
+import {
+  BIOMES,
+  COLS,
+  dCol,
+  ROWS,
+  SEA,
+  type Derived,
+  type RouteType,
+  type WorldMap,
+} from "./worldgen";
 
 /*
  * Desenho do mapa-múndi: uma imagem de fundo (biomas ou relevo, com
@@ -20,6 +29,7 @@ const BIOME_RGB = BIOMES.map((b) => hex(b.color));
 const DEEP = hex("#26486b");
 const SHALLOW = hex("#5d8fb9");
 const COAST_SEA = hex("#86b2d3");
+const SEA_ICE = hex("#e4eef2");
 const POLITICAL_LAND = hex("#efe6d0");
 
 /** Relevo: verde baixo → amarelo → marrom → branco no alto. */
@@ -47,30 +57,34 @@ function relief(e: number) {
 
 /** Altura interpolada (bilinear) num ponto em coordenadas de célula (centros em +0,5). */
 export function heightAt(h: Uint8Array, x: number, y: number): number {
-  const fx = Math.max(0, Math.min(COLS - 1.001, x - 0.5));
+  // A longitude dá a volta: a coluna depois da última é a primeira.
+  const fx = (((x - 0.5) % COLS) + COLS) % COLS;
   const fy = Math.max(0, Math.min(ROWS - 1.001, y - 0.5));
   const x0 = fx | 0;
+  const x1 = (x0 + 1) % COLS;
   const y0 = fy | 0;
   const tx = fx - x0;
   const ty = fy - y0;
-  const i = y0 * COLS + x0;
-  const a = h[i]!;
-  const b = h[i + 1]!;
-  const c = h[i + COLS]!;
-  const d = h[i + COLS + 1]!;
+  const r0 = y0 * COLS;
+  const r1 = r0 + COLS;
+  const a = h[r0 + x0]!;
+  const b = h[r0 + x1]!;
+  const c = h[r1 + x0]!;
+  const d = h[r1 + x1]!;
   return (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
 }
 
 /** Cor do bioma misturando as quatro células em volta (sem degraus entre células). */
 function biomeAt(d: Derived, x: number, y: number): [number, number, number] {
-  const fx = Math.max(0, Math.min(COLS - 1.001, x - 0.5));
+  const fx = (((x - 0.5) % COLS) + COLS) % COLS;
   const fy = Math.max(0, Math.min(ROWS - 1.001, y - 0.5));
   const x0 = fx | 0;
+  const x1 = (x0 + 1) % COLS;
   const y0 = fy | 0;
   const tx = fx - x0;
   const ty = fy - y0;
-  const i = y0 * COLS + x0;
-  const cells = [i, i + 1, i + COLS, i + COLS + 1];
+  const r0 = y0 * COLS;
+  const cells = [r0 + x0, r0 + x1, r0 + COLS + x0, r0 + COLS + x1];
   const w = [(1 - tx) * (1 - ty), tx * (1 - ty), (1 - tx) * ty, tx * ty];
   let r = 0;
   let g = 0;
@@ -119,6 +133,9 @@ export function bakeBase(
         rgb = lerp3(DEEP, SHALLOW, Math.pow(depth, 1.6));
         // Água rasa perto da costa, suave (pela altura interpolada, não pela célula).
         if (v > SEA - 16) rgb = lerp3(rgb, COAST_SEA, ((v - (SEA - 16)) / 16) * 0.4);
+        // Mar congelado perto dos polos.
+        const temp = d.temp[cell]!;
+        if (temp < 0.16) rgb = lerp3(rgb, SEA_ICE, Math.min(1, (0.16 - temp) / 0.1));
       } else {
         const e = Math.max(0, (v - SEA) / 127);
         if (mode === "relevo") rgb = relief(e);
@@ -164,12 +181,14 @@ export function contour(
   const out: number[] = [];
   const lerp = (a: number, b: number) => (level - a) / (b - a || 1e-6);
   for (let y = 0; y < ROWS - 1; y++) {
-    for (let x = 0; x < COLS - 1; x++) {
+    for (let x = 0; x < COLS; x++) {
       const i = y * COLS + x;
       if (skip?.(i)) continue;
+      // Última coluna se liga à primeira (a costura de 180°).
+      const r = x === COLS - 1 ? i + 1 - COLS : i + 1;
       const a = value(i);
-      const b = value(i + 1);
-      const c = value(i + COLS + 1);
+      const b = value(r);
+      const c = value(r + COLS);
       const dd = value(i + COLS);
       const code =
         (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (dd > level ? 1 : 0);
@@ -229,16 +248,35 @@ export function segmentsPath(seg: Float32Array): Path2D {
   return p;
 }
 
+/**
+ * Deixa a longitude contínua ao longo de uma linha que atravessa a costura
+ * (ex.: 359 → 0 vira 359 → 360): desenhada nas cópias vizinhas, emenda certo.
+ */
+export function unwrap(pts: [number, number][]): [number, number][] {
+  const out: [number, number][] = [];
+  for (const p of pts) {
+    const prev = out[out.length - 1];
+    if (!prev) out.push([p[0], p[1]]);
+    else {
+      let x = p[0];
+      while (x - prev[0] > COLS / 2) x -= COLS;
+      while (prev[0] - x > COLS / 2) x += COLS;
+      out.push([x, p[1]]);
+    }
+  }
+  return out;
+}
+
 /** Linha suave pelos centros das células (rios e estradas). */
 export function cellsPath(
   cells: number[],
   path = new Path2D(),
   end?: readonly [number, number],
 ): Path2D {
-  const pts: (readonly [number, number])[] = cells.map(
-    (c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as const,
-  );
-  if (end) pts.push(end);
+  const pts = unwrap([
+    ...cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as [number, number]),
+    ...(end ? [[end[0], end[1]] as [number, number]] : []),
+  ]);
   if (pts.length < 2) return path;
   path.moveTo(pts[0]![0], pts[0]![1]);
   for (let i = 1; i < pts.length - 1; i++) {
@@ -283,7 +321,7 @@ export function buildVectors(map: WorldMap, d: Derived) {
   for (const r of d.roads) cellsPath(r.cells, roads[r.type]);
   // Rotas desenhadas: caminho suave e o ponto do meio (para o nome).
   const routes = (map.routes ?? []).map((r, k) => {
-    const pts = d.routes[k]?.points ?? r.points;
+    const pts = unwrap(d.routes[k]?.points ?? r.points);
     const path = new Path2D();
     path.moveTo(pts[0]![0], pts[0]![1]);
     for (let i = 1; i < pts.length - 1; i++) {
@@ -316,24 +354,27 @@ export function buildVectors(map: WorldMap, d: Derived) {
     return { id: r.id, name: r.name, type: r.type, path, points: pts, length: len, mid };
   });
   // Rótulo de cada estado: a célula dele mais perto do seu centro.
-  const sums = map.states.map(() => ({ x: 0, y: 0, n: 0 }));
+  // Centro do estado: média circular na longitude (pode atravessar a costura).
+  const sums = map.states.map(() => ({ c: 0, s: 0, y: 0, n: 0 }));
   for (let i = 0; i < COLS * ROWS; i++) {
     const o = d.owner[i]!;
     if (o < 0) continue;
     const s = sums[o]!;
-    s.x += i % COLS;
+    const a = ((i % COLS) / COLS) * Math.PI * 2;
+    s.c += Math.cos(a);
+    s.s += Math.sin(a);
     s.y += Math.floor(i / COLS);
     s.n++;
   }
   const labels = sums.map((s, k) => {
     if (!s.n) return null;
-    const cx = s.x / s.n;
+    const cx = ((((Math.atan2(s.s, s.c) / (Math.PI * 2)) * COLS) % COLS) + COLS) % COLS;
     const cy = s.y / s.n;
     let best = -1;
     let bd = Infinity;
     for (let i = 0; i < COLS * ROWS; i++) {
       if (d.owner[i] !== k) continue;
-      const dist = Math.hypot((i % COLS) - cx, Math.floor(i / COLS) - cy);
+      const dist = Math.hypot(dCol(i % COLS, cx), Math.floor(i / COLS) - cy);
       if (dist < bd) {
         bd = dist;
         best = i;
