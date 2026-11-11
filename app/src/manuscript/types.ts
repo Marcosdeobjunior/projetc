@@ -49,6 +49,8 @@ export interface Note {
   file: string;
   /** Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Opcional. */
   image?: string;
+  /** Outras imagens da ficha (galeria), além da principal: `anexos/<arquivo>`. Opcional. */
+  images?: string[];
   /** Campos da ficha (veja manuscript/fields.ts). Opcional. */
   fields?: Record<string, string>;
 }

@@ -146,7 +146,6 @@ export function Home() {
           <div className="projects-inner">
             <header className="projects-head">
               <div className="projects-brand">
-                <Emblem />
                 <div>
                   <h1>Projetos</h1>
                   <p>Seus mundos. Suas histórias. Seu legado.</p>
@@ -307,22 +306,6 @@ function activity(vaults: VaultRef[], stats: Record<string, ProjectStats | null>
     if (v.openedAt) items.push({ root: v.root, title: v.title, kind: "open", at: v.openedAt });
   }
   return items.sort((a, b) => b.at - a.at).slice(0, 5);
-}
-
-function Emblem() {
-  return (
-    <svg className="emblem" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="1.4">
-        {Array.from({ length: 12 }, (_, i) => (
-          <path key={i} d="M32 4 35 20 32 24 29 20z" transform={`rotate(${i * 30} 32 32)`} />
-        ))}
-        <circle cx="32" cy="32" r="11" />
-        <circle cx="32" cy="32" r="6" />
-        <path d="M24 32c3-4 13-4 16 0-3 4-13 4-16 0z" />
-      </g>
-      <circle cx="32" cy="32" r="2.4" fill="currentColor" />
-    </svg>
-  );
 }
 
 function Cover({ title, size }: { title: string; size: "sm" | "lg" }) {

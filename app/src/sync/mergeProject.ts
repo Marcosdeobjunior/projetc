@@ -149,6 +149,12 @@ export function mergeProjects(
           ? rn.image
           : ln.image
         : (ln.image ?? rn.image),
+      // Galeria: a lista inteira como um valor (mudou de um lado, vale esse lado).
+      images: bn
+        ? JSON.stringify(ln.images) === JSON.stringify(bn.images)
+          ? rn.images
+          : ln.images
+        : (ln.images ?? rn.images),
     }),
     changed,
   );

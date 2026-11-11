@@ -7,7 +7,7 @@ import type { Note, NoteKind } from "./types";
  * ligação no Elo. O texto livre da nota (.md) continua sendo as anotações.
  */
 
-export type FieldType = "text" | "long" | "ref";
+export type FieldType = "text" | "long" | "ref" | "choice";
 
 export interface FieldDef {
   key: string;
@@ -15,11 +15,26 @@ export interface FieldDef {
   type: FieldType;
   /** Tipo de nota que um campo de referência aceita. */
   ref?: NoteKind;
+  /** Opções de um campo de escolha (o texto escolhido é o valor gravado). */
+  options?: string[];
   placeholder?: string;
+  /** Dica curta embaixo do campo (ex.: um teste para o escritor). */
+  hint?: string;
+  /** Abre uma nova seção da ficha antes deste campo. */
+  section?: { title: string; source?: string };
+  /** Campo antigo: só aparece se já tiver valor (para não esconder o que foi escrito). */
+  legacy?: boolean;
 }
 
 export const NOTE_FIELDS: Partial<Record<NoteKind, FieldDef[]>> = {
   personagens: [
+    {
+      key: "papel",
+      label: "Papel na história",
+      type: "choice",
+      options: ["Protagonista", "Antagonista", "Coadjuvante"],
+      section: { title: "1. Base" },
+    },
     { key: "nomeCompleto", label: "Nome completo", type: "text" },
     { key: "apelidos", label: "Apelidos", type: "text" },
     { key: "idade", label: "Idade", type: "text", placeholder: "ex.: 17 anos" },
@@ -28,15 +43,113 @@ export const NOTE_FIELDS: Partial<Record<NoteKind, FieldDef[]>> = {
     { key: "local", label: "Onde vive", type: "ref", ref: "lugares" },
     { key: "organizacao", label: "Organização", type: "ref", ref: "organizacoes" },
     { key: "aparencia", label: "Aparência", type: "long" },
-    { key: "personalidade", label: "Personalidade", type: "long" },
-    { key: "objetivo", label: "Objetivo", type: "long", placeholder: "O que quer" },
-    { key: "conflito", label: "Medos e conflitos", type: "long" },
     {
-      key: "background",
-      label: "Background",
+      key: "objetivo",
+      label: "Quer",
       type: "long",
-      placeholder: "História até o livro começar",
+      placeholder: "Concreto, visível em cena",
+      section: { title: "2. Desejo", source: "o que quer, meta externa · Vonnegut, Truby" },
     },
+    {
+      key: "desejoCena",
+      label: "Em uma cena comum, o que ele faz para conseguir isso?",
+      type: "long",
+    },
+    {
+      key: "mentira",
+      label: "Acredita que",
+      type: "long",
+      section: { title: "3. Mentira", source: "o que acredita de errado · Weiland" },
+    },
+    { key: "mentiraDesejo", label: "O desejo acima nasce dessa mentira?", type: "long" },
+    {
+      key: "fantasma",
+      label: "Evento do passado que fez a mentira parecer verdade",
+      type: "long",
+      hint: "Só o que influencia as escolhas atuais.",
+      section: { title: "4. Fantasma", source: "de onde veio a mentira · Weiland" },
+    },
+    {
+      key: "necessidade",
+      label: "Precisa de / precisa aprender que",
+      type: "long",
+      hint: "Teste: ele consegue o desejo e a necessidade ao mesmo tempo? Se sim, falta conflito.",
+      section: {
+        title: "5. Necessidade",
+        source: "a verdade que precisa aceitar · Weiland, Truby",
+      },
+    },
+    {
+      key: "fraquezaPsicologica",
+      label: "Psicológica (só o machuca)",
+      type: "long",
+      section: { title: "6. Fraqueza", source: "Truby" },
+    },
+    { key: "fraquezaMoral", label: "Moral (machuca os outros)", type: "long" },
+    {
+      key: "oponente",
+      label: "Quem ou o que ataca exatamente a fraqueza acima",
+      type: "long",
+      section: { title: "7. Oponente", source: "Truby" },
+    },
+    {
+      key: "torcida",
+      label: "Por que o leitor torce por ele?",
+      type: "long",
+      placeholder: "Uma qualidade que desperta simpatia",
+      section: { title: "8. Torcida", source: "Vonnegut" },
+    },
+    {
+      key: "contradicao",
+      label: "Traço que não combina com o resto, mas convence",
+      type: "long",
+      section: { title: "9. Contradição", source: "Forster" },
+    },
+    {
+      key: "acaoSurpresa",
+      label: "Uma ação que surpreenderia o leitor e ainda faria sentido",
+      type: "long",
+    },
+    {
+      key: "voz",
+      label: "Como fala",
+      type: "long",
+      placeholder: "Ritmo, vocabulário, o que evita dizer",
+      hint: "Teste: sem o nome, dá para saber que é ele falando?",
+      section: { title: "10. Voz" },
+    },
+    {
+      key: "arcoTipo",
+      label: "Tipo de arco",
+      type: "choice",
+      options: [
+        "Positivo (Mentira → Verdade)",
+        "Negativo (rejeita a Verdade e piora)",
+        "Plano (já sabe a Verdade e muda o mundo ao redor)",
+      ],
+      section: { title: "11. Arco", source: "Weiland" },
+    },
+    { key: "arcoInicio", label: "Início", type: "long" },
+    { key: "arcoVirada", label: "Ponto de virada", type: "long" },
+    { key: "arcoFim", label: "Fim", type: "long" },
+    {
+      key: "funcaoQuer",
+      label: "Quer",
+      type: "long",
+      hint: "Todo personagem quer algo, nem que seja um copo d’água.",
+      section: { title: "12. Função", source: "para coadjuvantes" },
+    },
+    { key: "funcaoServe", label: "Serve à história para", type: "long" },
+    // Campos da ficha anterior: aparecem só em quem já os preencheu.
+    {
+      key: "personalidade",
+      label: "Personalidade",
+      type: "long",
+      legacy: true,
+      section: { title: "Outros" },
+    },
+    { key: "conflito", label: "Medos e conflitos", type: "long", legacy: true },
+    { key: "background", label: "Background", type: "long", legacy: true },
   ],
   lugares: [
     { key: "tipo", label: "Tipo", type: "text", placeholder: "cidade, floresta, castelo…" },
@@ -74,6 +187,22 @@ export const NOTE_FIELDS: Partial<Record<NoteKind, FieldDef[]>> = {
 };
 
 export const fieldsOf = (kind: NoteKind): FieldDef[] => NOTE_FIELDS[kind] ?? [];
+
+/**
+ * Os campos que a ficha mostra: os antigos (`legacy`) só se tiverem valor. Se o
+ * campo que abria uma seção some, a seção passa para o próximo campo dela.
+ */
+export function visibleFields(kind: NoteKind, values: Record<string, string>): FieldDef[] {
+  const out: FieldDef[] = [];
+  let pending: FieldDef["section"];
+  for (const d of fieldsOf(kind)) {
+    if (d.section) pending = d.section;
+    if (d.legacy && !values[d.key]) continue;
+    out.push(pending && !d.section ? { ...d, section: pending } : d);
+    pending = undefined;
+  }
+  return out;
+}
 
 /** Ids de outras notas citadas nos campos de referência. */
 export function fieldRefs(note: Note): string[] {

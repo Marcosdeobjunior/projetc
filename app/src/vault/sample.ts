@@ -87,14 +87,36 @@ export async function createSampleVault(fs: VaultFs): Promise<Project> {
   const id = (title: string) => p.notes.find((n) => n.title === title)?.id ?? "";
   const vila = id("Vila Serena");
   const sampleFields: [string, Record<string, string>][] = [
-    ["Lucas", { nomeCompleto: "Lucas Andrade", idade: "17 anos", ocupacao: "Estudante" }],
+    [
+      "Lucas",
+      {
+        papel: "Protagonista",
+        nomeCompleto: "Lucas Andrade",
+        idade: "17 anos",
+        ocupacao: "Estudante",
+        objetivo: "Descobrir o que o pai escondia",
+        mentira: "Que precisa resolver tudo sozinho",
+        arcoTipo: "Positivo (Mentira → Verdade)",
+      },
+    ],
     [
       "Helena",
-      { idade: "18 anos", ocupacao: "Padeira", local: vila, personalidade: "Desconfiada, leal" },
+      {
+        papel: "Coadjuvante",
+        idade: "18 anos",
+        ocupacao: "Padeira",
+        local: vila,
+        contradicao: "Desconfiada de todos, mas confia cegamente em Lucas",
+      },
     ],
     [
       "Mariana",
-      { ocupacao: "Mentora", local: vila, objetivo: "Proteger o segredo do pai de Lucas" },
+      {
+        papel: "Coadjuvante",
+        ocupacao: "Mentora",
+        local: vila,
+        funcaoQuer: "Proteger o segredo do pai de Lucas",
+      },
     ],
     ["Vila Serena", { tipo: "Cidade serrana", clima: "Frio e úmido" }],
   ];

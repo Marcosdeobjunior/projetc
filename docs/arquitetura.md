@@ -416,10 +416,111 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   transação (o mapeamento do Yjs ainda não foi atualizado ali); são recalculadas pelas âncoras
   quando chega uma transação do `ySyncPluginKey` (abrir, desfazer, Yjs) ou `REFRESH_COMMENTS`.
 - UI em `editor/Comments.tsx` (`CommentComposer`, `CommentsPanel`); atalho Ctrl/⌘+Alt+M.
-- Campos da ficha: `manuscript/fields.ts` (`NOTE_FIELDS` por tipo, `sanitizeFields`,
+- Campos da ficha: `manuscript/fields.ts` (`NOTE_FIELDS` por tipo, com `section` abrindo seções,
+  `hint`, tipo `choice` com `options` e `legacy` para campos antigos que só aparecem preenchidos —
+  `visibleFields` aplica isso —, `sanitizeFields`,
   `mergeFields` campo a campo no `mergeProject`, `fieldRefs`); gravados em `notes[].fields` por
   `setNoteFields` (pela `change`); campos de referência viram arestas "link" em `buildGraph`. A tela
-  é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida).
+  é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida), com seções em cartões, o índice
+  `FieldSectionNav` e o `CharacterPanel` (sugestões de `manuscript/characterCheck.ts`); listas de
+  escolha usam `ui/Select.tsx` (combobox próprio, com teclado) no lugar do `<select>` nativo.
+- Mapa da região e brasão (`ui/PlaceRegion.tsx`): `world/village.ts` gera o mapa de forma
+  determinística a partir das opções gravadas em `fields.mapa` (semente mulberry32 em
+  `world/geom.ts`; estrada e ruas por caminhada aleatória suavizada, casas ao longo das ruas com
+  teste de sobreposição SAT, campos e árvores); `ui/PlaceMap.tsx` desenha em SVG (zoom/arrastar
+  por `viewBox`); `ui/StreetView.tsx` é um renderizador 3D em canvas 2D (casas como caixas com
+  telhado de quatro águas, projeção em perspectiva, recorte no plano próximo, descarte de faces
+  de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
+  `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
+- Mapa-múndi (`ui/WorldMapView.tsx`, view `"map"`): `world/worldgen.ts` gera e deriva o mundo numa
+  grade de 360×180 células (o planeta inteiro, equirretangular, 1° por célula; a longitude dá a volta: vizinhos usam `wrapCol`, distâncias `dCol`, o relevo usa ruído 3D (Perlin) amostrado sobre a esfera e distância pelo arco até os centros dos continentes — sem emenda e sem distorção nos polos —, os caminhos medem passos com `stepLen` (largura da célula × cos(latitude)), e o oceano é o maior corpo d'água). Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
+  (`state/worldMap.ts`, via `serial()` com espera de 600 ms e `registerFlush`; `load` não relê o
+  disco se o projeto já está carregado, para não perder edições pendentes). Derivado em
+  `deriveWorld` (~100 ms): distância à costa (BFS), temperatura e umidade (ruído fractal +
+  latitude/altitude/costa), priority-flood para tirar depressões, vazão e rios, biomas
+  (Whittaker simplificado), estados por Dijkstra multi-fonte a partir das capitais (custo por
+  bioma, subida e rios) e estradas pelos predecessores desse Dijkstra (cidade → capital e entre
+  capitais vizinhas). `world/worldRender.ts` assa a imagem de fundo (biomas/relevo/político com
+  sombreamento) e monta caminhos vetoriais (costa e fronteiras por marching squares, rios e
+  estradas suavizados); o canvas desenha isso com zoom/arraste e os rótulos em pixels de tela, sem
+  sobreposição.
+- Clima, culturas e nomes (ideias estudadas no Fantasy Map Generator, de código aberto, e
+  reimplementadas aqui): `climate()` em `world/worldgen.ts` calcula a temperatura em °C (trópicos,
+  queda até os polos, −6,5 °C/km) e a chuva por ventos predominantes em faixas de 30° (umidade
+  ganha sobre o mar, perdida sobre a terra, extra nas subidas, ar seco depois de serras altas),
+  suavizada e normalizada; `biomeFor` escolhe o bioma por temperatura × umidade. `placeCultures`
+  põe os centros dos povos (tipo pelo lugar, base de nomes pelo clima) e `deriveWorld` expande cada
+  cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
+  ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
+  regras de população (`world/settlement.ts`).
+- Hidrologia (`deriveWorld`): priority-flood dá o nível da água (`filled`); a direção `down` é o
+  maior declive sobre `filled` (sempre desce, então não há ciclos). Componentes de depressão
+  (`filled − h ≥ 0,3`, ≥ 2 células, profundidade ≥ 1, sem cidade dentro) viram lagos (`d.lakes`,
+  `d.lake`; `land = 0`, e `d.eff` são as alturas para desenhar, com o lago abaixo do nível do
+  mar). A vazão acumula o escoamento `chuva − evaporação(temperatura)`; um lago cuja entrada é
+  menor que a evaporação da superfície fica salgado e a saída é bloqueada (a vazão é recalculada).
+  Rios guardam `source` (margem do lago de origem) e `mouth` (margem do mar/lago);
+  `worldRender.riverPieces` desenha trechos que engrossam com √vazão e meandros nas planícies.
+- Províncias, religiões e marcadores (`world/society.ts`, `deriveSociety`): derivados (não
+  gravados). Províncias: sedes = capital + cidades mais afastadas (área/260), Dijkstra restrito ao
+  estado. Religiões: folclórica por cultura, organizadas a partir de capitais (Dijkstra com custo
+  menor dentro do estado de origem), cultos locais. Marcadores por regras de terreno (picos,
+  degraus de rio, serras, estradas, costa, fronteiras) com nomes Markov da cultura local.
+  `buildProvinceVectors` faz as divisas (marching squares dentro do mesmo estado); o modo
+  `religioes` de `bakeBase` recebe a religião de cada célula.
+- Prévia da cidade (`world/village.ts`, `generateFromGeo`): com `geo` (de `localGeo` em
+  `world/settlement.ts`: direção da água num raio de 3 células, do rio pelo `down` e das estradas
+  geradas que passam pela cidade, e o visual do bioma), a vila tem mar/lago, rio e estradas nas
+  direções reais. A geografia usa uma semente fixa da cidade e casas/ruas/lavouras a semente das
+  opções; `geo` não é gravada (`serializeMapOptions`). Cidades do mapa são escolhidas por
+  habitabilidade do bioma, clima, declive, rios (mais em confluências) e costa, com metade das
+  vagas reservadas ao interior.
+- Mapa ↔ Mundo (`world/worldNotes.ts`, chamado por `useWorldMap.reconcile`): cada estado e cidade
+  tem um lugar (`noteId`). `syncWorldNotes` liga/cria os lugares (aproveitando título igual), puxa
+  os nomes das fichas e tira do mapa o que foi apagado no Mundo (ou recria, ao desfazer);
+  `applyWorldFields` preenche `tipo` e `regiao` só onde estão vazios ou foram postos pelo mapa;
+  `retireNotes` manda para a lixeira os lugares que saíram do mapa e nunca foram mexidos. A
+  reconciliação roda depois de cada mudança no mapa e quando as notas do projeto mudam (com o mapa
+  aberto), dentro de `change` (fila única).
+- "Editar povoado" (`ui/BurgDialog.tsx`): janela flutuante do mapa-múndi. `world/settlement.ts`
+  junta os campos do lugar com valores padrão tirados do mapa (população pela semente, porto/rio
+  pela costa e vazão, temperatura e altitude da célula) e monta as opções da prévia, que é o
+  mesmo gerador de vila (`world/village.ts`, agora com muralha, cidadela, praça, templo e favela,
+  e com o centro sempre no meio do mapa).
+- Desenho do mapa-múndi em `ui/worldDraw.ts` (`drawWorld`, usado na tela e no "Exportar
+  imagem"). O editor só refaz `deriveWorld` quando muda a geografia (alturas, posições das
+  cidades, capitais); renomear ou mudar cor não refaz. Enquanto o pincel pinta, a imagem de fundo
+  é assada em 1 px por célula e só a costa é recalculada (`coastPath`); o resto espera soltar.
+  Cidades arrastadas só movem o marcador até soltar.
+- Planeta e globo: na tela, o mapa plano é um planeta só (`single`: recortado nas bordas; as cópias
+  vizinhas só completam o que cruza a costura) e a vista é limitada por `clampView` (zoom mínimo = 100%,
+  o planeta inteiro; centraliza no eixo que sobra, onde `drawWorld` mostra o que fica além do
+  polo (a imagem espelhada e deslocada 180° na longitude); sem passar das bordas); `drawWorld` sem `single` repete na horizontal. As
+  linhas que cruzam a costura são "desembrulhadas" (`unwrap`). `ui/GlobeView.tsx` desenha o globo
+  em projeção ortográfica: o mapa plano vira textura (`drawWorld` sem nomes nem cidades) e cada
+  pixel do disco é convertido em latitude/longitude para buscar a cor, com luz e atmosfera; nomes,
+  cidades e linhas de latitude/longitude são projetados por cima (só o lado visível). Ao girar,
+  desenha em resolução menor.
+- Estradas geradas (`deriveWorld`): busca A* em 16 direções com arrays reaproveitados (carimbo por
+  busca), custo de engenharia por passo (`roadStep`: rampa ao quadrado, altitude, bioma, aspereza
+  fixa por célula, desconto em vales ao lado de rios e em estradas existentes, custo de ponte ao
+  entrar num rio, proporcional à vazão). Rodovias ligam capitais de estados vizinhos; estradas
+  vão de cada cidade até a capital (ou até a rodovia); trilhas ao vizinho mais perto. Cada estrada
+  tem nome; `bridges` guarda posição e direção das pontes. `cellsPath` suaviza os traçados
+  (Chaikin). O relevo é girado para a borda de 180° cair no meridiano com menos terra, e a faixa da
+  borda e as latitudes acima de ~58° viram mar no fim da geração.
+- Globo: `ui/GlobeView.tsx` usa WebGL (shader de esfera ortográfica sobre a textura do mapa plano,
+  luz, atmosfera e estrelas na GPU; nomes e cidades numa camada 2D por cima; giro em refs, um
+  desenho por quadro). Sem WebGL, cai em `ui/GlobeCpu.tsx`, onde a tabela por pixel (linha da textura, longitude sem giro, luz, borda) fica em cache e só é
+  refeita quando muda tamanho, zoom ou inclinação; girar para os lados só desloca a longitude; ao
+  arrastar, desenha em meia resolução; o efeito de desenho tem dependências explícitas (o mouse
+  parado sobre o globo não redesenha).
+- Rotas: `deriveWorld` classifica as estradas geradas (`principal` entre capitais vizinhas,
+  `estrada` cidade → capital cortada onde encontra a rodovia, `trilha` por Dijkstra limitado até a
+  cidade mais perto, só se o caminho for majoritariamente novo) e calcula o caminho das rotas
+  desenhadas (`map.routes`) entre os pontos de passagem pelo mesmo Dijkstra (marítimas ficam
+  retas). `buildVectors` monta um `Path2D` por tipo e, por rota, o caminho, o comprimento e o ponto
+  do meio para o nome.
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

@@ -219,12 +219,24 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
   calendário**, **Novo idioma**, **Nova organização**) cria a nota e abre a ficha. Cada tipo fica
   numa subpasta de `notas/` (`calendarios/`, `idiomas/`, `organizacoes/`…).
 - **Ficha:** clique no cartão para abrir a página própria da nota, com:
-  - a **imagem** (retrato do personagem, foto do lugar): **Escolher imagem**, ou arraste uma
-    imagem para o quadro. Ela é copiada para `anexos/` e aparece também no cartão. **Tirar**
-    remove da ficha (o arquivo continua em Anexos);
+  - as **imagens** (retratos do personagem, fotos do lugar): **Escolher imagens** (pode marcar
+    várias de uma vez), ou arraste uma ou mais para o quadro. Elas são copiadas para `anexos/`.
+    Com mais de uma, aparecem miniaturas embaixo: clique para ver a imagem em tamanho grande. A
+    **principal** (marcada assim) é a que aparece no cartão; **Tornar principal** troca. **Tirar**
+    remove a imagem da ficha (o arquivo continua em Anexos);
   - o nome, o tipo e os **campos da ficha**, que mudam conforme o tipo:
-    - **personagem:** nome completo, apelidos, idade, gênero, ocupação, onde vive, organização,
-      aparência, personalidade, objetivo, medos e conflitos, background;
+    - **personagem:** uma ficha em 12 seções, para construir o personagem por dentro: **1. Base**
+      (papel na história — protagonista, antagonista ou coadjuvante —, nome completo, apelidos,
+      idade, gênero, ocupação, onde vive, organização, aparência); **2. Desejo** (o que quer, e o
+      que faz numa cena comum para conseguir); **3. Mentira** (no que acredita de errado, e se o
+      desejo nasce dela); **4. Fantasma** (o evento do passado que fez a mentira parecer verdade);
+      **5. Necessidade** (a verdade que precisa aceitar); **6. Fraqueza** (psicológica e moral);
+      **7. Oponente** (quem ataca essa fraqueza); **8. Torcida** (por que o leitor torce por ele);
+      **9. Contradição**; **10. Voz** (como fala); **11. Arco** (positivo, negativo ou plano, com
+      início, ponto de virada e fim); **12. Função** (para coadjuvantes: o que quer e para que serve
+      à história). Cada seção traz a referência (Vonnegut, Truby, Weiland, Forster) e, onde cabe,
+      um teste embaixo do campo. Fichas antigas com personalidade, medos e conflitos ou background
+      preenchidos mostram esses campos no fim, em **Outros**;
     - **lugar:** tipo, onde fica, quem governa, população, clima, descrição, história;
     - **organização:** tipo, líder, sede, objetivo, membros, história;
     - **idioma:** falado por, onde se fala, escrita, palavras e frases, regras;
@@ -234,7 +246,25 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     escolhem outra nota (com **abrir** ao lado) e passam a ligar as duas no Elo. Se o personagem
     tem nascimento na linha do tempo, a idade calculada aparece embaixo do campo Idade.
 
-  - **Anotações:** o texto livre da nota, para o que não cabe nos campos; **Editar anotações** abre
+  - na ficha de personagem, o índice **Seções** embaixo da imagem (leva até cada seção e marca
+    as que já têm conteúdo) e, ao lado, o painel **Construção do personagem**: quantas seções
+    têm conteúdo e as próximas perguntas a responder (desejo → mentira → fantasma → necessidade,
+    fraqueza → oponente, arco, voz…), tiradas da própria ficha. Clique numa pergunta para ir ao
+    campo;
+  - na ficha de **lugar** e de **organização**, o **brasão** (ou **bandeira**, escolha no alto
+    do quadro), embaixo da imagem: um brasão é gerado a partir do nome, com campo, divisão e
+    figura seguindo as cores da heráldica; **Gerar outro** sorteia outro, e **Usar imagem** põe
+    um desenho seu no lugar (**Voltar ao gerado** desfaz). Brasão e bandeira são independentes: cada
+    um tem o seu desenho gerado e a sua imagem, e a imagem enviada numa aba não muda a outra;
+  - na ficha de **lugar**, o **Mapa da região**: **Gerar mapa** cria um mapa ilustrado com
+    estrada, rio, casas ao longo das ruas, campos cultivados e árvores. Escolha **Aldeia**, **Vila**
+    ou **Cidade**, ligue ou desligue **Estrada**, **Rio** e **Campos**, e use **Gerar outro** para
+    sortear outro desenho; o mapa fica guardado e é sempre o mesmo para aquele lugar. A roda do
+    mouse aproxima e arrastar move. **Vista de rua** mostra o lugar em 3D, do chão: clique na
+    imagem e ande com as setas (ou W A S D), **Shift** corre, arrastar olha em volta; um
+    minimapa no canto mostra onde você está e para onde olha. Clicar numa rua do mapa abre a
+    vista de rua ali. Não dá para entrar nas casas nem atravessar o rio fora da ponte;
+    , para o que não cabe nos campos; **Editar anotações** abre
     no editor (renomeie pelo nome no alto do texto);
   - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);
   - **Ligado a**: as outras notas ligadas a ela (clique para abrir a ficha delas).
@@ -1062,3 +1092,137 @@ gravar, para você não perder texto.
 
 A lista de recentes guarda o caminho antigo. Use **Abrir projeto existente** e escolha a pasta no
 lugar novo; se quiser, tire a entrada antiga da lista com o **×**.
+
+## Mapa-múndi
+
+**Mapa**, na barra lateral, abre o mapa do planeta inteiro do projeto, em projeção
+equirretangular (rios, reinos e estradas atravessam a linha de 180° sem emenda), os polos têm mar
+congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. O relevo é gerado sobre a esfera, então os continentes têm
+o mesmo tamanho real no equador e perto dos polos (no globo não ficam esticados), e, para que tudo
+apareça inteiro no mapa plano, o planeta é girado para que a borda de 180° caia num oceano e não
+há terra nas latitudes muito altas (onde o plano deforma). No mapa plano, como em todo mapa-múndi desse tipo, o que
+fica perto dos polos aparece esticado na horizontal, e a sobra acima e abaixo mostra o que existe
+do outro lado do polo. Na primeira vez, escolha o **tipo de
+mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
+**cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
+(desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que
+descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
+inventados) e **estradas** entre elas.
+
+- **Zoom e tela cheia:** o zoom aparece em % no canto (100% = o planeta inteiro, sem rolagem). Em
+  100% o mapa todo cabe na área, e a sobra (o planeta é duas vezes mais largo que alto) é pintada
+  como continuação do mar polar, sem faixas vazias; não dá para afastar além disso, e ao aproximar
+  o mapa para nas bordas (não rola sem fim). O botão de mapa inteiro volta a 100%. **Tela cheia**,
+  no alto, põe o mapa (plano ou globo) na tela toda do computador; **Esc** ou **Sair da tela
+  cheia** volta.
+- **Clima de verdade:** a temperatura cai do equador aos polos e com a altitude, e a chuva é
+  trazida pelos ventos de cada faixa de latitude (alísios, ventos de oeste, ventos polares): chove
+  muito nas encostas voltadas para o vento e pouco atrás das serras e no interior dos continentes.
+  Os biomas saem da combinação de temperatura e chuva, então desertos, savanas, florestas, taiga e
+  tundra aparecem onde fariam sentido.
+- **Culturas:** o mundo tem de 4 a 12 povos, cada um com um jeito de viver (Navegante, Montanhês,
+  Ribeirinho, Lacustre, Nômade, Caçador, Genérico) que define por onde ele se espalha, e um
+  "sotaque" de nomes (Lusitana, Nórdica, Élfica, Desértica, Eslava, Latina, Celta). Cidades e
+  reinos têm nomes inventados no sotaque do povo do lugar (cadeias de Markov). O estilo
+  **Culturas** pinta o território de cada povo, e a legenda lista os povos. No **Editar povoado**,
+  a Cultura vem preenchida com o povo do lugar, e o mouse sobre o mapa mostra o povo.
+- **Rios e lagos:** a chuva que sobra depois da evaporação (que é maior no calor) escorre pelo
+  maior declive do relevo e vai se juntando; onde a vazão é grande nasce um rio, que engrossa rio
+  abaixo e faz meandros nas planícies. Depressões no terreno enchem e viram **lagos**, até o nível
+  em que transbordam: o rio de saída começa na margem. Num lago em lugar quente e seco, que perde
+  mais água por evaporação do que recebe, a água não transborda: ele vira um **lago salgado** (sem
+  saída, de cor mais clara). Lagos têm nome no idioma do povo em volta, e o rio termina na margem
+  do mar ou do lago, sem desenho por cima da água. Na prévia do povoado, o rio desce para o mar
+  quando ele está naquele lado e se funde à água, sem contorno na foz.
+- **Províncias:** cada reino se divide em províncias a partir da capital e das cidades mais
+  afastadas umas das outras; o nome segue a forma de governo (Condado, Província, Marca, Baronato,
+  Distrito, Diocese, Ulus, Cantão). A camada **Províncias** mostra as divisas pontilhadas e, de
+  perto, os nomes; o painel do reino lista as províncias (clique para abrir a sede).
+- **Religiões:** cada povo tem a sua crença (folclórica: xamanismo, animismo, culto aos
+  ancestrais, politeísmo); algumas religiões organizadas nascem em capitais e se espalham (mais
+  depressa dentro do próprio reino), e há pequenos cultos em volta de uma cidade. O estilo
+  **Religiões** pinta onde cada uma predomina, com a legenda (tipo, forma e divindade).
+- **Marcadores:** vulcões, fontes termais, cachoeiras (onde o rio cai de um degrau alto), minas,
+  ruínas, faróis, estalagens nas estradas, cavernas, bosques sagrados e campos de batalha nas
+  fronteiras, cada um com nome e uma pequena lenda (passe o mouse sobre o ícone). A camada
+  **Marcadores** liga e desliga os ícones; os nomes aparecem bem de perto. Províncias, religiões e
+  marcadores saem do mapa e se refazem sozinhos quando ele muda.
+- **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
+  República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do
+  reino; os textos mostram o nome completo ("Reino de Faeris").
+- **Cidades:** o tipo vem do lugar (Porto, Lacustre, Montanha, Fluvial, Nômade, Caça, Genérico) e
+  os elementos vêm da população: cidades grandes quase sempre têm muralha e cidadela; templo e
+  favela aparecem com o tamanho.
+- **Plano ou Globo:** o botão no alto do mapa alterna entre o mapa plano e o **globo**, desenhado
+  na placa de vídeo (gira sem atraso). Arraste para girar, a roda do mouse (ou **+**/**−**)
+  aproxima e **⟳** faz o planeta girar sozinho; nomes de reinos e cidades aparecem no lado
+  visível, com luz, atmosfera e as linhas de latitude e longitude. Clicar numa cidade abre o
+  **Editar povoado**; num reino, seleciona o reino. As ferramentas de edição ficam no modo Plano.
+- **Navegar:** roda do mouse aproxima (no ponto do mouse), arrastar move; **+**, **−** e o botão
+  de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
+  ponto sob o mouse.
+- **Estilo:** **Biomas**, **Relevo** (cores de altitude), **Político** (estados em cores
+  chapadas, como num atlas), **Culturas** ou **Religiões**. **Camadas** liga e desliga rios,
+  estradas, fronteiras, a cor dos estados, províncias, cidades, marcadores e nomes.
+- **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade ou num estado para
+  editar; arraste uma cidade para mudá-la de lugar), **Elevar** e **Rebaixar** (pincel de relevo:
+  pinte terra no mar para criar ilhas, ou mar na terra; o tamanho do pincel aparece embaixo),
+  **Suavizar** e **Cidade** (clique em terra para criar uma). Rios, biomas, fronteiras e estradas
+  se refazem sozinhos depois de cada mudança. **Desfazer** e **Refazer** (Ctrl+Z, Ctrl+Shift+Z)
+  voltam até 30 passos.
+- **Mapa e Mundo são a mesma coisa:** cada estado do mapa é um lugar no Mundo (tipo **Reino**) e
+  cada cidade também (tipo **Cidade** ou **Capital**, com **Fica em** apontando para o reino). Ao
+  gerar o mapa, os lugares aparecem sozinhos em Mundo → Lugares; um lugar que já existia com o
+  mesmo nome é aproveitado. Renomear num lado renomeia no outro (e atualiza os `[[links]]`);
+  apagar o lugar no Mundo tira a cidade ou o estado do mapa; excluir no mapa manda o lugar para a
+  lixeira se ele nunca foi mexido (com texto, imagem ou campos seus, ele fica no Mundo).
+  **Lugares fora do mapa**, no painel, lista os lugares do Mundo que ainda não estão no mapa:
+  **Pôr no mapa** e um clique em terra o colocam como cidade.
+- **Editar povoado:** clicar numa cidade abre a janela **Editar povoado** sobre o mapa (arraste
+  pelo título; **−** minimiza, **×** fecha). Ela mostra o reino, o **brasão** do lugar, o
+  **Nome**, o **Grupo** (Metrópole, Cidade, Vila, Aldeia, Povoado — acompanha a população, a não
+  ser que você escolha), o **Tipo** (Genérico, Porto, Fluvial, Lacustre, Montanha, Fronteira,
+  Nômade), a **Cultura**, a **População**, a **Temperatura** e a **Elevação** (tiradas do mapa), os
+  **Elementos** (Capital, Porto, Muralhas, Cidadela, Praça, Templo, Favela; clique para ligar ou
+  desligar — Capital cria ou desfaz o reino), **Etiquetas** e a **Prévia do povoado**: o mapa da
+  cidade, que muda com a população e os elementos (muralha com torres, cidadela, praça, templo,
+  casebres do lado de fora). O botão de recarregar no título sorteia outro desenho. Tudo fica na
+  ficha do lugar; a prévia é fiel ao mapa-múndi — o mar ou lago fica do lado em que está no mapa, o rio corre
+  na mesma direção, as estradas saem para onde vão as da região, e o chão e as árvores seguem o
+  bioma; **gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
+  **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
+  com a cidade no centro.
+- **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
+  quantas cidades tem e a capital.
+- **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
+  canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
+  lembra a escolha.
+- **Estradas de verdade:** as estradas geradas seguem o terreno como na engenharia: evitam rampas
+  fortes (contornam as encostas), serras altas, pântanos e geleiras, preferem os vales ao lado dos
+  rios, aproveitam as estradas que já existem e cruzam rios por **pontes** (desenhadas no mapa ao
+  aproximar), escolhendo onde o rio é mais estreito. Rodovias e estradas geradas têm nome
+  automático (ex.: "Rodovia Beena–Orumbeor", escrito ao longo dela quando o mapa está aproximado);
+  clique numa para ver o nome, o tipo e o comprimento. Mudar o nome ou o tipo a transforma numa
+  rota sua.
+- **Rotas:** o mapa gera sozinho três tipos de caminho: **rodovias principais** (faixa amarela
+  com bordas, entre as capitais de reinos vizinhos), **estradas** (traço contínuo, de cada cidade
+  até a capital do seu reino) e **trilhas** (pontilhado, de povoados ao vizinho mais perto). Para
+  traçar uma rota sua — uma rodovia como a Castelo Branco, uma estrada de romeiros, uma trilha na
+  serra ou uma **rota marítima** —, use a ferramenta **Rota** (ou **Traçar rota**, no painel):
+  clique para marcar os pontos de passagem (perto de uma cidade, o ponto encaixa nela);
+  **Enter**, duplo clique ou **Concluir** termina, **Backspace** desfaz o último ponto e **Esc**
+  cancela. Entre os pontos a rota segue o terreno, desviando de montanhas e água (a marítima vai
+  reta; ela é escolhida sozinha se a rota começa ou termina no mar). Selecione a rota (clicando
+  nela ou na lista **Rotas** do painel) para dar o **nome**, que aparece escrito ao longo dela,
+  escolher o **tipo** e ver o comprimento em km; **Excluir rota** apaga.
+- **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.
+- **Exportar imagem** salva o mapa inteiro como PNG em alta resolução, com as camadas que estão
+  ligadas, a escala e a rosa dos ventos.
+- **Detalhes:** o tamanho do marcador da cidade acompanha a população, portos ganham uma âncora,
+  e os nomes desviam uns dos outros (e dos nomes dos reinos). No canto há uma **escala** em km
+  (cada célula vale 1°, cerca de 111 km no equador) e a **rosa dos ventos**. Com Elevar/Rebaixar/Suavizar, um
+  círculo mostra o tamanho do pincel; enquanto pinta, o relevo e a costa mudam na hora, e rios,
+  biomas e fronteiras se refazem ao soltar. **Esc** cancela o "Pôr no mapa", fecha a janela da
+  cidade ou volta à ferramenta Mover.
+
+O mapa fica em `.talia/mapa-mundi.json` e vai junto no sync.

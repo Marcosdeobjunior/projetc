@@ -111,8 +111,11 @@ A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tál
 | `notes[].title`     | string  | Título da nota (também usado para as menções no texto)                                                                                                                                                                 |
 | `notes[].kind`      | string  | `"personagens"`, `"lugares"`, `"ideias"`, `"calendarios"`, `"idiomas"` ou `"organizacoes"` (a subpasta em `notas/`)                                                                                                    |
 | `notes[].file`      | string  | Nome do `.md` dentro de `notas/<kind>/`                                                                                                                                                                                |
-| `notes[].image`     | string  | Opcional. Imagem da ficha (retrato, foto do lugar): `anexos/<arquivo>`. Outro valor é ignorado ao abrir                                                                                                                |
+| `notes[].image`     | string  | Opcional. Imagem principal da ficha (retrato, foto do lugar; a do cartão): `anexos/<arquivo>`. Outro valor é ignorado ao abrir                                                                                         |
+| `notes[].images`    | array   | Opcional. Outras imagens da ficha (galeria), além da principal; cada uma `anexos/<arquivo>`. Inválidas ou repetidas são ignoradas ao abrir; no sync, a lista inteira vale como um valor                                |
 | `notes[].fields`    | objeto  | Opcional. Campos da ficha (`manuscript/fields.ts`): chave → texto; campos de referência guardam o id de outra nota. Chaves inválidas ou valores que não são texto são ignorados ao abrir; no sync, junta campo a campo |
+
+Campos especiais em `notes[].fields` (texto, como os outros): `mapa` (lugar) guarda as opções do mapa da região em JSON — `{"seed": número, "size": "aldeia"|"vila"|"cidade", "road", "river", "fields": booleanos}` —, e o mapa é gerado de novo a partir delas (`world/village.ts`); `brasao` (lugar, organização) guarda `{"seed": número, "kind": "brasao"|"bandeira"}` — a semente do brasão e qual dos dois está à vista — e `bandeira` guarda `{"seed": número}`, a semente da bandeira, independente (`world/heraldry.ts`); `brasaoImagem` e `bandeiraImagem` são imagens próprias em `anexos/` que substituem, cada uma, só o seu desenho gerado. Valores inválidos são ignorados ao abrir a ficha. Nos lugares que são cidades do mapa-múndi, o "Editar povoado" grava também `populacao`, `grupo`, `tipoPovoado`, `cultura`, `elementos` (lista separada por vírgulas: `porto`, `muralhas`, `cidadela`, `praca`, `templo`, `favela`) e `etiquetas`; e o `mapa` ganha `walls`, `citadel`, `plaza`, `temple` e `shanty` (booleanos, falsos se ausentes).
 
 Exemplo:
 
@@ -569,3 +572,26 @@ Na prévia, cada arquivo é uma entrada do IndexedDB `talia` / `files` com a cha
 `browser:<uuid>` + `\0` + caminho relativo, e o valor é o texto ou os bytes. As pastas não
 existem de fato: valem enquanto houver arquivos com aquele prefixo. O formato dos arquivos é o
 mesmo descrito acima.
+
+## `.talia/mapa-mundi.json`
+
+Mapa-múndi do projeto (opcional; só existe depois de gerado). Guarda só o que é editável; clima,
+biomas, rios, fronteiras e estradas são recalculados ao abrir (`world/worldgen.ts`,
+`deriveWorld`).
+
+| Campo      | Tipo   | Descrição                                                                                                                                                                                                                                                                            |
+| ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `format`   | número | Sempre `1`                                                                                                                                                                                                                                                                           |
+| `name`     | string | Nome do mundo                                                                                                                                                                                                                                                                        |
+| `cols`     | número | Colunas da grade (360: 1° de longitude cada)                                                                                                                                                                                                                                         |
+| `rows`     | número | Linhas da grade (180: 1° de latitude cada, do polo norte ao sul)                                                                                                                                                                                                                     |
+| `options`  | objeto | Opções usadas para gerar: `seed`, `template` (`continentes`/`ilhas`/`pangeia`), `land` (0,15 a 0,6), `states`, `burgs`                                                                                                                                                               |
+| `heights`  | string | Altura de cada célula (0 a 255; 128 ou mais é terra), linha por linha, em base64                                                                                                                                                                                                     |
+| `burgs`    | array  | Cidades: `id`, `name`, `x`, `y` (em células) e, opcional, `noteId` (o lugar do Mundo ligado)                                                                                                                                                                                         |
+| `states`   | array  | Estados: `id`, `name`, `color` (`#rrggbb`), `capital` (o `id` da cidade capital; o território é calculado a partir dela), `noteId` (o lugar do Mundo que é este estado) e `form` (forma de governo)                                                                                  |
+| `routes`   | array  | Rotas desenhadas: `id`, `name`, `type` (`principal`/`estrada`/`trilha`/`maritima`) e `points` (pontos de passagem `[x, y]`, em células). O caminho entre os pontos é recalculado ao abrir. As estradas geradas não ficam aqui                                                        |
+| `cultures` | array  | Povos: `id`, `name`, `base` (base de nomes: `lusitana`, `nordica`, `elfica`, `desertica`, `eslava`, `latina`, `celta`), `type` (`navegante`, `montanhes`, `ribeirinho`, `lacustre`, `nomade`, `cacador`, `generico`), `color` e o centro `x`, `y`. O território é calculado ao abrir |
+
+Ao abrir, um arquivo da grade antiga (320×200, só uma região) é convertido para o planeta (as alturas são reamostradas e as posições, escaladas); outro tamanho ou formato é ignorado (como se não houvesse mapa); cidades
+fora da grade e estados cuja capital não existe são descartados. No sync, segue a regra dos outros
+arquivos de `.talia/`.
