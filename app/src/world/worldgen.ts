@@ -47,6 +47,8 @@ export interface WorldState {
   color: string;
   /** Cidade capital (de onde o estado se espalha). */
   capital: string;
+  /** Lugar do Mundo que é este estado. */
+  noteId?: string;
 }
 
 export interface WorldMap {
@@ -734,7 +736,9 @@ export function parseWorld(raw: string): WorldMap | null {
         ? str(s.color, 7)
         : stateColor(states.length);
       if (!id || !ids.has(capital) || states.some((x) => x.capital === capital)) continue;
-      states.push({ id, name: str(s.name, 80) || "Reino", color, capital });
+      const state: WorldState = { id, name: str(s.name, 80) || "Reino", color, capital };
+      if (typeof s.noteId === "string" && s.noteId) state.noteId = s.noteId.slice(0, 64);
+      states.push(state);
     }
     return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states };
   } catch {

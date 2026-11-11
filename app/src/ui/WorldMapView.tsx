@@ -11,6 +11,8 @@ import type { Session } from "../state/store";
 import { useApp } from "../state/store";
 import { useWorldMap } from "../state/worldMap";
 import { useWorldNav } from "../state/worldNav";
+import { renameDocAndLinks } from "../state/store";
+import { renameDoc } from "../manuscript/tree";
 import {
   BIOMES,
   cellOf,
@@ -86,7 +88,16 @@ export function WorldMapView({ session }: { session: Session }) {
   }, [session.root]);
 
   if (!loaded) return <div className="editor-state">Abrindo o mapa…</div>;
-  if (!map) return <NewWorld onCreate={(m) => setMap(m)} title={session.project.title} />;
+  if (!map)
+    return (
+      <NewWorld
+        onCreate={(m) => {
+          setMap(m);
+          void useWorldMap.getState().reconcile();
+        }}
+        title={session.project.title}
+      />
+    );
   return <WorldEditor key={session.root} session={session} map={map} focusBurg={focusBurg} />;
 }
 
@@ -195,7 +206,6 @@ function WorldEditor({
   focusBurg: string | null;
 }) {
   const setMap = useWorldMap((s) => s.set);
-  const createNote = useApp((s) => s.createNote);
   const setView = useApp((s) => s.setView);
   const [tool, setTool] = useState<Tool>("mover");
   const [mode, setMode] = useState<MapMode>("biomas");
@@ -269,6 +279,15 @@ function WorldEditor({
   }, [focusBurg, map.burgs, size]);
 
   const capitals = useMemo(() => new Set(map.states.map((s) => s.capital)), [map.states]);
+
+  // Mundo mudou (lugar renomeado, apagado…): o mapa acompanha.
+  const notes = session.project.notes;
+  useEffect(() => {
+    void useWorldMap.getState().reconcile();
+  }, [notes]);
+
+  // Lugar do Mundo esperando um clique no mapa para virar cidade.
+  const [placing, setPlacing] = useState<string | null>(null);
 
   // Desenho.
   useEffect(() => {
@@ -404,7 +423,18 @@ function WorldEditor({
     undo.current = [...undo.current.slice(-29), snapshot()];
     redo.current = [];
     syncHist();
+    // Lugares que saíram do mapa vão para a lixeira (se ninguém mexeu neles).
+    const now = new Set([...next.burgs.map((b) => b.noteId), ...next.states.map((s) => s.noteId)]);
+    const retire = [...map.burgs.map((b) => b.noteId), ...map.states.map((s) => s.noteId)].filter(
+      (id): id is string => !!id && !now.has(id),
+    );
     setMap(next);
+    void useWorldMap.getState().reconcile({ retire });
+  };
+  // Renomear no mapa renomeia a ficha (o nome da ficha é o que vale).
+  const renameLinked = async (noteId: string | undefined, name: string) => {
+    if (noteId && session.project.notes.some((n) => n.id === noteId))
+      await renameDocAndLinks((p) => renameDoc(p, noteId, name), noteId);
   };
 
   const restore = (from: RefObject<Snapshot[]>, to: RefObject<Snapshot[]>) => {
@@ -413,6 +443,8 @@ function WorldEditor({
     to.current.push(snapshot());
     syncHist();
     setMap({ ...map, ...s });
+    // Desfazer uma exclusão traz o lugar de volta ao Mundo.
+    void useWorldMap.getState().reconcile({ recreate: true });
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -498,10 +530,16 @@ function WorldEditor({
     } else if (tool === "cidade") {
       const c = cellOf(x, y);
       if (map.heights[c]! < SEA) return;
-      const name = makeNamer(Date.now())();
-      const b: Burg = { id: newId("c"), name, x, y };
+      const placed = placing ? session.project.notes.find((n) => n.id === placing) : undefined;
+      const b: Burg = placed
+        ? { id: newId("c"), name: placed.title, x, y, noteId: placed.id }
+        : { id: newId("c"), name: makeNamer(Date.now())(), x, y };
       commit({ ...map, burgs: [...map.burgs, b] });
       setSelected({ kind: "burg", id: b.id });
+      if (placed) {
+        setPlacing(null);
+        setTool("mover");
+      }
     } else {
       painting.current = { h: paint(heights, x, y, tool), last: performance.now() };
       setHeights(painting.current.h);
@@ -599,8 +637,10 @@ function WorldEditor({
   const burgState = burg ? map.states[derived.owner[cellOf(burg.x, burg.y)]!] : undefined;
   const state =
     selected?.kind === "state" ? map.states.find((s) => s.id === selected.id) : undefined;
-  const places = session.project.notes
-    .filter((n) => n.kind === "lugares")
+  // Lugares do Mundo que ainda não estão no mapa.
+  const onMap = new Set([...map.burgs.map((b) => b.noteId), ...map.states.map((s) => s.noteId)]);
+  const offMap = session.project.notes
+    .filter((n) => n.kind === "lugares" && !onMap.has(n.id))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
   const updateBurg = (id: string, patch: Partial<Burg>) =>
     commit({ ...map, burgs: map.burgs.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
@@ -764,11 +804,12 @@ function WorldEditor({
               aria-label="Nome da cidade"
               key={burg.id + burg.name}
               defaultValue={burg.name}
-              onBlur={(e) =>
-                e.target.value.trim() &&
-                e.target.value !== burg.name &&
-                updateBurg(burg.id, { name: e.target.value.trim() })
-              }
+              onBlur={(e) => {
+                const name = e.target.value.trim();
+                if (!name || name === burg.name) return;
+                updateBurg(burg.id, { name });
+                void renameLinked(burg.noteId, name);
+              }}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
             />
             <p className="wm-meta">
@@ -798,34 +839,14 @@ function WorldEditor({
               />
               Capital de um estado
             </label>
-            <div className="field">
-              <label>Lugar no Mundo</label>
-              <Select
-                value={burg.noteId ?? ""}
-                placeholder="Nenhum"
-                options={places.map((n) => ({ value: n.id, label: n.title }))}
-                onChange={(v) => updateBurg(burg.id, { noteId: v || undefined })}
-              />
-            </div>
             <div className="profile-photo-actions">
-              {burg.noteId && places.some((n) => n.id === burg.noteId) ? (
+              {burg.noteId && (
                 <button
                   type="button"
                   className="btn ghost sm"
                   onClick={() => openNote(burg.noteId!)}
                 >
                   Abrir ficha
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  onClick={async () => {
-                    const id = await createNote("lugares", burg.name);
-                    if (id) updateBurg(burg.id, { noteId: id });
-                  }}
-                >
-                  Criar lugar “{burg.name}”
                 </button>
               )}
               <button
@@ -874,16 +895,15 @@ function WorldEditor({
                 aria-label="Nome do estado"
                 key={state.id + state.name}
                 defaultValue={state.name}
-                onBlur={(e) =>
-                  e.target.value.trim() &&
-                  e.target.value !== state.name &&
+                onBlur={(e) => {
+                  const name = e.target.value.trim();
+                  if (!name || name === state.name) return;
                   commit({
                     ...map,
-                    states: map.states.map((s) =>
-                      s.id === state.id ? { ...s, name: e.target.value.trim() } : s,
-                    ),
-                  })
-                }
+                    states: map.states.map((s) => (s.id === state.id ? { ...s, name } : s)),
+                  });
+                  void renameLinked(state.noteId, name);
+                }}
                 onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
               />
             </div>
@@ -925,8 +945,46 @@ function WorldEditor({
                 fronteiras se refazem sozinhos.
               </li>
               <li>
-                Ligue cidades aos lugares do Mundo; a ficha do lugar ganha “Ver no mapa-múndi”.
+                Cada estado e cidade é um lugar no Mundo: renomear ou apagar de um lado vale para o
+                outro. A ficha do lugar tem “Ver no mapa-múndi”.
               </li>
+            </ul>
+          </section>
+        )}
+        {placing && (
+          <section className="profile-card wm-placing">
+            <p>
+              Clique em terra no mapa para pôr{" "}
+              <b>{session.project.notes.find((n) => n.id === placing)?.title}</b>.
+            </p>
+            <button type="button" className="btn ghost sm" onClick={() => setPlacing(null)}>
+              Cancelar
+            </button>
+          </section>
+        )}
+        {offMap.length > 0 && (
+          <section className="profile-card wm-offmap">
+            <h3>Lugares fora do mapa</h3>
+            <p className="field-hint">
+              Lugares do Mundo que ainda não estão no mapa. Ponha cada um onde fica.
+            </p>
+            <ul>
+              {offMap.map((n) => (
+                <li key={n.id}>
+                  <span>{n.title}</span>
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={() => {
+                      setPlacing(n.id);
+                      setTool("cidade");
+                      setSelected(null);
+                    }}
+                  >
+                    <Icon name="pin" size={13} /> Pôr no mapa
+                  </button>
+                </li>
+              ))}
             </ul>
           </section>
         )}

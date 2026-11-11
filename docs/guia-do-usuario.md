@@ -1114,10 +1114,17 @@ inventados) e **estradas** entre elas.
   **Suavizar** e **Cidade** (clique em terra para criar uma). Rios, biomas, fronteiras e estradas
   se refazem sozinhos depois de cada mudança. **Desfazer** e **Refazer** (Ctrl+Z, Ctrl+Shift+Z)
   voltam até 30 passos.
+- **Mapa e Mundo são a mesma coisa:** cada estado do mapa é um lugar no Mundo (tipo **Reino**) e
+  cada cidade também (tipo **Cidade** ou **Capital**, com **Fica em** apontando para o reino). Ao
+  gerar o mapa, os lugares aparecem sozinhos em Mundo → Lugares; um lugar que já existia com o
+  mesmo nome é aproveitado. Renomear num lado renomeia no outro (e atualiza os `[[links]]`);
+  apagar o lugar no Mundo tira a cidade ou o estado do mapa; excluir no mapa manda o lugar para a
+  lixeira se ele nunca foi mexido (com texto, imagem ou campos seus, ele fica no Mundo).
+  **Lugares fora do mapa**, no painel, lista os lugares do Mundo que ainda não estão no mapa:
+  **Pôr no mapa** e um clique em terra o colocam como cidade.
 - **Cidade selecionada:** mude o nome, marque **Capital de um estado** (cria um estado novo a
-  partir dela; desmarcar desfaz o estado), ligue a um **Lugar no Mundo** ou **Crie o lugar** com o
-  nome dela, e **Abra a ficha**. Na ficha do lugar ligado aparece **Ver no mapa-múndi**, que volta
-  ao mapa com a cidade no centro.
+  partir dela; desmarcar desfaz o estado) e **Abra a ficha**. Na ficha do lugar aparece **Ver no
+  mapa-múndi**, que volta ao mapa com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
   quantas cidades tem e a capital.
 - **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.
