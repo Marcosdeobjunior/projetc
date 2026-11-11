@@ -197,29 +197,41 @@ export function EmblemPanel({
 }) {
   const save = useSaveField(note);
   const input = useRef<HTMLInputElement>(null);
-  const rawEmblem = note.fields?.brasao;
-  const stored: EmblemOptions = useMemo(
-    () => parseEmblemOptions(rawEmblem) ?? { seed: hashSeed(note.title), kind: "brasao" },
-    [rawEmblem, note.title],
-  );
-  const custom = note.fields?.brasaoImagem;
+  const fields = note.fields ?? {};
+  // Brasão e bandeira são independentes: cada um tem a sua semente e a sua imagem.
+  // `brasao.kind` só lembra qual dos dois está à vista.
+  const shield = parseEmblemOptions(fields.brasao);
+  const kind: EmblemKind = shield?.kind ?? "brasao";
+  const imageKey = kind === "bandeira" ? "bandeiraImagem" : "brasaoImagem";
+  const seed =
+    kind === "bandeira"
+      ? (parseEmblemOptions(fields.bandeira)?.seed ?? hashSeed(note.title + "#bandeira"))
+      : (shield?.seed ?? hashSeed(note.title));
+  const custom = fields[imageKey];
   const customOk =
     validNoteImage(custom) && attachments.includes(custom.slice("anexos/".length))
       ? custom
       : undefined;
   const url = useAttachmentImage(customOk);
-  const emblem = useMemo(() => generateEmblem(stored), [stored]);
-  const setKind = (kind: EmblemKind) => save("brasao", JSON.stringify({ ...stored, kind }));
+  const emblem = useMemo(() => generateEmblem({ seed, kind }), [seed, kind]);
+  const label = kind === "bandeira" ? "Bandeira" : "Brasão";
+  const shieldSeed = shield?.seed ?? hashSeed(note.title);
+  const setKind = (k: EmblemKind) =>
+    save("brasao", JSON.stringify({ seed: shieldSeed, kind: k } satisfies EmblemOptions));
+  const reroll = () =>
+    kind === "bandeira"
+      ? save("bandeira", JSON.stringify({ seed: newSeed(), kind: "bandeira" }))
+      : save("brasao", JSON.stringify({ seed: newSeed(), kind: "brasao" }));
 
   return (
     <section className="emblem-panel">
       <div className="emblem-head">
-        <h3>{stored.kind === "bandeira" ? "Bandeira" : "Brasão"}</h3>
+        <h3>{label}</h3>
         <div className="segmented wide" role="radiogroup" aria-label="Brasão ou bandeira">
           <button
             type="button"
             role="radio"
-            aria-checked={stored.kind === "brasao"}
+            aria-checked={kind === "brasao"}
             onClick={() => setKind("brasao")}
           >
             Brasão
@@ -227,27 +239,23 @@ export function EmblemPanel({
           <button
             type="button"
             role="radio"
-            aria-checked={stored.kind === "bandeira"}
+            aria-checked={kind === "bandeira"}
             onClick={() => setKind("bandeira")}
           >
             Bandeira
           </button>
         </div>
       </div>
-      <div className={"emblem-frame " + stored.kind}>
+      <div className={"emblem-frame " + kind}>
         {customOk ? (
-          url && <img src={url} alt={`Brasão de ${note.title}`} />
+          url && <img src={url} alt={`${label} de ${note.title}`} />
         ) : (
           <EmblemArt emblem={emblem} title={note.title} />
         )}
       </div>
       <div className="profile-photo-actions">
         {!customOk && (
-          <button
-            type="button"
-            className="btn ghost sm"
-            onClick={() => save("brasao", JSON.stringify({ ...stored, seed: newSeed() }))}
-          >
+          <button type="button" className="btn ghost sm" onClick={reroll}>
             <Icon name="refresh" size={14} /> Gerar outro
           </button>
         )}
@@ -255,7 +263,7 @@ export function EmblemPanel({
           <Icon name="image" size={14} /> {customOk ? "Trocar imagem" : "Usar imagem"}
         </button>
         {customOk && (
-          <button type="button" className="btn ghost sm" onClick={() => save("brasaoImagem", "")}>
+          <button type="button" className="btn ghost sm" onClick={() => save(imageKey, "")}>
             Voltar ao gerado
           </button>
         )}
@@ -268,7 +276,9 @@ export function EmblemPanel({
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = "";
-          if (file) void addImage(file).then((src) => src && save("brasaoImagem", src));
+          // A chave é a da aba de agora: a imagem vale só para o brasão ou só para a bandeira.
+          const key = imageKey;
+          if (file) void addImage(file).then((src) => src && save(key, src));
         }}
       />
     </section>
