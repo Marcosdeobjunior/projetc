@@ -115,6 +115,8 @@ A estrutura do projeto. É o arquivo que identifica a pasta como projeto da Tál
 | `notes[].images`    | array   | Opcional. Outras imagens da ficha (galeria), além da principal; cada uma `anexos/<arquivo>`. Inválidas ou repetidas são ignoradas ao abrir; no sync, a lista inteira vale como um valor                                |
 | `notes[].fields`    | objeto  | Opcional. Campos da ficha (`manuscript/fields.ts`): chave → texto; campos de referência guardam o id de outra nota. Chaves inválidas ou valores que não são texto são ignorados ao abrir; no sync, junta campo a campo |
 
+Campos especiais em `notes[].fields` (texto, como os outros): `mapa` (lugar) guarda as opções do mapa da região em JSON — `{"seed": número, "size": "aldeia"|"vila"|"cidade", "road", "river", "fields": booleanos}` —, e o mapa é gerado de novo a partir delas (`world/village.ts`); `brasao` (lugar, organização) guarda `{"seed": número, "kind": "brasao"|"bandeira"}` (`world/heraldry.ts`); `brasaoImagem` é uma imagem própria em `anexos/` que substitui o brasão gerado. Valores inválidos são ignorados ao abrir a ficha.
+
 Exemplo:
 
 ```json

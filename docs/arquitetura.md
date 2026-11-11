@@ -424,6 +424,14 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   é `ui/NoteFields.tsx` (na ficha e, compacta, na edição rápida), com seções em cartões, o índice
   `FieldSectionNav` e o `CharacterPanel` (sugestões de `manuscript/characterCheck.ts`); listas de
   escolha usam `ui/Select.tsx` (combobox próprio, com teclado) no lugar do `<select>` nativo.
+- Mapa da região e brasão (`ui/PlaceRegion.tsx`): `world/village.ts` gera o mapa de forma
+  determinística a partir das opções gravadas em `fields.mapa` (semente mulberry32 em
+  `world/geom.ts`; estrada e ruas por caminhada aleatória suavizada, casas ao longo das ruas com
+  teste de sobreposição SAT, campos e árvores); `ui/PlaceMap.tsx` desenha em SVG (zoom/arrastar
+  por `viewBox`); `ui/StreetView.tsx` é um renderizador 3D em canvas 2D (casas como caixas com
+  telhado de quatro águas, projeção em perspectiva, recorte no plano próximo, descarte de faces
+  de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
+  `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

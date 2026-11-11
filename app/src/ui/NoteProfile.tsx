@@ -12,6 +12,7 @@ import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { attachmentUrl } from "../editor/attachments";
 import { Icon } from "./Icon";
 import { CalendarEditor } from "./CalendarEditor";
+import { EmblemPanel, PlaceRegion } from "./PlaceRegion";
 import { CharacterPanel, FieldSectionNav, NoteFields } from "./NoteFields";
 import { BirthEditor, TravelEditor, useYearLength } from "./ContinuityEditors";
 import { useTimeline } from "../state/timeline";
@@ -195,6 +196,13 @@ export function NoteProfile({
               e.target.value = "";
             }}
           />
+          {(note.kind === "lugares" || note.kind === "organizacoes") && (
+            <EmblemPanel
+              note={note}
+              attachments={attachments}
+              addImage={async (file) => (await addAttachments([file]))[0]?.src ?? null}
+            />
+          )}
           <FieldSectionNav note={note} />
         </div>
 
@@ -212,6 +220,7 @@ export function NoteProfile({
               <b>{related.length}</b> {related.length === 1 ? "nota ligada" : "notas ligadas"}
             </span>
           </div>
+          {note.kind === "lugares" && <PlaceRegion note={note} />}
           <NoteFields note={note} project={project} onOpenNote={onOpenNote} />
           {note.kind === "calendarios" && <CalendarEditor noteId={note.id} />}
           {note.kind === "personagens" && <BirthEditor note={note} />}

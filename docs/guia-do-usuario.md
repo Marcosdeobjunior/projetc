@@ -251,7 +251,19 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     têm conteúdo e as próximas perguntas a responder (desejo → mentira → fantasma → necessidade,
     fraqueza → oponente, arco, voz…), tiradas da própria ficha. Clique numa pergunta para ir ao
     campo;
-  - **Anotações:** o texto livre da nota, para o que não cabe nos campos; **Editar anotações** abre
+  - na ficha de **lugar** e de **organização**, o **brasão** (ou **bandeira**, escolha no alto
+    do quadro), embaixo da imagem: um brasão é gerado a partir do nome, com campo, divisão e
+    figura seguindo as cores da heráldica; **Gerar outro** sorteia outro, e **Usar imagem** põe
+    um desenho seu no lugar (**Voltar ao gerado** desfaz);
+  - na ficha de **lugar**, o **Mapa da região**: **Gerar mapa** cria um mapa ilustrado com
+    estrada, rio, casas ao longo das ruas, campos cultivados e árvores. Escolha **Aldeia**, **Vila**
+    ou **Cidade**, ligue ou desligue **Estrada**, **Rio** e **Campos**, e use **Gerar outro** para
+    sortear outro desenho; o mapa fica guardado e é sempre o mesmo para aquele lugar. A roda do
+    mouse aproxima e arrastar move. **Vista de rua** mostra o lugar em 3D, do chão: clique na
+    imagem e ande com as setas (ou W A S D), **Shift** corre, arrastar olha em volta; um
+    minimapa no canto mostra onde você está e para onde olha. Clicar numa rua do mapa abre a
+    vista de rua ali. Não dá para entrar nas casas nem atravessar o rio fora da ponte;
+    , para o que não cabe nos campos; **Editar anotações** abre
     no editor (renomeie pelo nome no alto do texto);
   - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);
   - **Ligado a**: as outras notas ligadas a ela (clique para abrir a ficha delas).
