@@ -328,18 +328,13 @@ function generateHeights(o: WorldOptions): Uint8Array {
   const blobs: { x: number; y: number; r: number }[] = [];
   const add = (n: number, r0: number, r1: number) => {
     for (let i = 0; i < n; i++)
-      blobs.push({ x: rand() * aspect, y: between(0.18, 0.82), r: between(r0, r1) });
+      blobs.push({ x: rand() * aspect, y: between(0.26, 0.74), r: between(r0, r1) });
   };
   if (o.template === "pangeia") {
     blobs.push({ x: rand() * aspect, y: between(0.42, 0.58), r: between(0.4, 0.48) });
     add(3, 0.08, 0.16);
   } else if (o.template === "ilhas") add(24 + Math.floor(rand() * 12), 0.05, 0.11);
   else add(5 + Math.floor(rand() * 3), 0.16, 0.28);
-  // Continentes polares (como a Antártida): terra de verdade nos polos, coberta de gelo pelo clima.
-  if (rand() < 0.75)
-    blobs.push({ x: rand() * aspect, y: between(-0.02, 0.06), r: between(0.12, 0.2) });
-  if (rand() < 0.85)
-    blobs.push({ x: rand() * aspect, y: between(0.94, 1.02), r: between(0.14, 0.24) });
 
   const raw = new Float32Array(COLS * ROWS);
   // Tudo sobre a esfera: ruído 3D e distância pelo arco (formas iguais no equador e nos polos).
@@ -364,6 +359,30 @@ function generateHeights(o: WorldOptions): Uint8Array {
       raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12;
     }
   }
+  // No mapa plano tudo precisa caber inteiro: gira o planeta para que a borda
+  // (180°) caia no meridiano com menos terra e põe mar nessa faixa e nas latitudes
+  // altas (onde o plano deforma). Assim nenhum continente é cortado na borda.
+  {
+    const sorted0 = Float32Array.from(raw).sort();
+    const t0 =
+      sorted0[Math.floor((1 - Math.min(0.6, Math.max(0.15, o.land))) * (sorted0.length - 1))]!;
+    const colLand = new Float64Array(COLS);
+    for (let i = 0; i < raw.length; i++) if (raw[i]! >= t0) colLand[i % COLS]! += 1;
+    let bestX = 0;
+    let bestSum = Infinity;
+    for (let x = 0; x < COLS; x++) {
+      let sum = 0;
+      for (let k = -12; k <= 12; k++) sum += colLand[wrapCol(x + k)]!;
+      if (sum < bestSum) {
+        bestSum = sum;
+        bestX = x;
+      }
+    }
+    const rolled = new Float32Array(raw.length);
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = raw[y * COLS + wrapCol(x + bestX)]!;
+    raw.set(rolled);
+  }
   // Nível do mar pela fração de terra pedida: o quantil vira 128.
   const sorted = Float32Array.from(raw).sort();
   const t = sorted[Math.floor((1 - Math.min(0.6, Math.max(0.15, o.land))) * (sorted.length - 1))]!;
@@ -376,6 +395,22 @@ function generateHeights(o: WorldOptions): Uint8Array {
       v < t
         ? Math.round(((v - lo) / (t - lo || 1)) * 127)
         : Math.min(255, 128 + Math.round(Math.pow((v - t) / (hi - t || 1), 0.9) * 127));
+  }
+  // Mar na borda de 180° e nas latitudes altas, com profundidade média (sem faixa
+  // escura nem clara): terra ali vira mar raso; o mar mantém a profundidade natural.
+  for (let y = 0; y < ROWS; y++) {
+    const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
+    const polar = Math.min(1, Math.max(0, (lat - 58) / 12));
+    for (let x = 0; x < COLS; x++) {
+      const edge = Math.min(x + 0.5, COLS - x - 0.5);
+      const f = Math.max(polar, Math.max(0, 1 - edge / 12));
+      if (f <= 0) continue;
+      const i = y * COLS + x;
+      const v = out[i]!;
+      const target = v >= 112 ? 112 : v;
+      out[i] = Math.round(v + (target - v) * f);
+      if (f >= 1 && out[i]! >= SEA) out[i] = 112;
+    }
   }
   return out;
 }
@@ -436,19 +471,19 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
 
 export const BIOMES = [
   { name: "Mar", color: "#4b7fa8" },
-  { name: "Deserto quente", color: "#f1dc9a" },
-  { name: "Deserto frio", color: "#b9b98c" },
-  { name: "Savana", color: "#d2cf82" },
-  { name: "Campos", color: "#c5d48d" },
-  { name: "Floresta tropical sazonal", color: "#a9cf5f" },
-  { name: "Floresta temperada", color: "#5fae5c" },
-  { name: "Floresta tropical", color: "#6fbd3e" },
-  { name: "Floresta úmida temperada", color: "#3f9147" },
-  { name: "Taiga", color: "#4f6e3a" },
-  { name: "Tundra", color: "#a08a63" },
-  { name: "Geleira", color: "#e2eef0" },
-  { name: "Pântano", color: "#3f8f5a" },
-  { name: "Montanha", color: "#9a8f80" },
+  { name: "Deserto quente", color: "#e2c88f" },
+  { name: "Deserto frio", color: "#c4bc98" },
+  { name: "Savana", color: "#c9bd74" },
+  { name: "Campos", color: "#a8c07a" },
+  { name: "Floresta tropical sazonal", color: "#86ae58" },
+  { name: "Floresta temperada", color: "#5c9a50" },
+  { name: "Floresta tropical", color: "#3e8a3c" },
+  { name: "Floresta úmida temperada", color: "#3b7a4b" },
+  { name: "Taiga", color: "#4e6c49" },
+  { name: "Tundra", color: "#a7a487" },
+  { name: "Geleira", color: "#eef3f5" },
+  { name: "Pântano", color: "#5d8659" },
+  { name: "Montanha", color: "#8f8577" },
 ] as const;
 
 export interface Derived {
@@ -468,7 +503,9 @@ export interface Derived {
   /** Estado de cada célula (índice em `states`) ou -1. */
   owner: Int16Array;
   /** Estradas geradas, por tipo: principal (entre capitais), estrada (cidade → capital), trilha. */
-  roads: { cells: number[]; type: RouteType }[];
+  roads: { cells: number[]; type: RouteType; name: string }[];
+  /** Pontes: onde uma estrada cruza um rio (posição em células e direção da estrada). */
+  bridges: { x: number; y: number; angle: number; type: RouteType }[];
   /** Caminho das rotas desenhadas (pontos em células), na ordem de `map.routes`. */
   routes: { id: string; points: [number, number][] }[];
 }
@@ -815,67 +852,207 @@ export function deriveWorld(map: WorldMap): Derived {
     }
   }
 
-  // Estradas: de cada cidade até a capital do seu estado (estrada), entre capitais
-  // vizinhas (rodovia principal) e trilhas de cada povoado ao vizinho mais perto.
+  // Estradas, com custo de engenharia: rampa (quadrática, as estradas contornam as
+  // encostas), altitude, terreno (pântano, geleira, mata fechada), pontes (cruzar rio
+  // custa caro, então a ponte vai onde o rio é mais estreito), vales ao lado dos rios
+  // (mais baratos) e estradas já existentes (atraem as novas, formando uma rede).
   const roads: Derived["roads"] = [];
+  const bridges: Derived["bridges"] = [];
   const onRoad = new Uint8Array(n);
-  const trace = (from: number) => {
-    const path: number[] = [];
-    let c = from;
-    while (c >= 0 && path.length < 2000) {
-      path.push(c);
-      c = prev[c]!;
-    }
-    return path;
-  };
-  const best = new Map<string, [number, number, number]>();
+  const river = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (land[i] && flux[i]! >= riverMin) river[i] = 1;
+  const nearRiver = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
-    if (owner[i]! < 0) continue;
+    if (!river[i]) continue;
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    for (const [dx, dy] of N8) {
+      const ny = y + dy;
+      if (ny >= 0 && ny < ROWS) nearRiver[ny * COLS + wrapCol(x + dx)] = 1;
+    }
+  }
+  // Aspereza fixa por célula (quebra as retas perfeitas da grade).
+  const rough = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const s = Math.sin(i * 12.9898 + map.options.seed * 0.001) * 43758.5453;
+    rough[i] = (s - Math.floor(s)) * 0.22;
+  }
+  const BIOME_ROAD = [0, 0.5, 0.3, 0.1, 0, 0.35, 0.3, 0.7, 0.45, 0.5, 0.6, 5, 1.6, 1.2];
+  // 16 direções: as 8 vizinhas e os "pulos de cavalo" (menos retas e diagonais forçadas).
+  const DIRS: [number, number][] = [
+    ...N8.map(([dx, dy]) => [dx, dy] as [number, number]),
+    [1, 2],
+    [2, 1],
+    [-1, 2],
+    [-2, 1],
+    [1, -2],
+    [2, -1],
+    [-1, -2],
+    [-2, -1],
+  ];
+  const roadStep = (i: number, j: number, dx: number, dy: number, y: number) => {
+    const len = stepLen(dx, dy, y);
+    // Rampa: diferença de altura por distância (em "metros por célula" aproximados).
+    const grade = Math.abs(h[j]! - h[i]!) / Math.max(0.35, len);
+    const e = Math.max(0, (h[j]! - SEA) / 127);
+    let k =
+      1 + (grade * 0.28) ** 2 + Math.max(0, e - 0.42) * 6 + BIOME_ROAD[biome[j]!]! + rough[j]!;
+    if (nearRiver[j] && !river[j]) k *= 0.85; // vale plano ao lado do rio
+    if (onRoad[j]) k *= 0.5; // aproveita a estrada que já existe
+    let c = len * k;
+    if (river[j] && !river[i]) c += 3 + Math.sqrt(flux[j]! / riverMin) * 2.5; // ponte
+    return c;
+  };
+  // Busca A*/Dijkstra com arrays reaproveitados (um "carimbo" por busca, sem limpar tudo).
+  const dist = new Float64Array(n);
+  const back = new Int32Array(n);
+  const stamp = new Int32Array(n);
+  let run = 0;
+  const findPath = (
+    from: number,
+    isGoal: (c: number) => boolean,
+    limit: number,
+    target?: number,
+  ): number[] | null => {
+    run++;
+    const tx = target === undefined ? 0 : target % COLS;
+    const ty = target === undefined ? 0 : (target / COLS) | 0;
+    const guess = (c: number) =>
+      target === undefined
+        ? 0
+        : Math.hypot(dCol(c % COLS, tx) * ROW_COS[(c / COLS) | 0]!, ((c / COLS) | 0) - ty) * 0.9;
+    const q = new Heap();
+    stamp[from] = run;
+    dist[from] = 0;
+    back[from] = -1;
+    q.push(from, guess(from));
+    while (q.size) {
+      const i = q.pop();
+      const di = dist[i]!;
+      if (q.lastKey - guess(i) > di + 1e-9) continue;
+      if (isGoal(i)) {
+        const path = [i];
+        let c = i;
+        while (back[c]! >= 0) {
+          c = back[c]!;
+          path.push(c);
+        }
+        return path.reverse();
+      }
+      if (di > limit) break;
+      const x = i % COLS;
+      const y = (i / COLS) | 0;
+      for (const [dx, dy] of DIRS) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= ROWS) continue;
+        const j = ny * COLS + wrapCol(x + dx);
+        if (!land[j]) continue;
+        // Pulo de cavalo só se as células do meio também forem terra.
+        if (Math.abs(dx) + Math.abs(dy) === 3) {
+          const mx = x + Math.sign(dx) * (Math.abs(dx) === 2 ? 1 : 0);
+          const my = y + Math.sign(dy) * (Math.abs(dy) === 2 ? 1 : 0);
+          if (!land[my * COLS + wrapCol(mx)]) continue;
+        }
+        const nd = di + roadStep(i, j, dx, dy, y);
+        if (stamp[j] !== run || nd < dist[j]!) {
+          stamp[j] = run;
+          dist[j] = nd;
+          back[j] = i;
+          q.push(j, nd + guess(j));
+        }
+      }
+    }
+    return null;
+  };
+  /** Completa os pulos de cavalo com a célula do meio (o caminho fica contínuo). */
+  const fill = (path: number[]) => {
+    const out: number[] = [];
+    for (let k = 0; k < path.length; k++) {
+      const c = path[k]!;
+      if (k) {
+        const p = path[k - 1]!;
+        const dx = dCol(c % COLS, p % COLS);
+        const dy = ((c / COLS) | 0) - ((p / COLS) | 0);
+        if (Math.abs(dx) + Math.abs(dy) === 3) {
+          const mx = (p % COLS) + Math.sign(dx) * (Math.abs(dx) === 2 ? 1 : 0);
+          const my = ((p / COLS) | 0) + Math.sign(dy) * (Math.abs(dy) === 2 ? 1 : 0);
+          out.push(my * COLS + wrapCol(mx));
+        }
+      }
+      out.push(c);
+    }
+    return out;
+  };
+  const addRoad = (cells: number[], type: RouteType, name: string) => {
+    const full = fill(cells);
+    for (const c of full) onRoad[c] = Math.max(onRoad[c]!, type === "principal" ? 2 : 1);
+    roads.push({ cells: full, type, name });
+    for (let k = 1; k < full.length; k++) {
+      const c = full[k]!;
+      if (!river[c] || river[full[k - 1]!]) continue;
+      const nx = full[Math.min(full.length - 1, k + 1)]!;
+      const pv = full[k - 1]!;
+      bridges.push({
+        x: (c % COLS) + 0.5,
+        y: Math.floor(c / COLS) + 0.5,
+        angle: Math.atan2(((nx / COLS) | 0) - ((pv / COLS) | 0), dCol(nx % COLS, pv % COLS)),
+        type,
+      });
+    }
+  };
+
+  const byId = new Map(map.burgs.map((b) => [b.id, b]));
+  const capitalIds = new Set(map.states.map((s) => s.capital));
+  // Rodovias entre capitais de estados vizinhos (os pares vêm da fronteira).
+  const pairs = new Set<string>();
+  for (let i = 0; i < n; i++) {
+    const a = owner[i]!;
+    if (a < 0) continue;
     const x = i % COLS;
     for (const j of [x === COLS - 1 ? i - (COLS - 1) : i + 1, i + COLS]) {
       if (j >= n) continue;
-      const a = owner[i]!;
       const b = owner[j]!;
       if (b < 0 || a === b) continue;
-      const key = a < b ? `${a}-${b}` : `${b}-${a}`;
-      const c = cost[i]! + cost[j]!;
-      const cur = best.get(key);
-      if (!cur || c < cur[0]) best.set(key, [c, i, j]);
+      pairs.add(a < b ? `${a}-${b}` : `${b}-${a}`);
     }
   }
-  for (const [, i, j] of best.values()) {
-    const cells = [...trace(i).reverse(), ...trace(j)];
-    for (const c of cells) onRoad[c] = 2;
-    roads.push({ cells, type: "principal" });
+  for (const key of pairs) {
+    const [a, b] = key.split("-").map(Number) as [number, number];
+    const ca = byId.get(map.states[a]!.capital);
+    const cb = byId.get(map.states[b]!.capital);
+    if (!ca || !cb) continue;
+    const from = cellOf(ca.x, ca.y);
+    const to = cellOf(cb.x, cb.y);
+    const path = findPath(from, (c) => c === to, 4000, to);
+    if (path) addRoad(path, "principal", `Rodovia ${ca.name}–${cb.name}`);
   }
-  const capitalIds = new Set(map.states.map((s) => s.capital));
+  // Estradas: de cada cidade até a capital do seu estado (pela rede que já existe).
   for (const b of map.burgs) {
     if (capitalIds.has(b.id)) continue;
     const c = cellOf(b.x, b.y);
-    if (owner[c]! < 0 || prev[c]! < 0) continue;
-    const cells = trace(c);
-    // O trecho que já é rodovia não vira estrada por cima.
-    const cut = cells.findIndex((x) => onRoad[x] === 2);
-    const own = cut > 0 ? cells.slice(0, cut + 1) : cells;
-    for (const x of own) if (!onRoad[x]) onRoad[x] = 1;
-    if (own.length > 1) roads.push({ cells: own, type: "estrada" });
+    const k = owner[c]!;
+    if (k < 0) continue;
+    const cap = byId.get(map.states[k]!.capital);
+    if (!cap) continue;
+    const to = cellOf(cap.x, cap.y);
+    const path = findPath(c, (x) => x === to || onRoad[x] === 2, 3000, to);
+    if (path && path.length > 1) addRoad(path, "estrada", `Estrada de ${b.name}`);
   }
-  // Trilhas: de cada cidade ao vizinho mais perto (por terra), se o caminho for novo.
-  const burgCells = new Map(map.burgs.map((b) => [cellOf(b.x, b.y), b.id]));
+  // Trilhas: de cada povoado ao vizinho mais perto, se o caminho for novo.
+  const burgCells = new Map(map.burgs.map((b) => [cellOf(b.x, b.y), b]));
   const seen = new Set<string>();
   for (const b of map.burgs) {
     const from = cellOf(b.x, b.y);
     if (!land[from]) continue;
-    const path = shortestPath(from, (c) => c !== from && burgCells.has(c), 40);
+    const path = findPath(from, (c) => c !== from && burgCells.has(c), 45);
     if (!path) continue;
-    const to = burgCells.get(path[path.length - 1]!)!;
-    const key = [b.id, to].sort().join("|");
+    const other = burgCells.get(path[path.length - 1]!)!;
+    const key = [b.id, other.id].sort().join("|");
     if (seen.has(key)) continue;
     seen.add(key);
     const fresh = path.filter((c) => !onRoad[c]).length;
     if (fresh / path.length < 0.6) continue;
-    for (const c of path) if (!onRoad[c]) onRoad[c] = 1;
-    roads.push({ cells: path, type: "trilha" });
+    addRoad(path, "trilha", `Trilha ${b.name}–${other.name}`);
   }
 
   // Rotas desenhadas: entre pontos de passagem seguem o terreno (as marítimas vão retas).
@@ -885,58 +1062,14 @@ export function deriveWorld(map: WorldMap): Derived {
     for (let k = 1; k < r.points.length; k++) {
       const a = cellOf(...r.points[k - 1]!);
       const b = cellOf(...r.points[k]!);
-      const path = land[a] && land[b] ? shortestPath(a, (c) => c === b, 400) : null;
+      const path = land[a] && land[b] ? findPath(a, (c) => c === b, 6000, b) : null;
       if (path)
-        for (const c of path.slice(1, -1)) pts.push([(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5]);
+        for (const c of fill(path).slice(1, -1))
+          pts.push([(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5]);
       pts.push(r.points[k]!);
     }
     return { id: r.id, points: pts };
   });
-
-  /** Caminho por terra mais barato (Dijkstra limitado) até uma célula que satisfaça `goal`. */
-  function shortestPath(from: number, goal: (c: number) => boolean, limit: number) {
-    const dist = new Map<number, number>([[from, 0]]);
-    const back = new Map<number, number>();
-    const q = new Heap();
-    q.push(from, 0);
-    while (q.size) {
-      const i = q.pop();
-      const di = q.lastKey;
-      if (di > dist.get(i)!) continue;
-      if (goal(i)) {
-        const path = [i];
-        let c = i;
-        while (back.has(c)) {
-          c = back.get(c)!;
-          path.push(c);
-        }
-        return path.reverse();
-      }
-      if (di > limit) break;
-      const x = i % COLS;
-      const y = (i / COLS) | 0;
-      for (const [dx, dy] of N8) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (ny < 0 || ny >= ROWS) continue;
-        const j = ny * COLS + wrapCol(nx);
-        if (!land[j]) continue;
-        const step =
-          stepLen(dx, dy, y) *
-          (1 +
-            Math.max(0, (h[j]! - h[i]!) / 5) +
-            (onRoad[j] ? -0.3 : 0) +
-            (biome[j] === 13 ? 2 : 0));
-        const nd = di + step;
-        if (nd < (dist.get(j) ?? Infinity)) {
-          dist.set(j, nd);
-          back.set(j, i);
-          q.push(j, nd);
-        }
-      }
-    }
-    return null;
-  }
 
   return {
     land,
@@ -952,6 +1085,7 @@ export function deriveWorld(map: WorldMap): Derived {
     rivers,
     owner,
     roads,
+    bridges,
     routes,
   };
 }

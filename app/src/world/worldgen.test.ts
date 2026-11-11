@@ -206,3 +206,19 @@ describe("planeta inteiro", () => {
     expect(jump).toBeLessThan(inside * 3 + ROWS * 4);
   });
 });
+
+describe("mapa plano sem cortes", () => {
+  it("nenhum continente cruza a borda de 180° nem chega aos polos", () => {
+    for (const seed of [41, 42, 43]) {
+      for (const template of ["continentes", "ilhas", "pangeia"] as const) {
+        const m = generateWorld({ ...DEFAULT_OPTIONS, seed, template });
+        for (let y = 0; y < ROWS; y++) {
+          expect(m.heights[y * COLS]!).toBeLessThan(SEA);
+          expect(m.heights[y * COLS + COLS - 1]!).toBeLessThan(SEA);
+        }
+        for (const y of [0, 1, 2, ROWS - 3, ROWS - 2, ROWS - 1])
+          for (let x = 0; x < COLS; x++) expect(m.heights[y * COLS + x]!).toBeLessThan(SEA);
+      }
+    }
+  });
+});

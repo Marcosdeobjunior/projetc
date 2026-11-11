@@ -37,6 +37,8 @@ export interface DrawOptions {
   meta: Map<string, BurgMeta>;
   selectedBurg?: string | null;
   selectedRoute?: string | null;
+  /** Estrada gerada selecionada (pelo nome). */
+  selectedRoad?: string | null;
   /** Rota sendo desenhada (pontos em células). */
   draft?: [number, number][] | null;
   /** Máscara do estado selecionado (uma célula por pixel). */
@@ -289,6 +291,40 @@ function drawCopy(
         ctx.stroke(vectors.roads[type]);
       }
     }
+    // Pontes: um tabuleiro claro com guarda-corpos escuros, atravessando o rio.
+    if (view.s > 2.2) {
+      for (const b of vectors.bridges) {
+        const len = b.type === "principal" ? 1.5 : 1.1;
+        const wid = (b.type === "principal" ? 3.6 : 2.4) * px;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.angle);
+        ctx.fillStyle = "#efe6cf";
+        ctx.fillRect(-len / 2, -wid / 2, len, wid);
+        ctx.strokeStyle = "#3a2c1e";
+        ctx.lineWidth = px * 1.1;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(-len / 2, -wid / 2);
+        ctx.lineTo(len / 2, -wid / 2);
+        ctx.moveTo(-len / 2, wid / 2);
+        ctx.lineTo(len / 2, wid / 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // Estrada gerada selecionada: destaque por baixo.
+    const selRoad = o.selectedRoad
+      ? vectors.namedRoads.find((r) => r.name === o.selectedRoad)
+      : null;
+    if (selRoad) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(224,165,44,0.55)";
+      ctx.lineWidth = px * 9;
+      ctx.beginPath();
+      selRoad.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.stroke();
+    }
     // Rotas desenhadas, um pouco mais fortes que as geradas.
     const order = { maritima: 0, trilha: 1, estrada: 2, principal: 3 } as const;
     for (const r of [...vectors.routes].sort((a, b) => order[a.type] - order[b.type])) {
@@ -352,6 +388,32 @@ function drawCopy(
   // Retângulos já ocupados por texto (nomes de reinos primeiro, depois cidades).
   const free = (x: number, y: number, w: number, h: number) =>
     placed.every(([a, b, c, d]) => x > c || x + w < a || y > d || y + h < b);
+  if (layers.rotulos && layers.estradas && view.s > 4) {
+    // Nome das rodovias geradas, no meio delas, quando o mapa está bem aproximado.
+    for (const r of vectors.namedRoads) {
+      if (r.type !== "principal" || r.points.length < 12) continue;
+      const m = Math.floor(r.points.length / 2);
+      const a = r.points[m - 3]!;
+      const b = r.points[m + 3]!;
+      let angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      if (angle > Math.PI / 2) angle -= Math.PI;
+      if (angle < -Math.PI / 2) angle += Math.PI;
+      const [sx, sy] = toS(r.points[m]![0], r.points[m]![1]);
+      if (!free(sx - 40, sy - 10, 80, 12)) continue;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(angle);
+      ctx.font = `italic 600 10.5px ${SERIF}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,250,235,0.85)";
+      ctx.strokeText(r.name, 0, -3);
+      ctx.fillStyle = "#4a2f1a";
+      ctx.fillText(r.name, 0, -3);
+      ctx.restore();
+    }
+  }
   if (layers.rotulos && layers.estradas) {
     // Nome da rota no meio dela, seguindo a direção do traço.
     for (const r of vectors.routes) {

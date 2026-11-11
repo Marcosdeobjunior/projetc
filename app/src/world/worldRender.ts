@@ -30,6 +30,9 @@ const DEEP = hex("#26486b");
 const SHALLOW = hex("#5d8fb9");
 const COAST_SEA = hex("#86b2d3");
 const SEA_ICE = hex("#e4eef2");
+const SAND = hex("#e6d6a6");
+const ROCK = hex("#8c8376");
+const SNOW = hex("#f5f7f8");
 const POLITICAL_LAND = hex("#efe6d0");
 
 /** Relevo: verde baixo → amarelo → marrom → branco no alto. */
@@ -152,13 +155,30 @@ export function bakeBase(
           const jy = Math.sin(y * 1.7 - x * 0.9) * 0.45 + Math.sin(x * 2.9 + y * 0.5) * 0.3;
           rgb = biomeAt(d, x + jx, y + jy);
         }
-        // Sombreamento: luz vindo do noroeste.
+        if (mode === "biomas") {
+          const b = d.land[cell] ? d.biome[cell]! : 4;
+          // Praia: faixa de areia bem junto ao mar (não em gelo nem em pântano).
+          if (v < SEA + 3 && b !== 11 && b !== 12 && b !== 10)
+            rgb = lerp3(rgb, SAND, ((SEA + 3 - v) / 3) * 0.75);
+          // Altitude: rocha nas encostas altas e neve nos picos (mais baixa onde é frio).
+          const temp = d.temp[cell]!;
+          const rock = Math.max(0, Math.min(1, (e - 0.5) / 0.25));
+          if (rock > 0) rgb = lerp3(rgb, ROCK, rock * 0.65);
+          const snowLine = 0.72 + temp * 0.18;
+          const snow = Math.max(0, Math.min(1, (e - snowLine) / 0.08));
+          if (snow > 0) rgb = lerp3(rgb, SNOW, snow * 0.9);
+          // Textura: florestas com copas (pontilhado), campos e desertos lisos.
+          if (b >= 5 && b <= 9) {
+            const g = Math.sin(pxx * 2.3 + py * 1.1) * Math.sin(py * 2.9 - pxx * 0.7);
+            const f = 0.93 + 0.1 * g;
+            rgb = [rgb[0] * f, rgb[1] * f, rgb[2] * f];
+          }
+        }
+        // Sombreamento: luz principal do noroeste e luz ambiente; mais forte nas serras.
         const gx = heightAt(h, x + 0.6, y) - heightAt(h, x - 0.6, y);
         const gy = heightAt(h, x, y + 0.6) - heightAt(h, x, y - 0.6);
-        const shade = Math.max(
-          0.55,
-          Math.min(1.3, 1 - (gx + gy) * (mode === "politico" ? 0.012 : 0.03)),
-        );
+        const strength = mode === "politico" ? 0.012 : 0.026 + e * 0.03;
+        const shade = Math.max(0.5, Math.min(1.28, 1.02 - (gx + gy) * strength));
         rgb = [rgb[0] * shade, rgb[1] * shade, rgb[2] * shade];
         const o = d.owner[cell]!;
         if ((states || mode === "politico") && o >= 0 && stateRgb[o])
@@ -273,16 +293,37 @@ export function unwrap(pts: [number, number][]): [number, number][] {
   return out;
 }
 
+/** Suavização de Chaikin (corta os cantos), mantendo o primeiro e o último ponto. */
+export function chaikin(pts: [number, number][], passes: number): [number, number][] {
+  let out = pts;
+  for (let k = 0; k < passes && out.length > 2; k++) {
+    const next: [number, number][] = [out[0]!];
+    for (let i = 0; i < out.length - 1; i++) {
+      const [ax, ay] = out[i]!;
+      const [bx, by] = out[i + 1]!;
+      next.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25]);
+      next.push([ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]);
+    }
+    next.push(out[out.length - 1]!);
+    out = next;
+  }
+  return out;
+}
+
 /** Linha suave pelos centros das células (rios e estradas). */
 export function cellsPath(
   cells: number[],
   path = new Path2D(),
   end?: readonly [number, number],
 ): Path2D {
-  const pts = unwrap([
-    ...cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as [number, number]),
-    ...(end ? [[end[0], end[1]] as [number, number]] : []),
-  ]);
+  // Suaviza os degraus da grade (Chaikin), mantendo as pontas.
+  const pts = chaikin(
+    unwrap([
+      ...cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5] as [number, number]),
+      ...(end ? [[end[0], end[1]] as [number, number]] : []),
+    ]),
+    2,
+  );
   if (pts.length < 2) return path;
   path.moveTo(pts[0]![0], pts[0]![1]);
   for (let i = 1; i < pts.length - 1; i++) {
@@ -325,6 +366,14 @@ export function buildVectors(map: WorldMap, d: Derived) {
     maritima: new Path2D(),
   };
   for (const r of d.roads) cellsPath(r.cells, roads[r.type]);
+  // Estradas geradas com nome e trajeto (para selecionar e escrever o nome).
+  const namedRoads = d.roads
+    .filter((r) => r.type !== "trilha")
+    .map((r) => ({
+      name: r.name,
+      type: r.type,
+      points: unwrap(r.cells.map((c) => [(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5])),
+    }));
   // Rotas desenhadas: caminho suave e o ponto do meio (para o nome).
   const routes = (map.routes ?? []).map((r, k) => {
     const pts = unwrap(d.routes[k]?.points ?? r.points);
@@ -388,5 +437,5 @@ export function buildVectors(map: WorldMap, d: Derived) {
     }
     return { x: (best % COLS) + 0.5, y: Math.floor(best / COLS) + 0.5, area: s.n };
   });
-  return { coast, borders, rivers, roads, routes, labels };
+  return { coast, borders, rivers, roads, namedRoads, bridges: d.bridges, routes, labels };
 }

@@ -285,7 +285,7 @@ function WorldEditor({
     return () => document.removeEventListener("fullscreenchange", on);
   }, []);
   const [selected, setSelected] = useState<{
-    kind: "burg" | "state" | "route";
+    kind: "burg" | "state" | "route" | "road";
     id: string;
   } | null>(null);
   // Rota sendo desenhada (pontos de passagem em células).
@@ -459,6 +459,7 @@ function WorldEditor({
       meta,
       selectedBurg: selected?.kind === "burg" ? selected.id : null,
       selectedRoute: selected?.kind === "route" ? selected.id : null,
+      selectedRoad: selected?.kind === "road" ? selected.id : null,
       draft: tool === "rota" ? draft : null,
       highlight,
       brush: painterTool && brushAt ? { ...brushAt, r: brush } : null,
@@ -602,11 +603,14 @@ function WorldEditor({
   };
   const burgAt = (x: number, y: number) =>
     map.burgs.find((b) => Math.hypot(dCol(b.x, x), b.y - y) * view.s < 9);
-  const routeAt = (x: number, y: number) =>
-    vectors.routes.find(
-      (r) =>
-        Math.min(...[-COLS, 0, COLS].map((k) => distToPolyline([x + k, y], r.points))) * view.s < 7,
-    );
+  const near = (pts: [number, number][], x: number, y: number) =>
+    Math.min(...[-COLS, 0, COLS].map((k) => distToPolyline([x + k, y], pts))) * view.s < 7;
+  const routeAt = (x: number, y: number) => vectors.routes.find((r) => near(r.points, x, y));
+  /** Estrada gerada (rodovia ou estrada) sob o clique: só quando o traço aparece bem. */
+  const roadAt = (x: number, y: number) =>
+    view.s > 2 && layers.estradas
+      ? vectors.namedRoads.find((r) => near(r.points, x, y))
+      : undefined;
 
   const paint = (h: Uint8Array, x: number, y: number, t: Tool) => {
     const r = brush;
@@ -761,8 +765,10 @@ function WorldEditor({
         const [x, y] = toMap(e);
         const b = burgAt(x, y);
         const route = b ? undefined : routeAt(x, y);
+        const road = b || route ? undefined : roadAt(x, y);
         if (b) setSelected({ kind: "burg", id: b.id });
         else if (route) setSelected({ kind: "route", id: route.id });
+        else if (road) setSelected({ kind: "road", id: road.name });
         else {
           const o = derived.owner[cellOf(x, y)]!;
           setSelected(o >= 0 && map.states[o] ? { kind: "state", id: map.states[o]!.id } : null);
@@ -802,6 +808,19 @@ function WorldEditor({
   const route =
     selected?.kind === "route" ? (map.routes ?? []).find((r) => r.id === selected.id) : undefined;
   const routeInfo = route ? vectors.routes.find((r) => r.id === route.id) : undefined;
+  const road =
+    selected?.kind === "road" ? vectors.namedRoads.find((r) => r.name === selected.id) : undefined;
+  /** Dar nome (ou mudar o tipo) de uma estrada gerada a transforma numa rota sua. */
+  const adoptRoad = (patch: Partial<Route>) => {
+    if (!road) return;
+    // Pontos de passagem: um a cada ~6 células (o trajeto é recalculado pelo terreno).
+    const pts = road.points
+      .filter((_, i) => i % 6 === 0 || i === road.points.length - 1)
+      .map(([x, y]) => [((x % COLS) + COLS) % COLS, y] as [number, number]);
+    const r: Route = { id: newId("r"), name: road.name, type: road.type, points: pts, ...patch };
+    commit({ ...map, routes: [...(map.routes ?? []), r] });
+    setSelected({ kind: "route", id: r.id });
+  };
   const updateRoute = (id: string, patch: Partial<Route>) =>
     commit({
       ...map,
@@ -1112,6 +1131,59 @@ function WorldEditor({
               </div>
             )}
           </section>
+
+          {road && (
+            <section className="profile-card wm-sel">
+              <h3>{ROUTE_TYPES.find((rt) => rt.value === road.type)?.label ?? "Estrada"}</h3>
+              <input
+                className="text-input"
+                aria-label="Nome da estrada"
+                key={road.name}
+                defaultValue={road.name}
+                onBlur={(e) => {
+                  const name = e.target.value.trim();
+                  if (name && name !== road.name) adoptRoad({ name });
+                }}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+              />
+              <div className="wm-route-types" role="radiogroup" aria-label="Tipo de rota">
+                {ROUTE_TYPES.filter((rt) => rt.value !== "maritima").map((rt) => (
+                  <button
+                    key={rt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={road.type === rt.value}
+                    title={rt.hint}
+                    onClick={() => rt.value !== road.type && adoptRoad({ type: rt.value })}
+                  >
+                    <span className={"route-swatch " + rt.value} />
+                    {rt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="wm-meta">
+                {Math.round(
+                  road.points.reduce(
+                    (s, p, i, a) =>
+                      i
+                        ? s +
+                          Math.hypot(
+                            (p[0] - a[i - 1]![0]) *
+                              Math.cos(((90 - (p[1] / ROWS) * 180) * Math.PI) / 180),
+                            p[1] - a[i - 1]![1],
+                          )
+                        : 0,
+                    0,
+                  ) * KM_PER_CELL,
+                ).toLocaleString("pt-BR")}{" "}
+                km · gerada pelo mapa
+              </p>
+              <p className="field-hint">
+                Ao mudar o nome ou o tipo, ela vira uma rota sua (fica na lista Rotas e pode ser
+                editada ou excluída).
+              </p>
+            </section>
+          )}
 
           {route && routeInfo && (
             <section className="profile-card wm-sel">

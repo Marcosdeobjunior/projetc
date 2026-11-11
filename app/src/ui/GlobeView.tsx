@@ -44,6 +44,14 @@ export function GlobeView(p: GlobeProps) {
     return { lon, lat, zoom: 0.42 };
   });
   const [moving, setMoving] = useState(false);
+  const table = useRef<{
+    key: string;
+    at: Int32Array;
+    u: Float32Array;
+    row: Int32Array;
+    light: Float32Array;
+    rim: Float32Array;
+  } | null>(null);
   const [spin, setSpin] = useState(false);
   const drag = useRef<{ x: number; y: number; lon: number; lat: number; moved: boolean } | null>(
     null,
@@ -144,12 +152,12 @@ export function GlobeView(p: GlobeProps) {
   useEffect(() => {
     const c = canvas.current;
     if (!c || size.w < 10) return;
-    // Enquanto gira, desenha em resolução menor (fica fluido); parado, em resolução cheia.
-    const dpr = moving || spin ? 1 : Math.min(2, window.devicePixelRatio || 1);
+    // Enquanto gira, desenha em meia resolução (fica fluido); parado, em resolução cheia.
+    const dpr = moving || spin ? 0.5 : Math.min(2, window.devicePixelRatio || 1);
     const W = Math.round(size.w * dpr);
     const H = Math.round(size.h * dpr);
-    c.width = W;
-    c.height = H;
+    if (c.width !== W) c.width = W;
+    if (c.height !== H) c.height = H;
     const ctx = c.getContext("2d")!;
     // Espaço com estrelas.
     const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
@@ -182,37 +190,63 @@ export function GlobeView(p: GlobeProps) {
     const out = new Uint32Array(img.data.buffer);
     const TW = COLS * TEX;
     const TH = ROWS * TEX;
-    const sinL = Math.sin(rot.lat);
-    const cosL = Math.cos(rot.lat);
-    // Luz vinda de cima à esquerda, um pouco à frente.
-    const lx = -0.45;
-    const ly = 0.5;
-    const lz = 0.74;
-    for (let py = y0; py < y1; py++) {
-      const y = -(py + 0.5 - cy) / R;
-      for (let px = x0; px < x1; px++) {
-        const x = (px + 0.5 - cx) / R;
-        const rr = x * x + y * y;
-        if (rr > 1) continue;
-        const z = Math.sqrt(1 - rr);
-        // Ponto da esfera na vista → gira de volta para latitude/longitude.
-        const lat = Math.asin(z * sinL + y * cosL);
-        const lon = rot.lon + Math.atan2(x, z * cosL - y * sinL);
-        let u = ((lon + Math.PI) / (2 * Math.PI)) % 1;
-        if (u < 0) u += 1;
-        const v = (Math.PI / 2 - lat) / Math.PI;
-        const tx = Math.min(TW - 1, (u * TW) | 0);
-        const ty = Math.min(TH - 1, Math.max(0, (v * TH) | 0));
-        const col = texture[ty * TW + tx]!;
-        const light = Math.max(0.28, Math.min(1.15, 0.35 + 0.85 * (x * lx + y * ly + z * lz)));
-        // Borda um pouco azulada (atmosfera vista de lado).
-        const rim = Math.pow(1 - z, 3) * 0.6;
-        const r = (col & 0xff) * light * (1 - rim) + 140 * rim;
-        const g = ((col >> 8) & 0xff) * light * (1 - rim) + 190 * rim;
-        const b = ((col >> 16) & 0xff) * light * (1 - rim) + 255 * rim;
-        out[(py - y0) * (x1 - x0) + (px - x0)] =
-          0xff000000 | (Math.min(255, b) << 16) | (Math.min(255, g) << 8) | Math.min(255, r);
+    // Tabela por pixel (latitude → linha da textura, longitude sem o giro, luz e borda),
+    // refeita só quando muda o tamanho, o zoom ou a inclinação; girar para os lados
+    // só desloca a longitude.
+    const bw = x1 - x0;
+    const key = `${W}x${H}:${R.toFixed(2)}:${rot.lat.toFixed(5)}`;
+    let tab = table.current;
+    if (!tab || tab.key !== key) {
+      const sinL = Math.sin(rot.lat);
+      const cosL = Math.cos(rot.lat);
+      // Luz vinda de cima à esquerda, um pouco à frente.
+      const lx = -0.45;
+      const ly = 0.5;
+      const lz = 0.74;
+      const at: number[] = [];
+      const us: number[] = [];
+      const rows: number[] = [];
+      const lights: number[] = [];
+      const rims: number[] = [];
+      for (let py = y0; py < y1; py++) {
+        const y = -(py + 0.5 - cy) / R;
+        for (let px = x0; px < x1; px++) {
+          const x = (px + 0.5 - cx) / R;
+          const rr = x * x + y * y;
+          if (rr > 1) continue;
+          const z = Math.sqrt(1 - rr);
+          const lat = Math.asin(z * sinL + y * cosL);
+          const lon = Math.atan2(x, z * cosL - y * sinL);
+          at.push((py - y0) * bw + (px - x0));
+          us.push(((lon + Math.PI) / (2 * Math.PI)) * TW);
+          rows.push(Math.min(TH - 1, Math.max(0, (((Math.PI / 2 - lat) / Math.PI) * TH) | 0)) * TW);
+          lights.push(Math.max(0.28, Math.min(1.15, 0.35 + 0.85 * (x * lx + y * ly + z * lz))));
+          rims.push(Math.pow(1 - z, 3) * 0.6);
+        }
       }
+      tab = table.current = {
+        key,
+        at: Int32Array.from(at),
+        u: Float32Array.from(us),
+        row: Int32Array.from(rows),
+        light: Float32Array.from(lights),
+        rim: Float32Array.from(rims),
+      };
+    }
+    const shift = (rot.lon / (2 * Math.PI)) * TW;
+    const { at, u, row, light, rim } = tab;
+    for (let k = 0; k < at.length; k++) {
+      let tx = (u[k]! + shift) % TW;
+      if (tx < 0) tx += TW;
+      const col = texture[row[k]! + (tx | 0)]!;
+      const l = light[k]!;
+      const m = rim[k]!;
+      const keep = l * (1 - m);
+      const r = (col & 0xff) * keep + 140 * m;
+      const g = ((col >> 8) & 0xff) * keep + 190 * m;
+      const b = ((col >> 16) & 0xff) * keep + 255 * m;
+      out[at[k]!] =
+        0xff000000 | (Math.min(255, b) << 16) | (Math.min(255, g) << 8) | Math.min(255, r);
     }
     ctx.putImageData(img, x0, y0);
 
@@ -293,7 +327,21 @@ export function GlobeView(p: GlobeProps) {
       }
     }
     ctx.restore();
-  });
+    // Só redesenha quando a vista ou o mapa mudam (não a cada movimento do mouse).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    rot,
+    size,
+    texture,
+    moving,
+    spin,
+    p.layers,
+    p.selectedBurg,
+    p.map,
+    p.capitals,
+    p.vectors,
+    stars,
+  ]);
 
   const onDown = (e: PointerEvent) => {
     (e.target as Element).setPointerCapture(e.pointerId);

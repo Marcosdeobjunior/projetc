@@ -470,6 +470,18 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   pixel do disco é convertido em latitude/longitude para buscar a cor, com luz e atmosfera; nomes,
   cidades e linhas de latitude/longitude são projetados por cima (só o lado visível). Ao girar,
   desenha em resolução menor.
+- Estradas geradas (`deriveWorld`): busca A* em 16 direções com arrays reaproveitados (carimbo por
+  busca), custo de engenharia por passo (`roadStep`: rampa ao quadrado, altitude, bioma, aspereza
+  fixa por célula, desconto em vales ao lado de rios e em estradas existentes, custo de ponte ao
+  entrar num rio, proporcional à vazão). Rodovias ligam capitais de estados vizinhos; estradas
+  vão de cada cidade até a capital (ou até a rodovia); trilhas ao vizinho mais perto. Cada estrada
+  tem nome; `bridges` guarda posição e direção das pontes. `cellsPath` suaviza os traçados
+  (Chaikin). O relevo é girado para a borda de 180° cair no meridiano com menos terra, e a faixa da
+  borda e as latitudes acima de ~58° viram mar no fim da geração.
+- Globo: a tabela por pixel (linha da textura, longitude sem giro, luz, borda) fica em cache e só é
+  refeita quando muda tamanho, zoom ou inclinação; girar para os lados só desloca a longitude; ao
+  arrastar, desenha em meia resolução; o efeito de desenho tem dependências explícitas (o mouse
+  parado sobre o globo não redesenha).
 - Rotas: `deriveWorld` classifica as estradas geradas (`principal` entre capitais vizinhas,
   `estrada` cidade → capital cortada onde encontra a rodovia, `trilha` por Dijkstra limitado até a
   cidade mais perto, só se o caminho for majoritariamente novo) e calcula o caminho das rotas

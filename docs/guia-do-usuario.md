@@ -1098,8 +1098,9 @@ lugar novo; se quiser, tire a entrada antiga da lista com o **×**.
 **Mapa**, na barra lateral, abre o mapa do planeta inteiro do projeto, em projeção
 equirretangular (rios, reinos e estradas atravessam a linha de 180° sem emenda), os polos têm mar
 congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. O relevo é gerado sobre a esfera, então os continentes têm
-o mesmo tamanho real no equador e perto dos polos (no globo não ficam esticados), e os polos
-podem ter continentes cobertos de gelo. No mapa plano, como em todo mapa-múndi desse tipo, o que
+o mesmo tamanho real no equador e perto dos polos (no globo não ficam esticados), e, para que tudo
+apareça inteiro no mapa plano, o planeta é girado para que a borda de 180° caia num oceano e não
+há terra nas latitudes muito altas (onde o plano deforma). No mapa plano, como em todo mapa-múndi desse tipo, o que
 fica perto dos polos aparece esticado na horizontal, e a sobra acima e abaixo mostra o que existe
 do outro lado do polo. Na primeira vez, escolha o **tipo de
 mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
@@ -1156,6 +1157,13 @@ inventados) e **estradas** entre elas.
 - **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
   canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
   lembra a escolha.
+- **Estradas de verdade:** as estradas geradas seguem o terreno como na engenharia: evitam rampas
+  fortes (contornam as encostas), serras altas, pântanos e geleiras, preferem os vales ao lado dos
+  rios, aproveitam as estradas que já existem e cruzam rios por **pontes** (desenhadas no mapa ao
+  aproximar), escolhendo onde o rio é mais estreito. Rodovias e estradas geradas têm nome
+  automático (ex.: "Rodovia Beena–Orumbeor", escrito ao longo dela quando o mapa está aproximado);
+  clique numa para ver o nome, o tipo e o comprimento. Mudar o nome ou o tipo a transforma numa
+  rota sua.
 - **Rotas:** o mapa gera sozinho três tipos de caminho: **rodovias principais** (faixa amarela
   com bordas, entre as capitais de reinos vizinhos), **estradas** (traço contínuo, de cada cidade
   até a capital do seu reino) e **trilhas** (pontilhado, de povoados ao vizinho mais perto). Para
