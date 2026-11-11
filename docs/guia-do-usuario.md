@@ -1139,6 +1139,17 @@ inventados) e **estradas** entre elas.
 - **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
   canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
   lembra a escolha.
+- **Rotas:** o mapa gera sozinho três tipos de caminho: **rodovias principais** (faixa amarela
+  com bordas, entre as capitais de reinos vizinhos), **estradas** (traço contínuo, de cada cidade
+  até a capital do seu reino) e **trilhas** (pontilhado, de povoados ao vizinho mais perto). Para
+  traçar uma rota sua — uma rodovia como a Castelo Branco, uma estrada de romeiros, uma trilha na
+  serra ou uma **rota marítima** —, use a ferramenta **Rota** (ou **Traçar rota**, no painel):
+  clique para marcar os pontos de passagem (perto de uma cidade, o ponto encaixa nela);
+  **Enter**, duplo clique ou **Concluir** termina, **Backspace** desfaz o último ponto e **Esc**
+  cancela. Entre os pontos a rota segue o terreno, desviando de montanhas e água (a marítima vai
+  reta; ela é escolhida sozinha se a rota começa ou termina no mar). Selecione a rota (clicando
+  nela ou na lista **Rotas** do painel) para dar o **nome**, que aparece escrito ao longo dela,
+  escolher o **tipo** e ver o comprimento em km; **Excluir rota** apaga.
 - **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.
 - **Exportar imagem** salva o mapa inteiro como PNG em alta resolução, com as camadas que estão
   ligadas, a escala e a rosa dos ventos.

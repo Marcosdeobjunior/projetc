@@ -13,6 +13,7 @@ import { useWorldMap } from "../state/worldMap";
 import { useWorldNav } from "../state/worldNav";
 import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
+import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
 import {
   BIOMES,
@@ -28,13 +29,15 @@ import {
   stateColor,
   TEMPLATES,
   type Burg,
+  type Route,
+  ROUTE_TYPES,
   type Template,
   type WorldMap,
   type WorldOptions,
 } from "../world/worldgen";
 import { bakeBase, buildVectors, coastPath, type MapMode } from "../world/worldRender";
 import { settlementInfo } from "../world/settlement";
-import { drawWorld, stateMask, type BurgMeta } from "./worldDraw";
+import { drawWorld, KM_PER_CELL, stateMask, type BurgMeta } from "./worldDraw";
 import { Icon } from "./Icon";
 import { Select } from "./Select";
 
@@ -45,7 +48,7 @@ import { Select } from "./Select";
  * Mundo.
  */
 
-type Tool = "mover" | "elevar" | "rebaixar" | "suavizar" | "cidade";
+type Tool = "mover" | "elevar" | "rebaixar" | "suavizar" | "cidade" | "rota";
 
 const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
   {
@@ -63,11 +66,17 @@ const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
   },
   { value: "suavizar", icon: "wave", label: "Suavizar", hint: "Pinte para suavizar o relevo" },
   { value: "cidade", icon: "pin", label: "Cidade", hint: "Clique em terra para pôr uma cidade" },
+  {
+    value: "rota",
+    icon: "link",
+    label: "Rota",
+    hint: "Clique para marcar o caminho; Enter (ou duplo clique) conclui",
+  },
 ];
 
 const LAYERS = [
   ["rios", "Rios"],
-  ["estradas", "Estradas"],
+  ["estradas", "Rotas e estradas"],
   ["fronteiras", "Fronteiras"],
   ["estados", "Cor dos estados"],
   ["cidades", "Cidades"],
@@ -81,6 +90,7 @@ interface Snapshot {
   heights: Uint8Array;
   burgs: Burg[];
   states: WorldMap["states"];
+  routes?: Route[];
 }
 
 export function WorldMapView({ session }: { session: Session }) {
@@ -244,7 +254,12 @@ function WorldEditor({
   // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
   const [toolsOpen, setToolsOpen] = useStoredFlag("talia.mapa.ferramentas", true);
   const [panelOpen, setPanelOpen] = useStoredFlag("talia.mapa.opcoes", true);
-  const [selected, setSelected] = useState<{ kind: "burg" | "state"; id: string } | null>(null);
+  const [selected, setSelected] = useState<{
+    kind: "burg" | "state" | "route";
+    id: string;
+  } | null>(null);
+  // Rota sendo desenhada (pontos de passagem em células).
+  const [draft, setDraft] = useState<[number, number][]>([]);
   const [hover, setHover] = useState<string>("");
   const [showGen, setShowGen] = useState(false);
   const undo = useRef<Snapshot[]>([]);
@@ -262,7 +277,9 @@ function WorldEditor({
     "#" +
     map.states.map((s) => s.capital).join("|") +
     "#" +
-    map.options.seed;
+    map.options.seed +
+    "#" +
+    (map.routes ?? []).map((r) => `${r.id}:${r.type}:${r.points.join(";")}`).join("|");
   const colorKey = map.states.map((s) => s.color).join("|");
   const geo = useMemo(
     () => ({ ...map, heights: map.heights }),
@@ -408,6 +425,8 @@ function WorldEditor({
       capitals,
       meta,
       selectedBurg: selected?.kind === "burg" ? selected.id : null,
+      selectedRoute: selected?.kind === "route" ? selected.id : null,
+      draft: tool === "rota" ? draft : null,
       highlight,
       brush: painterTool && brushAt ? { ...brushAt, r: brush } : null,
       furniture: true,
@@ -428,6 +447,8 @@ function WorldEditor({
     painterTool,
     brushAt,
     brush,
+    tool,
+    draft,
   ]);
 
   /** Exporta o mapa inteiro como imagem PNG (em alta resolução). */
@@ -465,7 +486,12 @@ function WorldEditor({
 
   const colorBefore = useRef<Snapshot | null>(null);
   const colorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const snapshot = (): Snapshot => ({ heights: map.heights, burgs: map.burgs, states: map.states });
+  const snapshot = (): Snapshot => ({
+    heights: map.heights,
+    burgs: map.burgs,
+    states: map.states,
+    routes: map.routes ?? [],
+  });
   const commit = (next: WorldMap) => {
     undo.current = [...undo.current.slice(-29), snapshot()];
     redo.current = [];
@@ -489,14 +515,34 @@ function WorldEditor({
     if (!s) return;
     to.current.push(snapshot());
     syncHist();
-    setMap({ ...map, ...s });
+    setMap({ ...map, ...s, routes: s.routes ?? map.routes });
     // Desfazer uma exclusão traz o lugar de volta ao Mundo.
     void useWorldMap.getState().reconcile({ recreate: true });
+  };
+  /** Conclui a rota desenhada (marítima se começa ou termina na água). */
+  const finishRoute = (pts = draft) => {
+    setDraft([]);
+    if (pts.length < 2) return;
+    const wet = (p: [number, number]) => map.heights[cellOf(p[0], p[1])]! < SEA;
+    const r: Route = {
+      id: newId("r"),
+      name: "Nova rota",
+      type: wet(pts[0]!) || wet(pts[pts.length - 1]!) ? "maritima" : "estrada",
+      points: pts,
+    };
+    commit({ ...map, routes: [...(map.routes ?? []), r] });
+    setSelected({ kind: "route", id: r.id });
+    setTool("mover");
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, [contenteditable]")) return;
+      if (tool === "rota" && draft.length) {
+        if (e.key === "Enter") return finishRoute();
+        if (e.key === "Backspace") return setDraft(draft.slice(0, -1));
+        if (e.key === "Escape") return setDraft([]);
+      }
       if (e.key === "Escape") {
         // Esc: cancela o "pôr no mapa", fecha a janela da cidade, volta a Mover.
         if (placing) setPlacing(null);
@@ -520,6 +566,8 @@ function WorldEditor({
   };
   const burgAt = (x: number, y: number) =>
     map.burgs.find((b) => Math.hypot(b.x - x, b.y - y) * view.s < 9);
+  const routeAt = (x: number, y: number) =>
+    vectors.routes.find((r) => distToPolyline([x, y], r.points) * view.s < 7);
 
   const paint = (h: Uint8Array, x: number, y: number, t: Tool) => {
     const r = brush;
@@ -581,6 +629,14 @@ function WorldEditor({
         moved: false,
         burg: b?.id,
       };
+    } else if (tool === "rota") {
+      // Cada clique marca um ponto (perto de uma cidade, encaixa nela); duplo clique conclui.
+      const b = burgAt(x, y);
+      const pt: [number, number] = b ? [b.x, b.y] : [x, y];
+      const last = draft[draft.length - 1];
+      if (e.detail >= 2 || (last && Math.hypot(last[0] - pt[0], last[1] - pt[1]) * view.s < 4))
+        finishRoute(last ? draft : [...draft, pt]);
+      else setDraft([...draft, pt]);
     } else if (tool === "cidade") {
       const c = cellOf(x, y);
       if (map.heights[c]! < SEA) return;
@@ -657,7 +713,9 @@ function WorldEditor({
       } else if (!d.moved) {
         const [x, y] = toMap(e);
         const b = burgAt(x, y);
+        const route = b ? undefined : routeAt(x, y);
         if (b) setSelected({ kind: "burg", id: b.id });
+        else if (route) setSelected({ kind: "route", id: route.id });
         else {
           const o = derived.owner[cellOf(x, y)]!;
           setSelected(o >= 0 && map.states[o] ? { kind: "state", id: map.states[o]!.id } : null);
@@ -694,6 +752,14 @@ function WorldEditor({
   const burgState = burg ? map.states[derived.owner[cellOf(burg.x, burg.y)]!] : undefined;
   const state =
     selected?.kind === "state" ? map.states.find((s) => s.id === selected.id) : undefined;
+  const route =
+    selected?.kind === "route" ? (map.routes ?? []).find((r) => r.id === selected.id) : undefined;
+  const routeInfo = route ? vectors.routes.find((r) => r.id === route.id) : undefined;
+  const updateRoute = (id: string, patch: Partial<Route>) =>
+    commit({
+      ...map,
+      routes: (map.routes ?? []).map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    });
   // Lugares do Mundo que ainda não estão no mapa.
   const onMap = new Set([...map.burgs.map((b) => b.noteId), ...map.states.map((s) => s.noteId)]);
   const offMap = session.project.notes
@@ -806,6 +872,20 @@ function WorldEditor({
           </button>
         </div>
         {hover && <div className="wm-status">{hover}</div>}
+        {tool === "rota" && (
+          <div className="wm-draft">
+            <span>
+              {draft.length
+                ? `${draft.length} ${draft.length === 1 ? "ponto" : "pontos"} · Enter ou duplo clique conclui · Backspace desfaz o último · Esc cancela`
+                : "Clique no mapa para marcar o começo da rota (perto de uma cidade, encaixa nela)."}
+            </span>
+            {draft.length >= 2 && (
+              <button type="button" className="btn primary sm" onClick={() => finishRoute()}>
+                Concluir
+              </button>
+            )}
+          </div>
+        )}
         {burg && (
           <BurgDialog
             key={burg.id}
@@ -935,6 +1015,55 @@ function WorldEditor({
               </div>
             )}
           </section>
+
+          {route && routeInfo && (
+            <section className="profile-card wm-sel">
+              <h3>Rota</h3>
+              <input
+                className="text-input"
+                aria-label="Nome da rota"
+                key={route.id + route.name}
+                defaultValue={route.name}
+                placeholder="ex.: Rodovia Castelo Branco, Estrada dos Romeiros"
+                onBlur={(e) => {
+                  const name = e.target.value.trim();
+                  if (name && name !== route.name) updateRoute(route.id, { name });
+                }}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+              />
+              <div className="wm-route-types" role="radiogroup" aria-label="Tipo de rota">
+                {ROUTE_TYPES.map((rt) => (
+                  <button
+                    key={rt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={route.type === rt.value}
+                    title={rt.hint}
+                    onClick={() => updateRoute(route.id, { type: rt.value })}
+                  >
+                    <span className={"route-swatch " + rt.value} />
+                    {rt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="wm-meta">
+                {Math.round(routeInfo.length * KM_PER_CELL).toLocaleString("pt-BR")} km ·{" "}
+                {route.points.length} pontos de passagem
+              </p>
+              <div className="profile-photo-actions">
+                <button
+                  type="button"
+                  className="btn ghost sm danger"
+                  onClick={() => {
+                    commit({ ...map, routes: (map.routes ?? []).filter((r) => r.id !== route.id) });
+                    setSelected(null);
+                  }}
+                >
+                  <Icon name="trash" size={14} /> Excluir rota
+                </button>
+              </div>
+            </section>
+          )}
 
           {state && (
             <section className="profile-card wm-sel">
@@ -1067,6 +1196,41 @@ function WorldEditor({
               </ul>
             </section>
           )}
+          <section className="profile-card wm-routes">
+            <h3>Rotas</h3>
+            <ul className="wm-route-legend">
+              {ROUTE_TYPES.map((rt) => (
+                <li key={rt.value}>
+                  <span className={"route-swatch " + rt.value} />
+                  {rt.label}
+                </li>
+              ))}
+            </ul>
+            {(map.routes ?? []).length ? (
+              <ul className="wm-route-list">
+                {(map.routes ?? []).map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className={selected?.id === r.id ? "on" : ""}
+                      onClick={() => setSelected({ kind: "route", id: r.id })}
+                    >
+                      <span className={"route-swatch " + r.type} />
+                      {r.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="field-hint">
+                As estradas geradas ligam cidades e capitais. Para traçar e dar nome a uma rota sua
+                (uma rodovia, um caminho de romeiros, uma trilha na serra), use a ferramenta Rota.
+              </p>
+            )}
+            <button type="button" className="btn ghost sm" onClick={() => setTool("rota")}>
+              <Icon name="link" size={14} /> Traçar rota
+            </button>
+          </section>
           <section className="profile-card wm-legend">
             <h3>Biomas</h3>
             <ul>

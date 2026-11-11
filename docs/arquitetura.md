@@ -461,6 +461,12 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cidades, capitais); renomear ou mudar cor não refaz. Enquanto o pincel pinta, a imagem de fundo
   é assada em 1 px por célula e só a costa é recalculada (`coastPath`); o resto espera soltar.
   Cidades arrastadas só movem o marcador até soltar.
+- Rotas: `deriveWorld` classifica as estradas geradas (`principal` entre capitais vizinhas,
+  `estrada` cidade → capital cortada onde encontra a rodovia, `trilha` por Dijkstra limitado até a
+  cidade mais perto, só se o caminho for majoritariamente novo) e calcula o caminho das rotas
+  desenhadas (`map.routes`) entre os pontos de passagem pelo mesmo Dijkstra (marítimas ficam
+  retas). `buildVectors` monta um `Path2D` por tipo e, por rota, o caminho, o comprimento e o ponto
+  do meio para o nome.
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

@@ -51,12 +51,32 @@ export interface WorldState {
   noteId?: string;
 }
 
+/** Tipos de rota, da maior para a menor. */
+export type RouteType = "principal" | "estrada" | "trilha" | "maritima";
+
+export const ROUTE_TYPES: { value: RouteType; label: string; hint: string }[] = [
+  { value: "principal", label: "Rodovia principal", hint: "Grande eixo entre capitais e regiões" },
+  { value: "estrada", label: "Estrada", hint: "Liga cidades; caminhos de romeiros, de comércio" },
+  { value: "trilha", label: "Trilha", hint: "Caminho estreito entre povoados, serras e matas" },
+  { value: "maritima", label: "Rota marítima", hint: "Travessia por mar entre portos" },
+];
+
+/** Rota desenhada à mão (com nome), por pontos de passagem em células. */
+export interface Route {
+  id: string;
+  name: string;
+  type: RouteType;
+  points: [number, number][];
+}
+
 export interface WorldMap {
   name: string;
   options: WorldOptions;
   heights: Uint8Array;
   burgs: Burg[];
   states: WorldState[];
+  /** Rotas desenhadas (as estradas geradas não ficam aqui: são calculadas). */
+  routes?: Route[];
 }
 
 export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
@@ -351,7 +371,10 @@ export interface Derived {
   oceanDist: Uint16Array;
   /** Estado de cada célula (índice em `states`) ou -1. */
   owner: Int16Array;
-  roads: number[][];
+  /** Estradas geradas, por tipo: principal (entre capitais), estrada (cidade → capital), trilha. */
+  roads: { cells: number[]; type: RouteType }[];
+  /** Caminho das rotas desenhadas (pontos em células), na ordem de `map.routes`. */
+  routes: { id: string; points: [number, number][] }[];
 }
 
 const N8 = [
@@ -688,8 +711,10 @@ export function deriveWorld(map: WorldMap): Derived {
     }
   }
 
-  // Estradas: de cada cidade até a capital do seu estado, e entre capitais vizinhas.
-  const roads: number[][] = [];
+  // Estradas: de cada cidade até a capital do seu estado (estrada), entre capitais
+  // vizinhas (rodovia principal) e trilhas de cada povoado ao vizinho mais perto.
+  const roads: Derived["roads"] = [];
+  const onRoad = new Uint8Array(n);
   const trace = (from: number) => {
     const path: number[] = [];
     let c = from;
@@ -699,11 +724,6 @@ export function deriveWorld(map: WorldMap): Derived {
     }
     return path;
   };
-  for (const b of map.burgs) {
-    if (map.states.some((s) => s.capital === b.id)) continue;
-    const c = cellOf(b.x, b.y);
-    if (owner[c]! >= 0 && prev[c]! >= 0) roads.push(trace(c));
-  }
   const best = new Map<string, [number, number, number]>();
   for (let i = 0; i < n; i++) {
     if (owner[i]! < 0) continue;
@@ -719,7 +739,100 @@ export function deriveWorld(map: WorldMap): Derived {
       if (!cur || c < cur[0]) best.set(key, [c, i, j]);
     }
   }
-  for (const [, i, j] of best.values()) roads.push([...trace(i).reverse(), ...trace(j)]);
+  for (const [, i, j] of best.values()) {
+    const cells = [...trace(i).reverse(), ...trace(j)];
+    for (const c of cells) onRoad[c] = 2;
+    roads.push({ cells, type: "principal" });
+  }
+  const capitalIds = new Set(map.states.map((s) => s.capital));
+  for (const b of map.burgs) {
+    if (capitalIds.has(b.id)) continue;
+    const c = cellOf(b.x, b.y);
+    if (owner[c]! < 0 || prev[c]! < 0) continue;
+    const cells = trace(c);
+    // O trecho que já é rodovia não vira estrada por cima.
+    const cut = cells.findIndex((x) => onRoad[x] === 2);
+    const own = cut > 0 ? cells.slice(0, cut + 1) : cells;
+    for (const x of own) if (!onRoad[x]) onRoad[x] = 1;
+    if (own.length > 1) roads.push({ cells: own, type: "estrada" });
+  }
+  // Trilhas: de cada cidade ao vizinho mais perto (por terra), se o caminho for novo.
+  const burgCells = new Map(map.burgs.map((b) => [cellOf(b.x, b.y), b.id]));
+  const seen = new Set<string>();
+  for (const b of map.burgs) {
+    const from = cellOf(b.x, b.y);
+    if (!land[from]) continue;
+    const path = shortestPath(from, (c) => c !== from && burgCells.has(c), 40);
+    if (!path) continue;
+    const to = burgCells.get(path[path.length - 1]!)!;
+    const key = [b.id, to].sort().join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const fresh = path.filter((c) => !onRoad[c]).length;
+    if (fresh / path.length < 0.6) continue;
+    for (const c of path) if (!onRoad[c]) onRoad[c] = 1;
+    roads.push({ cells: path, type: "trilha" });
+  }
+
+  // Rotas desenhadas: entre pontos de passagem seguem o terreno (as marítimas vão retas).
+  const routes: Derived["routes"] = (map.routes ?? []).map((r) => {
+    if (r.type === "maritima" || r.points.length < 2) return { id: r.id, points: r.points };
+    const pts: [number, number][] = [r.points[0]!];
+    for (let k = 1; k < r.points.length; k++) {
+      const a = cellOf(...r.points[k - 1]!);
+      const b = cellOf(...r.points[k]!);
+      const path = land[a] && land[b] ? shortestPath(a, (c) => c === b, 400) : null;
+      if (path)
+        for (const c of path.slice(1, -1)) pts.push([(c % COLS) + 0.5, Math.floor(c / COLS) + 0.5]);
+      pts.push(r.points[k]!);
+    }
+    return { id: r.id, points: pts };
+  });
+
+  /** Caminho por terra mais barato (Dijkstra limitado) até uma célula que satisfaça `goal`. */
+  function shortestPath(from: number, goal: (c: number) => boolean, limit: number) {
+    const dist = new Map<number, number>([[from, 0]]);
+    const back = new Map<number, number>();
+    const q = new Heap();
+    q.push(from, 0);
+    while (q.size) {
+      const i = q.pop();
+      const di = q.lastKey;
+      if (di > dist.get(i)!) continue;
+      if (goal(i)) {
+        const path = [i];
+        let c = i;
+        while (back.has(c)) {
+          c = back.get(c)!;
+          path.push(c);
+        }
+        return path.reverse();
+      }
+      if (di > limit) break;
+      const x = i % COLS;
+      const y = (i / COLS) | 0;
+      for (const [dx, dy] of N8) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+        const j = ny * COLS + nx;
+        if (!land[j]) continue;
+        const step =
+          (dx && dy ? 1.414 : 1) *
+          (1 +
+            Math.max(0, (h[j]! - h[i]!) / 5) +
+            (onRoad[j] ? -0.3 : 0) +
+            (biome[j] === 13 ? 2 : 0));
+        const nd = di + step;
+        if (nd < (dist.get(j) ?? Infinity)) {
+          dist.set(j, nd);
+          back.set(j, i);
+          q.push(j, nd);
+        }
+      }
+    }
+    return null;
+  }
 
   return {
     land,
@@ -735,6 +848,7 @@ export function deriveWorld(map: WorldMap): Derived {
     rivers,
     owner,
     roads,
+    routes,
   };
 }
 
@@ -768,6 +882,7 @@ export function serializeWorld(map: WorldMap): string {
         heights: toBase64(map.heights),
         states: map.states,
         burgs: map.burgs,
+        routes: map.routes ?? [],
       },
       null,
       1,
@@ -823,7 +938,29 @@ export function parseWorld(raw: string): WorldMap | null {
       if (typeof s.noteId === "string" && s.noteId) state.noteId = s.noteId.slice(0, 64);
       states.push(state);
     }
-    return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states };
+    const routes: Route[] = [];
+    for (const r of Array.isArray(d.routes)
+      ? (d.routes as Record<string, unknown>[]).slice(0, 500)
+      : []) {
+      const id = str(r.id, 64);
+      const type = ROUTE_TYPES.some((x) => x.value === r.type) ? (r.type as RouteType) : "estrada";
+      const points = (Array.isArray(r.points) ? (r.points as unknown[]) : [])
+        .slice(0, 200)
+        .filter(
+          (p): p is [number, number] =>
+            Array.isArray(p) &&
+            typeof p[0] === "number" &&
+            typeof p[1] === "number" &&
+            p[0] >= 0 &&
+            p[1] >= 0 &&
+            p[0] <= COLS &&
+            p[1] <= ROWS,
+        )
+        .map((p) => [p[0], p[1]] as [number, number]);
+      if (!id || points.length < 2) continue;
+      routes.push({ id, name: str(r.name, 80) || "Rota", type, points });
+    }
+    return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states, routes };
   } catch {
     return null;
   }

@@ -1,4 +1,4 @@
-import { BIOMES, COLS, ROWS, SEA, type Derived, type WorldMap } from "./worldgen";
+import { BIOMES, COLS, ROWS, SEA, type Derived, type RouteType, type WorldMap } from "./worldgen";
 
 /*
  * Desenho do mapa-múndi: uma imagem de fundo (biomas ou relevo, com
@@ -274,8 +274,47 @@ export function buildVectors(map: WorldMap, d: Derived) {
     path: cellsPath(r.cells, new Path2D(), r.mouth),
     width: r.width,
   }));
-  const roads = new Path2D();
-  for (const r of d.roads) cellsPath(r, roads);
+  const roads: Record<RouteType, Path2D> = {
+    principal: new Path2D(),
+    estrada: new Path2D(),
+    trilha: new Path2D(),
+    maritima: new Path2D(),
+  };
+  for (const r of d.roads) cellsPath(r.cells, roads[r.type]);
+  // Rotas desenhadas: caminho suave e o ponto do meio (para o nome).
+  const routes = (map.routes ?? []).map((r, k) => {
+    const pts = d.routes[k]?.points ?? r.points;
+    const path = new Path2D();
+    path.moveTo(pts[0]![0], pts[0]![1]);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [x, y] = pts[i]!;
+      const [nx, ny] = pts[i + 1]!;
+      path.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
+    }
+    const last = pts[pts.length - 1]!;
+    path.lineTo(last[0], last[1]);
+    // Comprimento (em células) e ponto do meio com a direção, para escrever o nome.
+    let len = 0;
+    for (let i = 1; i < pts.length; i++)
+      len += Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1]);
+    let acc = 0;
+    let mid = { x: pts[0]![0], y: pts[0]![1], angle: 0 };
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1]!;
+      const [bx, by] = pts[i]!;
+      const seg = Math.hypot(bx - ax, by - ay);
+      if (acc + seg >= len / 2) {
+        const t = seg ? (len / 2 - acc) / seg : 0;
+        let angle = Math.atan2(by - ay, bx - ax);
+        if (angle > Math.PI / 2) angle -= Math.PI;
+        if (angle < -Math.PI / 2) angle += Math.PI;
+        mid = { x: ax + (bx - ax) * t, y: ay + (by - ay) * t, angle };
+        break;
+      }
+      acc += seg;
+    }
+    return { id: r.id, name: r.name, type: r.type, path, points: pts, length: len, mid };
+  });
   // Rótulo de cada estado: a célula dele mais perto do seu centro.
   const sums = map.states.map(() => ({ x: 0, y: 0, n: 0 }));
   for (let i = 0; i < COLS * ROWS; i++) {
@@ -302,5 +341,5 @@ export function buildVectors(map: WorldMap, d: Derived) {
     }
     return { x: (best % COLS) + 0.5, y: Math.floor(best / COLS) + 0.5, area: s.n };
   });
-  return { coast, borders, rivers, roads, labels };
+  return { coast, borders, rivers, roads, routes, labels };
 }

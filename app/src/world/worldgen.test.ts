@@ -115,3 +115,44 @@ describe("rios e portos", () => {
     expect(ports).toBeGreaterThan(0);
   });
 });
+
+describe("rotas", () => {
+  it("estradas geradas têm os três tipos e rotas desenhadas seguem o terreno", () => {
+    const m = generateWorld({ ...DEFAULT_OPTIONS, seed: 12 });
+    const d = deriveWorld(m);
+    const types = new Set(d.roads.map((r) => r.type));
+    expect(types.has("principal")).toBe(true);
+    expect(types.has("estrada")).toBe(true);
+    expect(types.has("trilha")).toBe(true);
+    const [a, b] = m.burgs;
+    const withRoute = {
+      ...m,
+      routes: [
+        {
+          id: "r1",
+          name: "Estrada dos Romeiros",
+          type: "estrada" as const,
+          points: [
+            [a!.x, a!.y],
+            [b!.x, b!.y],
+          ] as [number, number][],
+        },
+      ],
+    };
+    const d2 = deriveWorld(withRoute);
+    expect(d2.routes[0]!.points.length).toBeGreaterThan(2);
+    const back = parseWorld(serializeWorld(withRoute))!;
+    expect(back.routes).toEqual(withRoute.routes);
+    const bad = JSON.parse(serializeWorld(withRoute));
+    bad.routes.push({
+      id: "x",
+      name: "Fora",
+      type: "voadora",
+      points: [
+        [1, 1],
+        [-5, 2],
+      ],
+    });
+    expect(parseWorld(JSON.stringify(bad))!.routes).toHaveLength(1);
+  });
+});

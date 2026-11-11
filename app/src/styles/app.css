@@ -8717,3 +8717,85 @@ select option {
 .wm-panel-toggle:hover {
   border-color: var(--accent);
 }
+/* Rotas do mapa-múndi */
+.route-swatch {
+  flex: none;
+  display: inline-block;
+  width: 26px;
+  height: 0;
+  border-top: 3px solid #a8774c;
+  border-radius: 2px;
+}
+.route-swatch.principal {
+  height: 6px;
+  border: 1.5px solid #5a3a22;
+  background: #f2c66b;
+}
+.route-swatch.trilha {
+  border-top: 3px dotted #b58a5e;
+}
+.route-swatch.maritima {
+  border-top: 2px dashed #6f9fd0;
+}
+.wm-route-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.wm-route-types button,
+.wm-route-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--page);
+  color: var(--muted);
+  font: 600 12.5px/1.2 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.wm-route-types button[aria-checked="true"],
+.wm-route-list button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+.wm-route-legend,
+.wm-route-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 12.5px/1.3 var(--font-ui);
+  color: var(--muted);
+}
+.wm-route-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wm-route-list button {
+  width: 100%;
+  color: var(--fg);
+}
+.wm-draft {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 140px);
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: var(--shadow);
+  font: 12.5px/1.3 var(--font-ui);
+  color: var(--fg);
+}

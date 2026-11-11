@@ -1,4 +1,11 @@
-import { COLS, ROWS, type Burg, type Derived, type WorldMap } from "../world/worldgen";
+import {
+  COLS,
+  ROWS,
+  type Burg,
+  type Derived,
+  type RouteType,
+  type WorldMap,
+} from "../world/worldgen";
 import type { buildVectors } from "../world/worldRender";
 
 /*
@@ -29,6 +36,9 @@ export interface DrawOptions {
   capitals: Set<string>;
   meta: Map<string, BurgMeta>;
   selectedBurg?: string | null;
+  selectedRoute?: string | null;
+  /** Rota sendo desenhada (pontos em células). */
+  draft?: [number, number][] | null;
   /** Máscara do estado selecionado (uma célula por pixel). */
   highlight?: HTMLCanvasElement | null;
   /** Pincel sob o mouse (em células). */
@@ -168,10 +178,59 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
     ctx.lineCap = "round";
   }
   if (layers.estradas) {
-    ctx.strokeStyle = "rgba(92,62,38,0.75)";
-    ctx.lineWidth = Math.max(px * 0.8, 0.18);
-    ctx.setLineDash([px * 4, px * 3]);
-    ctx.stroke(vectors.roads);
+    const routeStyle = (type: RouteType, scale = 1) => {
+      // Rodovia: faixa clara com bordas; estrada: traço contínuo; trilha: pontilhado;
+      // marítima: tracejado azul-escuro sobre o mar.
+      ctx.setLineDash([]);
+      if (type === "principal") {
+        ctx.strokeStyle = "#5a3a22";
+        ctx.lineWidth = px * 3.6 * scale;
+        return () => {
+          ctx.strokeStyle = "#f2c66b";
+          ctx.lineWidth = px * 1.8 * scale;
+        };
+      }
+      if (type === "estrada") {
+        ctx.strokeStyle = "rgba(92,58,34,0.85)";
+        ctx.lineWidth = px * 1.4 * scale;
+      } else if (type === "trilha") {
+        ctx.strokeStyle = "rgba(92,58,34,0.75)";
+        ctx.lineWidth = px * 1.1 * scale;
+        ctx.setLineDash([px * 1.2, px * 3]);
+      } else {
+        ctx.strokeStyle = "rgba(20,40,70,0.75)";
+        ctx.lineWidth = px * 1.3 * scale;
+        ctx.setLineDash([px * 6, px * 4]);
+      }
+      return null;
+    };
+    // As geradas ficam mais finas que as desenhadas (que têm nome e importância).
+    for (const type of ["trilha", "estrada", "principal"] as const) {
+      const inner = routeStyle(type, type === "principal" ? 0.7 : 0.9);
+      ctx.stroke(vectors.roads[type]);
+      if (inner) {
+        inner();
+        ctx.stroke(vectors.roads[type]);
+      }
+    }
+    // Rotas desenhadas, um pouco mais fortes que as geradas.
+    const order = { maritima: 0, trilha: 1, estrada: 2, principal: 3 } as const;
+    for (const r of [...vectors.routes].sort((a, b) => order[a.type] - order[b.type])) {
+      const sel = o.selectedRoute === r.id;
+      if (sel) {
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "rgba(224,165,44,0.55)";
+        ctx.lineWidth = px * 9;
+        ctx.stroke(r.path);
+      }
+      const inner = routeStyle(r.type, 1.25);
+      ctx.stroke(r.path);
+      if (inner) {
+        inner();
+        ctx.lineWidth *= 1.25;
+        ctx.stroke(r.path);
+      }
+    }
     ctx.setLineDash([]);
   }
   if (layers.fronteiras) {
@@ -185,6 +244,21 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
     ctx.globalAlpha = 0.3;
     ctx.drawImage(o.highlight, 0, 0, COLS, ROWS);
     ctx.globalAlpha = 1;
+  }
+  if (o.draft && o.draft.length) {
+    ctx.setLineDash([px * 4, px * 3]);
+    ctx.strokeStyle = "#e0a52c";
+    ctx.lineWidth = px * 2.2;
+    ctx.beginPath();
+    o.draft.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const [x, y] of o.draft) {
+      ctx.beginPath();
+      ctx.arc(x, y, px * 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#e0a52c";
+      ctx.fill();
+    }
   }
   if (o.brush) {
     ctx.beginPath();
@@ -203,6 +277,25 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   const placed: [number, number, number, number][] = [];
   const free = (x: number, y: number, w: number, h: number) =>
     placed.every(([a, b, c, d]) => x > c || x + w < a || y > d || y + h < b);
+  if (layers.rotulos && layers.estradas) {
+    // Nome da rota no meio dela, seguindo a direção do traço.
+    for (const r of vectors.routes) {
+      if (r.length * view.s < 90) continue;
+      const [sx, sy] = toS(r.mid.x, r.mid.y);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(r.mid.angle);
+      ctx.font = `italic 600 11.5px ${SERIF}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,250,235,0.85)";
+      ctx.strokeText(r.name, 0, -4);
+      ctx.fillStyle = r.type === "maritima" ? "#16304f" : "#4a2f1a";
+      ctx.fillText(r.name, 0, -4);
+      ctx.restore();
+    }
+  }
   if (layers.rotulos) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
