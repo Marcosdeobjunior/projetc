@@ -30,7 +30,7 @@ describe("mapa da região", () => {
   });
 
   it("lê opções gravadas e recusa lixo", () => {
-    expect(parseMapOptions('{"seed":3,"size":"cidade","river":false}')).toEqual({
+    expect(parseMapOptions('{"seed":3,"size":"cidade","river":false}')).toMatchObject({
       seed: 3,
       size: "cidade",
       road: true,
@@ -48,6 +48,25 @@ describe("mapa da região", () => {
     expect(insidePoly(b.center, b.corners)).toBe(true);
     expect(walkable(m, b.center)).toBe(false);
     expect(buildScene(m).length).toBeGreaterThan(m.buildings.length * 8);
+  });
+});
+
+describe("elementos do povoado", () => {
+  it("muralha, cidadela, praça e templo aparecem e as casas desviam deles", () => {
+    const o = { ...defaultMapOptions(21), size: "cidade" as const };
+    const m = generateVillage({ ...o, walls: true, citadel: true, plaza: true, temple: true });
+    expect(m.wall?.length).toBeGreaterThan(8);
+    expect(m.citadel).toHaveLength(4);
+    expect(m.plaza).not.toBeNull();
+    expect(m.buildings.filter((b) => b.kind === "templo")).toHaveLength(1);
+    for (const b of m.buildings) {
+      expect(overlaps(b.corners, m.citadel!)).toBe(false);
+      for (const c of b.corners)
+        expect(Math.hypot(c[0] - m.plaza!.x, c[1] - m.plaza!.y)).toBeGreaterThan(m.plaza!.r);
+    }
+    const plain = generateVillage(o);
+    expect(plain.wall).toBeNull();
+    expect(plain.citadel).toBeNull();
   });
 });
 

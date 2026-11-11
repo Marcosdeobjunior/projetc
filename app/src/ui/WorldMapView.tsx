@@ -12,7 +12,8 @@ import { useApp } from "../state/store";
 import { useWorldMap } from "../state/worldMap";
 import { useWorldNav } from "../state/worldNav";
 import { renameDocAndLinks } from "../state/store";
-import { renameDoc } from "../manuscript/tree";
+import { renameDoc, setNoteFields } from "../manuscript/tree";
+import { BurgDialog } from "./BurgDialog";
 import {
   BIOMES,
   cellOf,
@@ -725,6 +726,56 @@ function WorldEditor({
           </button>
         </div>
         {hover && <div className="wm-status">{hover}</div>}
+        {burg && (
+          <BurgDialog
+            key={burg.id}
+            burg={burg}
+            note={session.project.notes.find((n) => n.id === burg.noteId)}
+            capital={capitals.has(burg.id)}
+            stateName={burgState?.name ?? null}
+            heights={map.heights}
+            derived={derived}
+            attachments={session.attachments}
+            onClose={() => setSelected(null)}
+            onRename={(name) => {
+              updateBurg(burg.id, { name });
+              void renameLinked(burg.noteId, name);
+            }}
+            onCapital={(on) => {
+              if (on)
+                commit({
+                  ...map,
+                  states: [
+                    ...map.states,
+                    {
+                      id: newId("e"),
+                      name: makeNamer(Date.now())(),
+                      color: stateColor(map.states.length),
+                      capital: burg.id,
+                    },
+                  ],
+                });
+              else commit({ ...map, states: map.states.filter((s) => s.capital !== burg.id) });
+            }}
+            onDelete={() => {
+              commit({
+                ...map,
+                burgs: map.burgs.filter((b) => b.id !== burg.id),
+                states: map.states.filter((s) => s.capital !== burg.id),
+              });
+              setSelected(null);
+            }}
+            onOpenNote={() => burg.noteId && openNote(burg.noteId)}
+            onFields={(patch) => {
+              const id = burg.noteId;
+              if (!id) return;
+              void useApp.getState().change((p) => {
+                const cur = p.notes.find((n) => n.id === id)?.fields ?? {};
+                return setNoteFields(p, id, { ...cur, ...patch });
+              });
+            }}
+          />
+        )}
       </div>
 
       <aside className="wm-panel">
@@ -795,80 +846,6 @@ function WorldEditor({
             </div>
           )}
         </section>
-
-        {burg && (
-          <section className="profile-card wm-sel">
-            <h3>{capitals.has(burg.id) ? "Capital" : "Cidade"}</h3>
-            <input
-              className="text-input"
-              aria-label="Nome da cidade"
-              key={burg.id + burg.name}
-              defaultValue={burg.name}
-              onBlur={(e) => {
-                const name = e.target.value.trim();
-                if (!name || name === burg.name) return;
-                updateBurg(burg.id, { name });
-                void renameLinked(burg.noteId, name);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-            />
-            <p className="wm-meta">
-              {burgState ? `Em ${burgState.name}` : "Sem estado"} ·{" "}
-              {BIOMES[derived.biome[cellOf(burg.x, burg.y)]!]!.name}
-            </p>
-            <label className="region-check">
-              <input
-                type="checkbox"
-                checked={capitals.has(burg.id)}
-                onChange={(e) => {
-                  if (e.target.checked)
-                    commit({
-                      ...map,
-                      states: [
-                        ...map.states,
-                        {
-                          id: newId("e"),
-                          name: makeNamer(Date.now())(),
-                          color: stateColor(map.states.length),
-                          capital: burg.id,
-                        },
-                      ],
-                    });
-                  else commit({ ...map, states: map.states.filter((s) => s.capital !== burg.id) });
-                }}
-              />
-              Capital de um estado
-            </label>
-            <div className="profile-photo-actions">
-              {burg.noteId && (
-                <button
-                  type="button"
-                  className="btn ghost sm"
-                  onClick={() => openNote(burg.noteId!)}
-                >
-                  Abrir ficha
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn ghost sm danger"
-                onClick={() => {
-                  commit({
-                    ...map,
-                    burgs: map.burgs.filter((b) => b.id !== burg.id),
-                    states: map.states.filter((s) => s.capital !== burg.id),
-                  });
-                  setSelected(null);
-                }}
-              >
-                Excluir
-              </button>
-            </div>
-            <p className="field-hint">
-              Com a ferramenta Mover, arraste a cidade para mudá-la de lugar.
-            </p>
-          </section>
-        )}
 
         {state && (
           <section className="profile-card wm-sel">

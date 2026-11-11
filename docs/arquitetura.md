@@ -451,6 +451,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   `retireNotes` manda para a lixeira os lugares que saíram do mapa e nunca foram mexidos. A
   reconciliação roda depois de cada mudança no mapa e quando as notas do projeto mudam (com o mapa
   aberto), dentro de `change` (fila única).
+- "Editar povoado" (`ui/BurgDialog.tsx`): janela flutuante do mapa-múndi. `world/settlement.ts`
+  junta os campos do lugar com valores padrão tirados do mapa (população pela semente, porto/rio
+  pela costa e vazão, temperatura e altitude da célula) e monta as opções da prévia, que é o
+  mesmo gerador de vila (`world/village.ts`, agora com muralha, cidadela, praça, templo e favela,
+  e com o centro sempre no meio do mapa).
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença

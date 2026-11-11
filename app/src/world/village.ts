@@ -17,6 +17,12 @@ export interface MapOptions {
   river: boolean;
   /** Campos cultivados em volta. */
   fields: boolean;
+  /** Elementos do povoado (opcionais): muralha, cidadela, praça, templo e favela. */
+  walls?: boolean;
+  citadel?: boolean;
+  plaza?: boolean;
+  temple?: boolean;
+  shanty?: boolean;
 }
 
 export const MAP_SIZES: { value: MapSize; label: string }[] = [
@@ -41,6 +47,11 @@ export function parseMapOptions(raw: string | undefined): MapOptions | null {
       road: o.road !== false,
       river: o.river !== false,
       fields: o.fields !== false,
+      walls: o.walls === true,
+      citadel: o.citadel === true,
+      plaza: o.plaza === true,
+      temple: o.temple === true,
+      shanty: o.shanty === true,
     };
   } catch {
     return null;
@@ -60,6 +71,8 @@ export interface Building {
   floors: number;
   /** Índice de tom da parede/telhado (0 a 3). */
   tone: number;
+  /** Prédio especial (desenhado diferente). */
+  kind?: "templo";
 }
 
 export interface Field {
@@ -82,6 +95,12 @@ export interface VillageMap {
   buildings: Building[];
   fields: Field[];
   trees: Tree[];
+  /** Muralha: polígono fechado em volta do centro (torres nos vértices). */
+  wall: Pt[] | null;
+  /** Cidadela: quadrado murado perto do centro. */
+  citadel: Pt[] | null;
+  /** Praça: círculo livre no centro. */
+  plaza: { x: number; y: number; r: number } | null;
 }
 
 export const MAP_W = 480;
@@ -145,11 +164,18 @@ export function generateVillage(o: MapOptions): VillageMap {
   // Estrada principal: atravessa o mapa de um lado ao outro (ou é só uma rua no meio).
   const roads: Road[] = [];
   const mainY = between(H * 0.38, H * 0.62);
-  const main = o.road
-    ? wander(rand, [-30, mainY], between(-0.12, 0.12), W + 60)
+  const raw = o.road
+    ? wander(rand, [-160, mainY], between(-0.12, 0.12), W + 320)
     : wander(rand, [W * 0.24, mainY], between(-0.15, 0.15), W * 0.52);
+  // O centro do povoado fica no meio do mapa (a estrada é deslocada até ele).
+  const c0 = along(raw, lineLength(raw) * between(0.45, 0.55))!.p;
+  const shift: Pt = [
+    W / 2 + between(-W * 0.06, W * 0.06) - c0[0],
+    H / 2 + between(-H * 0.05, H * 0.05) - c0[1],
+  ];
+  const main = raw.map(([x, y]) => [x + shift[0], y + shift[1]] as Pt);
   roads.push({ points: main, width: o.road ? 8 : 5, main: true });
-  const center = along(main, lineLength(main) * between(0.42, 0.58))!.p;
+  const center: Pt = [c0[0] + shift[0], c0[1] + shift[1]];
 
   // Ruas que saem da principal, para cima e para baixo.
   for (let i = 0; i < cfg.branches; i++) {
@@ -171,8 +197,35 @@ export function generateVillage(o: MapOptions): VillageMap {
     };
   }
 
+  // Praça, cidadela e muralha (antes das casas, que se desviam deles).
+  const plaza = o.plaza ? { x: center[0], y: center[1], r: o.size === "cidade" ? 18 : 13 } : null;
+  let citadel: Pt[] | null = null;
+  if (o.citadel) {
+    const at = along(main, lineLength(main) * 0.5)!;
+    const side = rand() < 0.5 ? -1 : 1;
+    const off = (plaza?.r ?? 0) + 24;
+    const cx = center[0] - Math.sin(at.angle) * side * off;
+    const cy = center[1] + Math.cos(at.angle) * side * off;
+    citadel = rect(cx, cy, 30, 30, at.angle + between(-0.2, 0.2));
+  }
+  let wall: Pt[] | null = null;
+  if (o.walls) {
+    const R = cfg.radius * 0.72;
+    const n = 14;
+    const a0 = rand() * Math.PI;
+    wall = Array.from({ length: n }, (_, i) => {
+      const a = a0 + (i / n) * Math.PI * 2;
+      const r = R * between(0.86, 1.1);
+      return [center[0] + Math.cos(a) * r * 1.15, center[1] + Math.sin(a) * r * 0.85] as Pt;
+    });
+  }
+  const wallLine = wall ? [...wall, wall[0]!] : null;
+
   const blocked = (poly: Pt[]) => {
+    if (citadel && overlaps(citadel, poly, 3)) return true;
     for (const p of poly) {
+      if (plaza && Math.hypot(p[0] - plaza.x, p[1] - plaza.y) < plaza.r + 1.5) return true;
+      if (wallLine && distToPolyline(p, wallLine) < 2.5) return true;
       for (const r of roads) if (distToPolyline(p, r.points) < r.width / 2 + 0.8) return true;
       if (river && distToPolyline(p, river.points) < river.width / 2 + 2) return true;
       if (p[0] < -10 || p[1] < -10 || p[0] > W + 10 || p[1] > H + 10) return true;
@@ -191,7 +244,12 @@ export function generateVillage(o: MapOptions): VillageMap {
         if (!at) break;
         for (const side of [-1, 1]) {
           const dist = Math.hypot(at.p[0] - center[0], at.p[1] - center[1]);
-          const prob = Math.exp(-((dist / cfg.radius) ** 2)) * (pass === 0 ? 1 : 0.6);
+          // Com muralha, quase tudo fica dentro dela.
+          const inside = !wall || insidePoly(at.p, wall);
+          const prob =
+            Math.exp(-((dist / cfg.radius) ** 2)) *
+            (pass === 0 ? 1 : 0.6) *
+            (inside ? (wall ? 1.6 : 1) : 0.25);
           if (rand() > prob) continue;
           const w = between(6, 11);
           const d = between(6, 10);
@@ -215,6 +273,38 @@ export function generateVillage(o: MapOptions): VillageMap {
     }
   }
 
+  // Templo: um prédio maior, de frente para a praça (ou o centro).
+  if (o.temple) {
+    for (let tries = 0; tries < 40; tries++) {
+      const a = rand() * Math.PI * 2;
+      const r = (plaza?.r ?? 6) + 11 + tries * 0.6;
+      const cx = center[0] + Math.cos(a) * r;
+      const cy = center[1] + Math.sin(a) * r;
+      const corners = rect(cx, cy, 13, 20, a);
+      if (blocked(corners)) continue;
+      // Tira as casas que estavam no caminho.
+      for (let i = buildings.length - 1; i >= 0; i--)
+        if (overlaps(buildings[i]!.corners, corners, 1.5)) buildings.splice(i, 1);
+      buildings.push({ corners, center: [cx, cy], floors: 3, tone: 2, kind: "templo" });
+      break;
+    }
+  }
+
+  // Favela: casinhas apertadas do lado de fora (da muralha ou da área central).
+  if (o.shanty) {
+    const limit = wall ? 0 : cfg.radius * 0.9;
+    for (let tries = 0; tries < 900 && buildings.length < cfg.target * 1.5; tries++) {
+      const a = rand() * Math.PI * 2;
+      const r = (wall ? cfg.radius * 0.8 : limit) + rand() * cfg.radius * 0.45;
+      const cx = center[0] + Math.cos(a) * r * 1.15;
+      const cy = center[1] + Math.sin(a) * r * 0.85;
+      if (wall && insidePoly([cx, cy], wall)) continue;
+      const corners = rect(cx, cy, between(3.5, 6), between(3.5, 5.5), rand() * Math.PI);
+      if (blocked(corners) || !free(corners)) continue;
+      buildings.push({ corners, center: [cx, cy], floors: 1, tone: 3 });
+    }
+  }
+
   // Campos cultivados em volta da área construída.
   const fields: Field[] = [];
   if (o.fields) {
@@ -233,6 +323,7 @@ export function generateVillage(o: MapOptions): VillageMap {
       const cy = at.p[1] + Math.cos(at.angle) * side * back;
       const corners = rect(cx, cy, w, d, angle);
       if (blocked(corners) || !free(corners)) continue;
+      if (wall && corners.some((c) => insidePoly(c, wall))) continue;
       if (fields.some((f) => overlaps(f.corners, corners, 3))) continue;
       fields.push({ corners, angle: angle + (rand() < 0.5 ? 0 : Math.PI / 2) });
     }
@@ -250,8 +341,21 @@ export function generateVillage(o: MapOptions): VillageMap {
     const box = rect(x, y, r * 2, r * 2, 0);
     if (blocked(box) || !free(box)) continue;
     if (fields.some((f) => insidePoly([x, y], f.corners))) continue;
+    if (wall && insidePoly([x, y], wall)) continue;
     trees.push({ x, y, r });
   }
 
-  return { width: W, height: H, center, roads, river, buildings, fields, trees };
+  return {
+    width: W,
+    height: H,
+    center,
+    roads,
+    river,
+    buildings,
+    fields,
+    trees,
+    wall,
+    citadel,
+    plaza,
+  };
 }

@@ -116,6 +116,35 @@ export function buildScene(map: VillageMap) {
       faces.push({ pts: [[p[0], p[1], h], [q[0], q[1], h], ...top], color: roof });
     }
   }
+  // Muralha e cidadela: paredes altas dos dois lados (sem telhado).
+  const stone = hex("#a39a88");
+  const wallFaces = (pts: Pt[], h: number) => {
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i]!;
+      const q = pts[(i + 1) % pts.length]!;
+      const quad: V3[] = [
+        [p[0], p[1], 0],
+        [q[0], q[1], 0],
+        [q[0], q[1], h],
+        [p[0], p[1], h],
+      ];
+      faces.push({ pts: quad, color: stone });
+      faces.push({ pts: [...quad].reverse(), color: stone });
+    }
+  };
+  if (map.wall) wallFaces(map.wall, 7);
+  if (map.citadel) wallFaces(map.citadel, 11);
+  if (map.plaza) {
+    const { x, y, r } = map.plaza;
+    faces.push({
+      pts: Array.from({ length: 16 }, (_, i) => {
+        const a = (i / 16) * Math.PI * 2;
+        return [x + Math.cos(a) * r, y + Math.sin(a) * r, 0.03] as V3;
+      }),
+      color: hex("#ddd2b6"),
+      ground: true,
+    });
+  }
   return faces;
 }
 
@@ -130,6 +159,10 @@ export function walkable(map: VillageMap, p: Pt): boolean {
     // Atravessa o rio só pela ponte (onde há rua).
     if (!map.roads.some((r) => distToPolyline(p, r.points) < r.width / 2)) return false;
   }
+  // Muralha: só passa pelos portões (onde a rua cruza); a cidadela é fechada.
+  const onRoad = map.roads.some((r) => distToPolyline(p, r.points) < r.width / 2);
+  if (map.wall && !onRoad && distToPolyline(p, [...map.wall, map.wall[0]!]) < 1.2) return false;
+  if (map.citadel && insidePoly(p, map.citadel)) return false;
   return !map.buildings.some(
     (b) => insidePoly(p, b.corners) || distToPolyline(p, [...b.corners, b.corners[0]!]) < 0.4,
   );

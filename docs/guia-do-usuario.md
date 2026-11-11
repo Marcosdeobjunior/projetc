@@ -1122,9 +1122,18 @@ inventados) e **estradas** entre elas.
   lixeira se ele nunca foi mexido (com texto, imagem ou campos seus, ele fica no Mundo).
   **Lugares fora do mapa**, no painel, lista os lugares do Mundo que ainda não estão no mapa:
   **Pôr no mapa** e um clique em terra o colocam como cidade.
-- **Cidade selecionada:** mude o nome, marque **Capital de um estado** (cria um estado novo a
-  partir dela; desmarcar desfaz o estado) e **Abra a ficha**. Na ficha do lugar aparece **Ver no
-  mapa-múndi**, que volta ao mapa com a cidade no centro.
+- **Editar povoado:** clicar numa cidade abre a janela **Editar povoado** sobre o mapa (arraste
+  pelo título; **−** minimiza, **×** fecha). Ela mostra o reino, o **brasão** do lugar, o
+  **Nome**, o **Grupo** (Metrópole, Cidade, Vila, Aldeia, Povoado — acompanha a população, a não
+  ser que você escolha), o **Tipo** (Genérico, Porto, Fluvial, Lacustre, Montanha, Fronteira,
+  Nômade), a **Cultura**, a **População**, a **Temperatura** e a **Elevação** (tiradas do mapa), os
+  **Elementos** (Capital, Porto, Muralhas, Cidadela, Praça, Templo, Favela; clique para ligar ou
+  desligar — Capital cria ou desfaz o reino), **Etiquetas** e a **Prévia do povoado**: o mapa da
+  cidade, que muda com a população e os elementos (muralha com torres, cidadela, praça, templo,
+  casebres do lado de fora). O botão de recarregar no título sorteia outro desenho. Tudo fica na
+  ficha do lugar; a prévia é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
+  **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
+  com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
   quantas cidades tem e a capital.
 - **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.

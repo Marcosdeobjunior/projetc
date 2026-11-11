@@ -188,16 +188,54 @@ export function PlaceMap({
             strokeWidth="0.7"
           />
         ))}
+        {map.plaza && (
+          <circle
+            cx={map.plaza.x}
+            cy={map.plaza.y}
+            r={map.plaza.r}
+            fill="#f3ead4"
+            stroke={MAP_COLORS.roadEdge}
+            strokeWidth="0.8"
+          />
+        )}
         {map.buildings.map((b, i) => (
           <path
             key={i}
             d={poly(b.corners)}
-            fill={MAP_COLORS.house[b.tone]}
+            fill={b.kind === "templo" ? "#a8916b" : MAP_COLORS.house[b.tone]}
             stroke={MAP_COLORS.houseEdge}
-            strokeWidth="0.9"
+            strokeWidth={b.kind === "templo" ? 1.4 : 0.9}
             strokeLinejoin="round"
           />
         ))}
+        {map.citadel && (
+          <g>
+            <path
+              d={poly(map.citadel)}
+              fill="#bda983"
+              stroke={MAP_COLORS.houseEdge}
+              strokeWidth="2.4"
+              strokeLinejoin="round"
+            />
+            {map.citadel.map(([x, y], i) => (
+              <circle key={i} cx={x} cy={y} r="2.8" fill="#8c7a5a" stroke={MAP_COLORS.houseEdge} />
+            ))}
+          </g>
+        )}
+        {map.wall && (
+          <g>
+            <path
+              d={poly(map.wall)}
+              fill="none"
+              stroke={MAP_COLORS.houseEdge}
+              strokeWidth="2.6"
+              strokeLinejoin="round"
+            />
+            {map.wall.map(([x, y], i) => (
+              <circle key={i} cx={x} cy={y} r="3" fill="#8c7a5a" stroke={MAP_COLORS.houseEdge} />
+            ))}
+          </g>
+        )}
         {viewer && (
           <g
             transform={`translate(${viewer.x} ${viewer.y}) rotate(${(viewer.yaw * 180) / Math.PI})`}
