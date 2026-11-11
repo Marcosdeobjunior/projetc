@@ -32,7 +32,9 @@ import {
   type WorldMap,
   type WorldOptions,
 } from "../world/worldgen";
-import { bakeBase, buildVectors, type MapMode } from "../world/worldRender";
+import { bakeBase, buildVectors, coastPath, type MapMode } from "../world/worldRender";
+import { settlementInfo } from "../world/settlement";
+import { drawWorld, stateMask, type BurgMeta } from "./worldDraw";
 import { Icon } from "./Icon";
 import { Select } from "./Select";
 
@@ -231,13 +233,46 @@ function WorldEditor({
   // Altura viva durante o pincel (sem gravar a cada movimento).
   const [painted, setHeights] = useState<Uint8Array | null>(null);
   const heights = painted ?? map.heights;
-  const live = useMemo(() => ({ ...map, heights }), [map, heights]);
-  const derived = useMemo(() => deriveWorld(live), [live]);
-  const base = useMemo(
-    () => bakeBase(live, derived, mode, layers.estados),
-    [live, derived, mode, layers.estados],
+  // Só o que muda a geografia refaz clima, rios e fronteiras (renomear não refaz).
+  const geoKey =
+    map.burgs.map((b) => `${b.id}:${b.x.toFixed(2)}:${b.y.toFixed(2)}`).join("|") +
+    "#" +
+    map.states.map((s) => s.capital).join("|") +
+    "#" +
+    map.options.seed;
+  const colorKey = map.states.map((s) => s.color).join("|");
+  const geo = useMemo(
+    () => ({ ...map, heights: map.heights }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [map.heights, geoKey],
   );
-  const vectors = useMemo(() => buildVectors(live, derived), [live, derived]);
+  const derived = useMemo(() => deriveWorld(geo), [geo]);
+  const base = useMemo(
+    () => bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [geo, derived, mode, layers.estados, colorKey],
+  );
+  const fullVectors = useMemo(() => buildVectors(geo, derived), [geo, derived]);
+  // Enquanto pinta: só o relevo e a costa são refeitos (em resolução menor);
+  // clima, rios e fronteiras se refazem ao soltar.
+  const quickBase = useMemo(
+    () =>
+      painted
+        ? bakeBase(
+            { ...geo, heights: painted, states: map.states },
+            derived,
+            mode,
+            layers.estados,
+            1,
+          )
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [painted],
+  );
+  const vectors = useMemo(
+    () => (painted ? { ...fullVectors, coast: coastPath(painted) } : fullVectors),
+    [painted, fullVectors],
+  );
 
   const canvas = useRef<HTMLCanvasElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -290,135 +325,123 @@ function WorldEditor({
   // Lugar do Mundo esperando um clique no mapa para virar cidade.
   const [placing, setPlacing] = useState<string | null>(null);
 
+  // População e porto de cada cidade (tamanho do marcador e âncora).
+  const meta = useMemo(() => {
+    const m = new Map<string, BurgMeta>();
+    const notesById = new Map(session.project.notes.map((n) => [n.id, n]));
+    for (const b of map.burgs) {
+      const info = settlementInfo(
+        b,
+        capitals.has(b.id),
+        heights,
+        derived,
+        (b.noteId && notesById.get(b.noteId)?.fields) || {},
+      );
+      m.set(b.id, { population: info.population, port: info.elements.has("porto") });
+    }
+    return m;
+  }, [map.burgs, capitals, heights, derived, session.project.notes]);
+
+  const selectedStateIndex =
+    selected?.kind === "state" ? map.states.findIndex((s) => s.id === selected.id) : -1;
+  const highlight = useMemo(
+    () => (selectedStateIndex >= 0 ? stateMask(derived, selectedStateIndex) : null),
+    [derived, selectedStateIndex],
+  );
+  const [brushAt, setBrushAt] = useState<{ x: number; y: number } | null>(null);
+  // Cidade sendo arrastada (só o marcador anda; o mapa se refaz ao soltar).
+  const [dragging, setDragging] = useState<{ id: string; x: number; y: number } | null>(null);
+  const shown = useMemo(
+    () =>
+      dragging
+        ? {
+            ...map,
+            burgs: map.burgs.map((b) =>
+              b.id === dragging.id ? { ...b, x: dragging.x, y: dragging.y } : b,
+            ),
+          }
+        : map,
+    [map, dragging],
+  );
+  const painterTool = tool === "elevar" || tool === "rebaixar" || tool === "suavizar";
+
   // Desenho.
   useEffect(() => {
     const c = canvas.current;
-    if (!c) return;
+    if (!c || size.w < 1) return;
     const dpr = window.devicePixelRatio || 1;
     c.width = Math.round(size.w * dpr);
     c.height = Math.round(size.h * dpr);
     const ctx = c.getContext("2d")!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "#1f3a55";
-    ctx.fillRect(0, 0, size.w, size.h);
-    ctx.save();
-    ctx.translate(view.x, view.y);
-    ctx.scale(view.s, view.s);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(base, 0, 0, COLS, ROWS);
-    const px = 1 / view.s; // um pixel de tela, em unidades do mapa
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    // Costa.
-    ctx.strokeStyle = "rgba(255,255,255,0.35)";
-    ctx.lineWidth = px * 4;
-    ctx.stroke(vectors.coast);
-    ctx.strokeStyle = "#2b2a26";
-    ctx.lineWidth = px * 1.2;
-    ctx.stroke(vectors.coast);
-    if (layers.rios) {
-      ctx.strokeStyle = "#4f86b8";
-      for (const r of vectors.rivers) {
-        // Espessura em pixels de tela (cresce pouco com o zoom).
-        ctx.lineWidth = px * (0.7 + r.width * 0.8) * Math.min(2, Math.sqrt(view.s / 3));
-        ctx.stroke(r.path);
-      }
-    }
-    if (layers.estradas) {
-      ctx.strokeStyle = "rgba(92,62,38,0.75)";
-      ctx.lineWidth = Math.max(px * 0.8, 0.18);
-      ctx.setLineDash([px * 4, px * 3]);
-      ctx.stroke(vectors.roads);
-      ctx.setLineDash([]);
-    }
-    if (layers.fronteiras) {
-      ctx.strokeStyle = "rgba(60,30,40,0.75)";
-      ctx.lineWidth = px * 1.6;
-      ctx.setLineDash([px * 5, px * 2, px * 1, px * 2]);
-      ctx.stroke(vectors.borders);
-      ctx.setLineDash([]);
-    }
-    if (selected?.kind === "state") {
-      const k = map.states.findIndex((s) => s.id === selected.id);
-      if (k >= 0) {
-        ctx.fillStyle = "rgba(255,255,255,0.22)";
-        for (let i = 0; i < COLS * ROWS; i++)
-          if (derived.owner[i] === k) ctx.fillRect(i % COLS, Math.floor(i / COLS), 1.02, 1.02);
-      }
-    }
-    ctx.restore();
-    // Texto e marcadores em pixels de tela (tamanho fixo ao dar zoom).
-    const toS = (x: number, y: number) => [x * view.s + view.x, y * view.s + view.y] as const;
-    if (layers.rotulos) {
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      map.states.forEach((s, k) => {
-        const l = vectors.labels[k];
-        if (!l) return;
-        const [sx, sy] = toS(l.x, l.y);
-        const fs = Math.max(11, Math.min(30, Math.sqrt(l.area) * view.s * 0.09));
-        ctx.font = `600 ${fs}px Georgia, "Times New Roman", serif`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(245,238,220,0.8)";
-        const text = s.name.toUpperCase().split("").join(" ");
-        ctx.strokeText(text, sx, sy);
-        ctx.fillStyle = "#3b2a2a";
-        ctx.fillText(text, sx, sy);
-      });
-    }
-    if (layers.cidades) {
-      // Rótulos que não se sobrepõem: capitais primeiro, depois as outras.
-      const placedLabels: [number, number, number, number][] = [];
-      const free = (x: number, y: number, w: number, h: number) =>
-        placedLabels.every(([a, b, c, d]) => x > c || x + w < a || y > d || y + h < b);
-      const ordered = [...map.burgs].sort(
-        (a, b) => Number(capitals.has(b.id)) - Number(capitals.has(a.id)),
-      );
-      for (const b of ordered) {
-        const [sx, sy] = toS(b.x, b.y);
-        if (sx < -50 || sy < -50 || sx > size.w + 50 || sy > size.h + 50) continue;
-        const cap = capitals.has(b.id);
-        const sel = selected?.kind === "burg" && selected.id === b.id;
-        ctx.beginPath();
-        ctx.arc(sx, sy, cap ? 4.5 : 3, 0, Math.PI * 2);
-        ctx.fillStyle = cap ? "#2b2a26" : "#fffaf0";
-        ctx.fill();
-        ctx.lineWidth = 1.4;
-        ctx.strokeStyle = cap ? "#fffaf0" : "#2b2a26";
-        ctx.stroke();
-        if (cap) {
-          ctx.beginPath();
-          ctx.arc(sx, sy, 7, 0, Math.PI * 2);
-          ctx.strokeStyle = "#2b2a26";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-        if (sel) {
-          ctx.beginPath();
-          ctx.arc(sx, sy, 11, 0, Math.PI * 2);
-          ctx.strokeStyle = "#e0a52c";
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-        }
-        if (layers.rotulos && (cap || view.s > 3.2 || sel)) {
-          ctx.font = `${cap ? "700 13px" : "500 11.5px"} Georgia, "Times New Roman", serif`;
-          ctx.textAlign = "left";
-          const tw = ctx.measureText(b.name).width;
-          if (!sel && !free(sx + 6, sy - 13, tw + 2, 14)) continue;
-          placedLabels.push([sx + 6, sy - 13, sx + 8 + tw, sy + 1]);
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = "rgba(255,250,235,0.85)";
-          ctx.strokeText(b.name, sx + 7, sy - 6);
-          ctx.fillStyle = "#24201b";
-          ctx.fillText(b.name, sx + 7, sy - 6);
-        }
-      }
-    }
-  }, [base, vectors, view, size, layers, map, capitals, selected, derived]);
+    drawWorld(ctx, {
+      map: shown,
+      derived,
+      base: quickBase ?? base,
+      vectors,
+      view,
+      size,
+      layers,
+      capitals,
+      meta,
+      selectedBurg: selected?.kind === "burg" ? selected.id : null,
+      highlight,
+      brush: painterTool && brushAt ? { ...brushAt, r: brush } : null,
+      furniture: true,
+    });
+  }, [
+    base,
+    quickBase,
+    vectors,
+    view,
+    size,
+    layers,
+    shown,
+    capitals,
+    selected,
+    derived,
+    meta,
+    highlight,
+    painterTool,
+    brushAt,
+    brush,
+  ]);
+
+  /** Exporta o mapa inteiro como imagem PNG (em alta resolução). */
+  const exportPng = async () => {
+    const platform = useApp.getState().platform;
+    if (!platform) return;
+    const scale = 6;
+    const w = COLS * scale;
+    const h = ROWS * scale;
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    drawWorld(c.getContext("2d")!, {
+      map,
+      derived,
+      base,
+      vectors,
+      view: { s: scale, x: 0, y: 0 },
+      size: { w, h },
+      layers,
+      capitals,
+      meta,
+      furniture: true,
+    });
+    const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/png"));
+    if (!blob) return;
+    const data = new Uint8Array(await blob.arrayBuffer());
+    await platform.saveFile(`${map.name || "Mapa"}.png`, data, {
+      name: "Imagem PNG",
+      extensions: ["png"],
+    });
+  };
 
   /* ----- Edição ----- */
 
+  const colorBefore = useRef<Snapshot | null>(null);
+  const colorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const snapshot = (): Snapshot => ({ heights: map.heights, burgs: map.burgs, states: map.states });
   const commit = (next: WorldMap) => {
     undo.current = [...undo.current.slice(-29), snapshot()];
@@ -451,6 +474,13 @@ function WorldEditor({
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, [contenteditable]")) return;
+      if (e.key === "Escape") {
+        // Esc: cancela o "pôr no mapa", fecha a janela da cidade, volta a Mover.
+        if (placing) setPlacing(null);
+        else if (selected) setSelected(null);
+        else setTool("mover");
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) restore(redo, undo);
@@ -566,22 +596,27 @@ function WorldEditor({
           .join(" · "),
       );
     } else setHover("");
+    if (tool === "mover" && !drag.current)
+      canvas.current!.style.cursor = burgAt(x, y) ? "pointer" : "";
     const d = drag.current;
     if (d) {
       if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) d.moved = true;
       if (d.moved && d.burg) {
-        // Arrastar uma cidade a muda de lugar (só em terra).
-        if (heights[cellOf(x, y)]! >= SEA)
-          useWorldMap.setState({
-            map: { ...map, burgs: map.burgs.map((b) => (b.id === d.burg ? { ...b, x, y } : b)) },
-          });
+        // Arrastar uma cidade a muda de lugar (só em terra); o mapa se refaz ao soltar.
+        if (heights[cellOf(x, y)]! >= SEA) setDragging({ id: d.burg, x, y });
       } else if (d.moved)
         setViewT((v) => ({ ...v, x: d.vx + e.clientX - d.x, y: d.vy + e.clientY - d.y }));
     }
+    if (painterTool) setBrushAt({ x, y });
     const p = painting.current;
     if (p && e.buttons) {
       p.h = paint(p.h, x, y, tool);
-      setHeights(p.h);
+      // Refaz o mapa no máximo a cada ~120 ms enquanto pinta (o cálculo é pesado).
+      const now = performance.now();
+      if (now - p.last > 50) {
+        p.last = now;
+        setHeights(p.h);
+      }
     }
   };
   const onUp = (e: PointerEvent) => {
@@ -589,15 +624,13 @@ function WorldEditor({
     drag.current = null;
     if (d) {
       if (d.moved && d.burg) {
-        const moved = useWorldMap.getState().map!;
-        syncHist();
-        undo.current = [
-          ...undo.current.slice(-29),
-          { heights: map.heights, burgs: map.burgs, states: map.states },
-        ];
-        redo.current = [];
-        syncHist();
-        setMap(moved);
+        const to = dragging;
+        setDragging(null);
+        if (to)
+          commit({
+            ...map,
+            burgs: map.burgs.map((b) => (b.id === to.id ? { ...b, x: to.x, y: to.y } : b)),
+          });
       } else if (!d.moved) {
         const [x, y] = toMap(e);
         const b = burgAt(x, y);
@@ -738,8 +771,10 @@ function WorldEditor({
             attachments={session.attachments}
             onClose={() => setSelected(null)}
             onRename={(name) => {
-              updateBurg(burg.id, { name });
-              void renameLinked(burg.noteId, name);
+              // Ligada a um lugar: renomeia a ficha, e o mapa acompanha.
+              if (burg.noteId && session.project.notes.some((n) => n.id === burg.noteId))
+                void renameLinked(burg.noteId, name);
+              else updateBurg(burg.id, { name });
             }}
             onCapital={(on) => {
               if (on)
@@ -825,9 +860,14 @@ function WorldEditor({
               </label>
             ))}
           </div>
-          <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
-            <Icon name="refresh" size={14} /> Gerar outro mundo
-          </button>
+          <div className="wm-actions">
+            <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
+              <Icon name="refresh" size={14} /> Gerar outro mundo
+            </button>
+            <button type="button" className="btn ghost sm" onClick={() => void exportPng()}>
+              <Icon name="export" size={14} /> Exportar imagem
+            </button>
+          </div>
           {showGen && (
             <div className="wm-gen">
               <p className="field-hint">
@@ -855,7 +895,19 @@ function WorldEditor({
                 type="color"
                 aria-label="Cor do estado"
                 value={state.color}
-                onChange={(e) =>
+                onChange={(e) => {
+                  // Enquanto escolhe, só pinta; o passo de desfazer guarda a cor de antes.
+                  colorBefore.current ??= snapshot();
+                  clearTimeout(colorTimer.current);
+                  colorTimer.current = setTimeout(() => {
+                    const before = colorBefore.current;
+                    colorBefore.current = null;
+                    if (!before) return;
+                    undo.current = [...undo.current.slice(-29), before];
+                    redo.current = [];
+                    syncHist();
+                    setMap(useWorldMap.getState().map!);
+                  }, 400);
                   useWorldMap.setState({
                     map: {
                       ...map,
@@ -863,9 +915,8 @@ function WorldEditor({
                         s.id === state.id ? { ...s, color: e.target.value } : s,
                       ),
                     },
-                  })
-                }
-                onBlur={() => commit(useWorldMap.getState().map!)}
+                  });
+                }}
               />
               <input
                 className="text-input"
@@ -875,11 +926,13 @@ function WorldEditor({
                 onBlur={(e) => {
                   const name = e.target.value.trim();
                   if (!name || name === state.name) return;
-                  commit({
-                    ...map,
-                    states: map.states.map((s) => (s.id === state.id ? { ...s, name } : s)),
-                  });
-                  void renameLinked(state.noteId, name);
+                  if (state.noteId && session.project.notes.some((n) => n.id === state.noteId))
+                    void renameLinked(state.noteId, name);
+                  else
+                    commit({
+                      ...map,
+                      states: map.states.map((s) => (s.id === state.id ? { ...s, name } : s)),
+                    });
                 }}
                 onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
               />

@@ -94,9 +94,11 @@ export function bakeBase(
   d: Derived,
   mode: MapMode,
   states: boolean,
+  /** Pixels por célula (menos = mais rápido, usado ao pintar o relevo). */
+  res = PX,
 ): HTMLCanvasElement {
-  const W = COLS * PX;
-  const H = ROWS * PX;
+  const W = COLS * res;
+  const H = ROWS * res;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -107,20 +109,26 @@ export function bakeBase(
   const stateRgb = map.states.map((s) => hex(s.color));
   for (let py = 0; py < H; py++) {
     for (let pxx = 0; pxx < W; pxx++) {
-      const x = (pxx + 0.5) / PX;
-      const y = (py + 0.5) / PX;
+      const x = (pxx + 0.5) / res;
+      const y = (py + 0.5) / res;
       const v = heightAt(h, x, y);
       const cell = Math.min(ROWS - 1, y | 0) * COLS + Math.min(COLS - 1, x | 0);
       let rgb: [number, number, number];
       if (v < SEA - 0.5) {
         const depth = Math.max(0, Math.min(1, v / (SEA - 1)));
         rgb = lerp3(DEEP, SHALLOW, Math.pow(depth, 1.6));
-        if (d.coastDist[cell]! <= 0 && v > SEA - 14) rgb = lerp3(rgb, COAST_SEA, 0.35);
+        // Água rasa perto da costa, suave (pela altura interpolada, não pela célula).
+        if (v > SEA - 16) rgb = lerp3(rgb, COAST_SEA, ((v - (SEA - 16)) / 16) * 0.4);
       } else {
         const e = Math.max(0, (v - SEA) / 127);
         if (mode === "relevo") rgb = relief(e);
         else if (mode === "politico") rgb = POLITICAL_LAND;
-        else rgb = biomeAt(d, x, y);
+        else {
+          // Bordas orgânicas entre biomas: desloca um pouco o ponto de amostra.
+          const jx = Math.sin(x * 1.9 + y * 0.7) * 0.45 + Math.sin(y * 3.1 - x * 0.4) * 0.3;
+          const jy = Math.sin(y * 1.7 - x * 0.9) * 0.45 + Math.sin(x * 2.9 + y * 0.5) * 0.3;
+          rgb = biomeAt(d, x + jx, y + jy);
+        }
         // Sombreamento: luz vindo do noroeste.
         const gx = heightAt(h, x + 0.6, y) - heightAt(h, x - 0.6, y);
         const gy = heightAt(h, x, y + 0.6) - heightAt(h, x, y - 0.6);
@@ -234,6 +242,11 @@ export function cellsPath(cells: number[], path = new Path2D()): Path2D {
   const last = pts[pts.length - 1]!;
   path.lineTo(last[0], last[1]);
   return path;
+}
+
+/** Só a linha da costa (rápida, para a prévia enquanto pinta). */
+export function coastPath(heights: Uint8Array): Path2D {
+  return segmentsPath(contour((i) => heights[i]!, SEA - 0.5));
 }
 
 /** Costa e fronteiras como caminhos vetoriais. */

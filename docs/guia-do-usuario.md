@@ -1137,5 +1137,13 @@ inventados) e **estradas** entre elas.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
   quantas cidades tem e a capital.
 - **Gerar outro mundo** (no painel) substitui o mapa inteiro; dá para desfazer.
+- **Exportar imagem** salva o mapa inteiro como PNG em alta resolução, com as camadas que estão
+  ligadas, a escala e a rosa dos ventos.
+- **Detalhes:** o tamanho do marcador da cidade acompanha a população, portos ganham uma âncora,
+  e os nomes desviam uns dos outros (e dos nomes dos reinos). No canto há uma **escala** em km
+  (cada célula do mapa vale 10 km) e a **rosa dos ventos**. Com Elevar/Rebaixar/Suavizar, um
+  círculo mostra o tamanho do pincel; enquanto pinta, o relevo e a costa mudam na hora, e rios,
+  biomas e fronteiras se refazem ao soltar. **Esc** cancela o "Pôr no mapa", fecha a janela da
+  cidade ou volta à ferramenta Mover.
 
 O mapa fica em `.talia/mapa-mundi.json` e vai junto no sync.

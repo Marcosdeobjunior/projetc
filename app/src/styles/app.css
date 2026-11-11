@@ -8671,3 +8671,8 @@ select option {
     margin: 0 auto;
   }
 }
+.wm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

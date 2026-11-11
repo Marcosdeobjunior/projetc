@@ -23,6 +23,9 @@ import { buildScene, StreetView, walkable } from "./StreetView";
 import { EmblemArt } from "./EmblemArt";
 import { Icon } from "./Icon";
 import { useAttachmentImage } from "./NoteProfile";
+import { useWorldMap } from "../state/worldMap";
+import { deriveWorld } from "../world/worldgen";
+import { settlementInfo } from "../world/settlement";
 
 /** Grava um campo da nota (o mapa e o brasão ficam em `fields`, e vão no sync). */
 function useSaveField(note: Note) {
@@ -57,7 +60,18 @@ function startViewer(map: VillageMap): Viewer {
 export function PlaceRegion({ note }: { note: Note }) {
   const save = useSaveField(note);
   const raw = note.fields?.mapa;
-  const opts = useMemo(() => parseMapOptions(raw), [raw]);
+  // Cidade do mapa-múndi sem mapa próprio: usa o mesmo povoado da prévia do "Editar povoado".
+  const world = useWorldMap((w) => w.map);
+  const noteFields = note.fields;
+  const opts = useMemo(() => {
+    const own = parseMapOptions(raw);
+    if (own) return own;
+    const burg = world?.burgs.find((b) => b.noteId === note.id);
+    if (!world || !burg) return null;
+    const capital = world.states.some((s) => s.capital === burg.id);
+    return settlementInfo(burg, capital, world.heights, deriveWorld(world), noteFields ?? {})
+      .preview;
+  }, [raw, world, note.id, noteFields]);
   const [tab, setTab] = useState<"mapa" | "rua">("mapa");
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const map = useMemo(() => (opts ? generateVillage(opts) : null), [opts]);

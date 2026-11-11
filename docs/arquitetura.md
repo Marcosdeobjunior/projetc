@@ -456,6 +456,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   pela costa e vazão, temperatura e altitude da célula) e monta as opções da prévia, que é o
   mesmo gerador de vila (`world/village.ts`, agora com muralha, cidadela, praça, templo e favela,
   e com o centro sempre no meio do mapa).
+- Desenho do mapa-múndi em `ui/worldDraw.ts` (`drawWorld`, usado na tela e no "Exportar
+  imagem"). O editor só refaz `deriveWorld` quando muda a geografia (alturas, posições das
+  cidades, capitais); renomear ou mudar cor não refaz. Enquanto o pincel pinta, a imagem de fundo
+  é assada em 1 px por célula e só a costa é recalculada (`coastPath`); o resto espera soltar.
+  Cidades arrastadas só movem o marcador até soltar.
 - Menções/links: o cartão ao passar o mouse usa `LinkContext.describe()`; a edição rápida
   (`editor/NoteQuickEdit.tsx`) lê o corpo com `readDocBody` e grava o `.md` com
   `writeSceneMarkdown` pela fila; o `.yjs` da nota fica para trás e, ao abrir a nota, a diferença
