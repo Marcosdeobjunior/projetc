@@ -135,7 +135,13 @@ export function bakeBase(
         if (v > SEA - 16) rgb = lerp3(rgb, COAST_SEA, ((v - (SEA - 16)) / 16) * 0.4);
         // Mar congelado perto dos polos.
         const temp = d.temp[cell]!;
-        if (temp < 0.16) rgb = lerp3(rgb, SEA_ICE, Math.min(1, (0.16 - temp) / 0.1));
+        // (leve: placas de gelo sobre o mar, sem esconder o mar nem a costa)
+        if (temp < 0.1) {
+          // Placas soltas: onde o ruído de umidade é alto há gelo; o resto é mar aberto.
+          const m = d.moist[cell]!;
+          const floe = Math.max(0, Math.min(1, (m - 0.42) / 0.12));
+          rgb = lerp3(rgb, SEA_ICE, Math.min(0.3, (0.1 - temp) / 0.15) * floe);
+        }
       } else {
         const e = Math.max(0, (v - SEA) / 127);
         if (mode === "relevo") rgb = relief(e);

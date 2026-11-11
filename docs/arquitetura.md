@@ -433,7 +433,7 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
   `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
 - Mapa-múndi (`ui/WorldMapView.tsx`, view `"map"`): `world/worldgen.ts` gera e deriva o mundo numa
-  grade de 360×180 células (o planeta inteiro, equirretangular, 1° por célula; a longitude dá a volta: vizinhos usam `wrapCol`, distâncias `dCol`, o ruído do relevo é misturado com ele mesmo deslocado de uma volta para não ter emenda, e o oceano é o maior corpo d'água). Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
+  grade de 360×180 células (o planeta inteiro, equirretangular, 1° por célula; a longitude dá a volta: vizinhos usam `wrapCol`, distâncias `dCol`, o relevo usa ruído 3D (Perlin) amostrado sobre a esfera e distância pelo arco até os centros dos continentes — sem emenda e sem distorção nos polos —, os caminhos medem passos com `stepLen` (largura da célula × cos(latitude)), e o oceano é o maior corpo d'água). Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
   (`state/worldMap.ts`, via `serial()` com espera de 600 ms e `registerFlush`; `load` não relê o
   disco se o projeto já está carregado, para não perder edições pendentes). Derivado em
   `deriveWorld` (~100 ms): distância à costa (BFS), temperatura e umidade (ruído fractal +
@@ -463,8 +463,8 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   Cidades arrastadas só movem o marcador até soltar.
 - Planeta e globo: na tela, o mapa plano é um planeta só (`single`: recortado nas bordas; as cópias
   vizinhas só completam o que cruza a costura) e a vista é limitada por `clampView` (zoom mínimo = 100%,
-  o planeta inteiro; centraliza no eixo que sobra, onde `drawWorld` estica a linha polar da
-  imagem de fundo; sem passar das bordas); `drawWorld` sem `single` repete na horizontal. As
+  o planeta inteiro; centraliza no eixo que sobra, onde `drawWorld` mostra o que fica além do
+  polo (a imagem espelhada e deslocada 180° na longitude); sem passar das bordas); `drawWorld` sem `single` repete na horizontal. As
   linhas que cruzam a costura são "desembrulhadas" (`unwrap`). `ui/GlobeView.tsx` desenha o globo
   em projeção ortográfica: o mapa plano vira textura (`drawWorld` sem nomes nem cidades) e cada
   pixel do disco é convertido em latitude/longitude para buscar a cor, com luz e atmosfera; nomes,

@@ -165,19 +165,36 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
     const bottom = view.y + ROWS * view.s;
     ctx.save();
     ctx.imageSmoothingEnabled = true;
-    if (top > 0) ctx.drawImage(o.base, 0, 0, o.base.width, 1, view.x, 0, width, top + 1);
-    if (bottom < size.h)
-      ctx.drawImage(
-        o.base,
-        0,
-        o.base.height - 1,
-        o.base.width,
-        1,
-        view.x,
-        bottom - 1,
-        width,
-        size.h - bottom + 1,
-      );
+    // Além do polo, o mundo continua do outro lado (180° adiante) e de cabeça para
+    // baixo: é isso que aparece acima do polo norte e abaixo do polo sul.
+    const beyondPole = (edge: number, up: boolean) => {
+      const h = ROWS * view.s;
+      ctx.save();
+      ctx.beginPath();
+      if (up) ctx.rect(0, 0, size.w, edge);
+      else ctx.rect(0, edge, size.w, size.h - edge);
+      ctx.clip();
+      ctx.translate(0, edge * 2);
+      ctx.scale(1, -1);
+      // espelhado em torno da borda; deslocado meia volta na longitude
+      for (const k of [-1.5, -0.5, 0.5]) {
+        const x = view.x + k * width;
+        ctx.drawImage(o.base, x - 0.5, up ? edge : edge - h, width + 1, h);
+        ctx.save();
+        ctx.translate(x, up ? edge : edge - h);
+        ctx.scale(view.s, view.s);
+        ctx.strokeStyle = "rgba(43,42,38,0.8)";
+        ctx.lineWidth = 1.2 / view.s;
+        ctx.stroke(o.vectors.coast);
+        ctx.restore();
+      }
+      ctx.restore();
+      // Linha discreta marcando o polo.
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.fillRect(view.x, edge - 0.5, width, 1);
+    };
+    if (top > 0) beyondPole(top, true);
+    if (bottom < size.h) beyondPole(bottom, false);
     if (view.x > 0 || view.x + width < size.w) {
       ctx.globalAlpha = 0.55;
       for (const k of [-1, 1]) ctx.drawImage(o.base, view.x + k * width, top, width, ROWS * view.s);

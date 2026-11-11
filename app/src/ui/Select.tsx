@@ -41,8 +41,14 @@ export function Select({
     const close = (e: MouseEvent) => {
       if (!root.current?.contains(e.target as Node)) setOpen(false);
     };
+    // Clicar fora da janela (ou trocar de aba) também fecha.
+    const blur = () => setOpen(false);
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    window.addEventListener("blur", blur);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      window.removeEventListener("blur", blur);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -103,7 +109,11 @@ export function Select({
         aria-expanded={open}
         aria-controls={listId}
         aria-activedescendant={open ? `${listId}-${active}` : undefined}
-        onClick={() => (open ? setOpen(false) : show())}
+        onClick={(e) => {
+          e.preventDefault();
+          if (open) setOpen(false);
+          else show();
+        }}
         onKeyDown={onKey}
       >
         <span className={shown.value ? "" : "select-empty"}>{shown.label}</span>
@@ -124,7 +134,12 @@ export function Select({
               }
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => pick(o.value)}
+              onClick={(e) => {
+                // Dentro de um <label>, o clique "subiria" e reabriria a lista.
+                e.preventDefault();
+                e.stopPropagation();
+                pick(o.value);
+              }}
             >
               <span>{o.label}</span>
               {o.value === value && <Icon name="check" size={14} />}

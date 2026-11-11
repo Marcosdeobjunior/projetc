@@ -1097,7 +1097,11 @@ lugar novo; se quiser, tire a entrada antiga da lista com o **×**.
 
 **Mapa**, na barra lateral, abre o mapa do planeta inteiro do projeto, em projeção
 equirretangular (rios, reinos e estradas atravessam a linha de 180° sem emenda), os polos têm mar
-congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. Na primeira vez, escolha o **tipo de
+congelado e o painel mostra as coordenadas (latitude e longitude) sob o mouse. O relevo é gerado sobre a esfera, então os continentes têm
+o mesmo tamanho real no equador e perto dos polos (no globo não ficam esticados), e os polos
+podem ter continentes cobertos de gelo. No mapa plano, como em todo mapa-múndi desse tipo, o que
+fica perto dos polos aparece esticado na horizontal, e a sobra acima e abaixo mostra o que existe
+do outro lado do polo. Na primeira vez, escolha o **tipo de
 mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
 **cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
 (desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que

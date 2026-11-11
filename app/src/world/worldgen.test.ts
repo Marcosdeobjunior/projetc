@@ -124,7 +124,15 @@ describe("rotas", () => {
     expect(types.has("principal")).toBe(true);
     expect(types.has("estrada")).toBe(true);
     expect(types.has("trilha")).toBe(true);
-    const [a, b] = m.burgs;
+    // Duas cidades do mesmo reino (ligadas por terra).
+    const cell = (q: { x: number; y: number }) => Math.floor(q.y) * COLS + Math.floor(q.x);
+    const a = m.burgs.find((q) => q.id === m.states[0]!.capital)!;
+    const b = m.burgs.find(
+      (q) =>
+        q.id !== a.id &&
+        d.owner[cell(q)] === d.owner[cell(a)] &&
+        Math.hypot(q.x - a.x, q.y - a.y) > 4,
+    )!;
     const withRoute = {
       ...m,
       routes: [

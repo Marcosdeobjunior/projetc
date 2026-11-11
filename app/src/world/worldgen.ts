@@ -102,6 +102,82 @@ export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
 
 /* ---------- Ruído ---------- */
 
+/** Ruído 3D (Perlin) em [-1, 1], fractal: amostrado sobre a esfera, não distorce nos polos. */
+function makeNoise3(rand: () => number) {
+  const perm = new Uint16Array(512);
+  const p = Array.from({ length: 256 }, (_, i) => i);
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [p[i], p[j]] = [p[j]!, p[i]!];
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255]!;
+  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const grad = (h: number, x: number, y: number, z: number) => {
+    const g = h & 15;
+    const u = g < 8 ? x : y;
+    const v = g < 4 ? y : g === 12 || g === 14 ? x : z;
+    return (g & 1 ? -u : u) + (g & 2 ? -v : v);
+  };
+  const noise = (x: number, y: number, z: number) => {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const Z = Math.floor(z) & 255;
+    x -= Math.floor(x);
+    y -= Math.floor(y);
+    z -= Math.floor(z);
+    const u = fade(x);
+    const v = fade(y);
+    const w = fade(z);
+    const A = perm[X]! + Y;
+    const AA = perm[A]! + Z;
+    const AB = perm[A + 1]! + Z;
+    const B = perm[X + 1]! + Y;
+    const BA = perm[B]! + Z;
+    const BB = perm[B + 1]! + Z;
+    return lerp(
+      lerp(
+        lerp(grad(perm[AA]!, x, y, z), grad(perm[BA]!, x - 1, y, z), u),
+        lerp(grad(perm[AB]!, x, y - 1, z), grad(perm[BB]!, x - 1, y - 1, z), u),
+        v,
+      ),
+      lerp(
+        lerp(grad(perm[AA + 1]!, x, y, z - 1), grad(perm[BA + 1]!, x - 1, y, z - 1), u),
+        lerp(grad(perm[AB + 1]!, x, y - 1, z - 1), grad(perm[BB + 1]!, x - 1, y - 1, z - 1), u),
+        v,
+      ),
+      w,
+    );
+  };
+  return (x: number, y: number, z: number, octaves = 6) => {
+    let sum = 0;
+    let amp = 1;
+    let freq = 1;
+    let norm = 0;
+    for (let o = 0; o < octaves; o++) {
+      sum += noise(x * freq, y * freq, z * freq) * amp;
+      norm += amp;
+      amp *= 0.5;
+      freq *= 2;
+    }
+    return sum / norm;
+  };
+}
+
+/** Largura real de uma célula em cada linha (encolhe perto dos polos): cos(latitude). */
+const ROW_COS = Array.from({ length: 180 }, (_, y) =>
+  Math.max(0.12, Math.cos(Math.PI / 2 - ((y + 0.5) / 180) * Math.PI)),
+);
+/** Comprimento de um passo entre células vizinhas, medido sobre a esfera. */
+const stepLen = (dx: number, dy: number, y: number) => Math.hypot(dx * ROW_COS[y]!, dy);
+
+/** Ponto da esfera unitária no centro de uma célula. */
+export function cellOnSphere(x: number, y: number): [number, number, number] {
+  const lon = (x / COLS) * 2 * Math.PI;
+  const lat = Math.PI / 2 - (y / ROWS) * Math.PI;
+  return [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+}
+
 function makeNoise(rand: () => number) {
   const perm = new Uint16Array(512);
   const p = Array.from({ length: 256 }, (_, i) => i);
@@ -247,7 +323,6 @@ export const newId = (prefix: string) =>
 
 function generateHeights(o: WorldOptions): Uint8Array {
   const rand = rng(o.seed);
-  const fbm = makeNoise(rand);
   const between = (a: number, b: number) => a + rand() * (b - a);
   const aspect = COLS / ROWS; // 2: o planeta tem o dobro de largura que altura
   const blobs: { x: number; y: number; r: number }[] = [];
@@ -260,34 +335,33 @@ function generateHeights(o: WorldOptions): Uint8Array {
     add(3, 0.08, 0.16);
   } else if (o.template === "ilhas") add(24 + Math.floor(rand() * 12), 0.05, 0.11);
   else add(5 + Math.floor(rand() * 3), 0.16, 0.28);
+  // Continentes polares (como a Antártida): terra de verdade nos polos, coberta de gelo pelo clima.
+  if (rand() < 0.75)
+    blobs.push({ x: rand() * aspect, y: between(-0.02, 0.06), r: between(0.12, 0.2) });
+  if (rand() < 0.85)
+    blobs.push({ x: rand() * aspect, y: between(0.94, 1.02), r: between(0.14, 0.24) });
 
   const raw = new Float32Array(COLS * ROWS);
-  const ox = rand() * 100;
-  const oy = rand() * 100;
-  const span = aspect * 3.2;
-  // Ruído sem emenda na longitude: mistura o ruído com ele mesmo deslocado de uma volta.
-  const seamless = (u: number, v: number, x: number, scale: number, octaves?: number) => {
-    const w = x / COLS;
-    const a = fbm(u * scale, v * scale, octaves);
-    const b = fbm((u - aspect) * scale, v * scale, octaves);
-    return a * (1 - w) + b * w;
-  };
+  // Tudo sobre a esfera: ruído 3D e distância pelo arco (formas iguais no equador e nos polos).
+  const noise3 = makeNoise3(rand);
+  const o1 = [rand() * 50, rand() * 50, rand() * 50] as const;
+  const o2 = [rand() * 50, rand() * 50, rand() * 50] as const;
+  const centers = blobs.map((b) => ({
+    p: cellOnSphere((b.x / aspect) * COLS, b.y * ROWS),
+    r: b.r,
+  }));
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
-      const nx = (x / COLS) * aspect;
-      const ny = y / ROWS;
+      const [px, py, pz] = cellOnSphere(x + 0.5, y + 0.5);
       let mask = 0;
-      for (const b of blobs) {
-        let dx = Math.abs(nx - b.x);
-        if (dx > aspect / 2) dx = aspect - dx;
-        const d = Math.hypot(dx, ny - b.y) / b.r;
-        mask = Math.max(mask, 1 - d);
+      for (const b of centers) {
+        const dot = px * b.p[0] + py * b.p[1] + pz * b.p[2];
+        const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI; // 0 a 1 (meia volta)
+        mask = Math.max(mask, 1 - ang / b.r);
       }
-      // Perto dos polos, um pouco mais de mar (calotas de gelo vêm do clima).
-      const polar = Math.max(0, (Math.abs(ny - 0.5) - 0.36) / 0.14);
-      const n = seamless(nx + ox / span, ny + oy / span, x, 3.2);
-      const ridge = 1 - Math.abs(seamless(nx + oy / span, ny + ox / span, x, 5, 4));
-      raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12 - polar * 0.3;
+      const n = noise3(px * 1.05 + o1[0], py * 1.05 + o1[1], pz * 1.05 + o1[2]);
+      const ridge = 1 - Math.abs(noise3(px * 1.6 + o2[0], py * 1.6 + o2[1], pz * 1.6 + o2[2], 4));
+      raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12;
     }
   }
   // Nível do mar pela fração de terra pedida: o quantil vira 128.
@@ -726,7 +800,7 @@ export function deriveWorld(map: WorldMap): Derived {
       const j = ny * COLS + wrapCol(nx);
       if (!land[j]) continue;
       const step =
-        (dx && dy ? 1.414 : 1) *
+        stepLen(dx, dy, y) *
         (1 +
           terrainCost[biome[j]!]! +
           Math.max(0, (h[j]! - h[i]!) / 6) +
@@ -848,7 +922,7 @@ export function deriveWorld(map: WorldMap): Derived {
         const j = ny * COLS + wrapCol(nx);
         if (!land[j]) continue;
         const step =
-          (dx && dy ? 1.414 : 1) *
+          stepLen(dx, dy, y) *
           (1 +
             Math.max(0, (h[j]! - h[i]!) / 5) +
             (onRoad[j] ? -0.3 : 0) +
