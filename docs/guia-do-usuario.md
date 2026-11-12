@@ -1195,12 +1195,19 @@ inventados) e **estradas** entre elas.
 - **Estilo:** **Biomas**, **Relevo** (cores de altitude), **Político** (estados em cores
   chapadas, como num atlas), **Culturas** ou **Religiões**. **Camadas** liga e desliga rios,
   estradas, fronteiras, a cor dos estados, províncias, cidades, marcadores e nomes.
-- **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade ou num estado para
-  editar; arraste uma cidade para mudá-la de lugar), **Elevar** e **Rebaixar** (pincel de relevo:
-  pinte terra no mar para criar ilhas, ou mar na terra; o tamanho do pincel aparece embaixo),
-  **Suavizar** e **Cidade** (clique em terra para criar uma). Rios, biomas, fronteiras e estradas
-  se refazem sozinhos depois de cada mudança. **Desfazer** e **Refazer** (Ctrl+Z, Ctrl+Shift+Z)
-  voltam até 30 passos.
+- **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade, num estado ou num
+  marcador para editar; arraste uma cidade ou um marcador para mudá-lo de lugar), **Terreno**,
+  **Cidade** (clique em terra para criar uma), **Marcador** e **Rota**. **Desfazer** e **Refazer**
+  (Ctrl+Z, Ctrl+Shift+Z) voltam até 30 passos.
+- **Editar terreno:** a ferramenta **Terreno** abre a paleta de pincéis: **Terra** (cria terra no
+  mar), **Mar** (afunda a terra: abre baías e estreitos e separa um continente ao meio),
+  **Montanha** (serras com picos irregulares), **Neve** (picos acima da linha da neve, com gelo
+  no topo), **Lago** (cava uma bacia fechada que enche de água até transbordar), **Elevar**,
+  **Rebaixar**, **Suavizar** e **Aplainar** (nivela pela altura onde o traço começou), com
+  **Tamanho** e **Força**. Ao soltar, o mapa se reorganiza sozinho: rios mudam de curso, lagos
+  enchem, neve e biomas acompanham a altitude, fronteiras, estradas e províncias se refazem, e
+  cidades (e centros de povos) que ficaram no mar vão para a terra mais perto; se não houver
+  terra por perto, a cidade sai do mapa.
 - **Mapa e Mundo são a mesma coisa:** cada estado do mapa é um lugar no Mundo (tipo **Reino**) e
   cada cidade também (tipo **Cidade** ou **Capital**, com **Fica em** apontando para o reino). Ao
   gerar o mapa, os lugares aparecem sozinhos em Mundo → Lugares; um lugar que já existia com o

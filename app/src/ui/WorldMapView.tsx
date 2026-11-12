@@ -15,6 +15,7 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { BRUSHES, paintTerrain, settleOnLand, type BrushKind } from "../world/terrain";
 import { MarkerDialog } from "./MarkerDialog";
 import { StateDialog } from "./StateDialog";
 import { ClimateDialog } from "./ClimateDialog";
@@ -46,7 +47,6 @@ import {
   type WorldState,
   CULTURE_TYPES,
   dCol,
-  wrapCol,
   type Template,
   type WorldMap,
   type WorldOptions,
@@ -71,7 +71,7 @@ import { Select } from "./Select";
  * Mundo.
  */
 
-type Tool = "mover" | "elevar" | "rebaixar" | "suavizar" | "cidade" | "marcador" | "rota";
+type Tool = "mover" | "terreno" | "cidade" | "marcador" | "rota";
 
 const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
   {
@@ -80,14 +80,12 @@ const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
     label: "Mover",
     hint: "Arraste para mover, clique para escolher",
   },
-  { value: "elevar", icon: "up", label: "Elevar", hint: "Pinte para subir o terreno (cria terra)" },
   {
-    value: "rebaixar",
-    icon: "down",
-    label: "Rebaixar",
-    hint: "Pinte para baixar o terreno (cria mar)",
+    value: "terreno",
+    icon: "wave",
+    label: "Terreno",
+    hint: "Editar o terreno: terra, mar, montanhas, neve, lagos… (o mapa se refaz sozinho)",
   },
-  { value: "suavizar", icon: "wave", label: "Suavizar", hint: "Pinte para suavizar o relevo" },
   { value: "cidade", icon: "pin", label: "Cidade", hint: "Clique em terra para pôr uma cidade" },
   {
     value: "marcador",
@@ -337,6 +335,8 @@ function WorldEditor({
     marcadores: true,
   });
   const [brush, setBrush] = useState(8);
+  const [brushKind, setBrushKind] = useState<BrushKind>("terra");
+  const [strength, setStrength] = useState(2);
   // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
   const [toolsOpen, setToolsOpen] = useStoredFlag("talia.mapa.ferramentas", true);
   const [panelOpen, setPanelOpen] = useStoredFlag("talia.mapa.opcoes", true);
@@ -535,7 +535,7 @@ function WorldEditor({
         : map,
     [map, dragging],
   );
-  const painterTool = tool === "elevar" || tool === "rebaixar" || tool === "suavizar";
+  const painterTool = tool === "terreno";
   // Marcador sendo arrastado: só o ícone anda; grava ao soltar.
   const [dragMarker, setDragMarker] = useState<{ key: string; x: number; y: number } | null>(null);
   const societyShown = useMemo(
@@ -752,38 +752,8 @@ function WorldEditor({
       ? vectors.namedRoads.find((r) => near(r.points, x, y))
       : undefined;
 
-  const paint = (h: Uint8Array, x: number, y: number, t: Tool) => {
-    const r = brush;
-    const out = new Uint8Array(h);
-    for (
-      let cy = Math.max(0, Math.floor(y - r));
-      cy <= Math.min(ROWS - 1, Math.ceil(y + r));
-      cy++
-    ) {
-      for (let cx = Math.floor(x - r); cx <= Math.ceil(x + r); cx++) {
-        const d = Math.hypot(cx + 0.5 - x, cy + 0.5 - y) / r;
-        if (d >= 1) continue;
-        const f = (1 - d * d) * (1 - d * d);
-        const i = cy * COLS + wrapCol(cx);
-        if (t === "elevar") out[i] = Math.min(255, h[i]! + 6 * f + (h[i]! < SEA ? 4 * f : 0));
-        else if (t === "rebaixar") out[i] = Math.max(0, h[i]! - 6 * f - (h[i]! >= SEA ? 4 * f : 0));
-        else {
-          let sum = 0;
-          let n = 0;
-          for (let dy = -1; dy <= 1; dy++)
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = cx + dx;
-              const ny = cy + dy;
-              if (ny < 0 || ny >= ROWS) continue;
-              sum += h[ny * COLS + wrapCol(nx)]!;
-              n++;
-            }
-          out[i] = Math.round(h[i]! + (sum / n - h[i]!) * 0.5 * f);
-        }
-      }
-    }
-    return out;
-  };
+  const paint = (h: Uint8Array, x: number, y: number, level?: number) =>
+    paintTerrain(h, x, y, brush, brushKind, strength, level);
 
   const drag = useRef<{
     x: number;
@@ -794,7 +764,7 @@ function WorldEditor({
     burg?: string;
     marker?: string;
   } | null>(null);
-  const painting = useRef<{ h: Uint8Array; last: number } | null>(null);
+  const painting = useRef<{ h: Uint8Array; last: number; level: number } | null>(null);
 
   const onDown = (e: PointerEvent) => {
     canvas.current!.setPointerCapture(e.pointerId);
@@ -847,7 +817,8 @@ function WorldEditor({
         setTool("mover");
       }
     } else {
-      painting.current = { h: paint(heights, x, y, tool), last: performance.now() };
+      const level = Math.max(heights[cellOf(x, y)]!, SEA + 2);
+      painting.current = { h: paint(heights, x, y, level), last: performance.now(), level };
       setHeights(painting.current.h);
     }
   };
@@ -917,7 +888,7 @@ function WorldEditor({
     if (painterTool) setBrushAt({ x, y });
     const p = painting.current;
     if (p && e.buttons) {
-      p.h = paint(p.h, x, y, tool);
+      p.h = paint(p.h, x, y, p.level);
       // Refaz o mapa no máximo a cada ~120 ms enquanto pinta (o cálculo é pesado).
       const now = performance.now();
       if (now - p.last > 50) {
@@ -965,7 +936,8 @@ function WorldEditor({
     const p = painting.current;
     painting.current = null;
     if (p) {
-      commit({ ...map, heights: p.h });
+      // O mapa se reorganiza: cidades e povos que ficaram no mar vão para a terra.
+      commit(settleOnLand(map, p.h));
       setHeights(null);
     }
   };
@@ -1108,6 +1080,52 @@ function WorldEditor({
           onPointerLeave={() => setHover("")}
           onWheel={onWheel}
         />
+        {!globe && tool === "terreno" && (
+          <div className="wm-terrain" role="toolbar" aria-label="Editar terreno">
+            <h3>Editar terreno</h3>
+            <div className="wm-terrain-brushes" role="radiogroup" aria-label="Pincel">
+              {BRUSHES.map((b) => (
+                <button
+                  key={b.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={brushKind === b.value}
+                  className={brushKind === b.value ? "on" : ""}
+                  title={b.hint}
+                  onClick={() => setBrushKind(b.value)}
+                >
+                  <span aria-hidden="true">{b.icon}</span>
+                  {b.label}
+                </button>
+              ))}
+            </div>
+            <label className="wm-terrain-range">
+              <span>Tamanho: {brush}</span>
+              <input
+                type="range"
+                min={1}
+                max={30}
+                value={brush}
+                onChange={(e) => setBrush(+e.target.value)}
+              />
+            </label>
+            <label className="wm-terrain-range">
+              <span>Força: {["", "suave", "média", "forte"][strength]}</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                value={strength}
+                onChange={(e) => setStrength(+e.target.value)}
+              />
+            </label>
+            <p className="field-hint">
+              {BRUSHES.find((b) => b.value === brushKind)?.hint}. Ao soltar, o mapa se reorganiza:
+              rios, lagos, neve, biomas, fronteiras e estradas se refazem, e cidades que ficaram no
+              mar vão para a terra mais perto.
+            </p>
+          </div>
+        )}
         {!globe && (
           <div
             className={"wm-tools" + (toolsOpen ? "" : " compact")}
@@ -1137,18 +1155,6 @@ function WorldEditor({
                 <span>{t.label}</span>
               </button>
             ))}
-            {(tool === "elevar" || tool === "rebaixar" || tool === "suavizar") && (
-              <label className="wm-brush" title="Tamanho do pincel">
-                <span>Pincel</span>
-                <input
-                  type="range"
-                  min={2}
-                  max={30}
-                  value={brush}
-                  onChange={(e) => setBrush(+e.target.value)}
-                />
-              </label>
-            )}
             <div className="wm-tools-sep" />
             <button
               type="button"
@@ -1701,8 +1707,8 @@ function WorldEditor({
                     <li>Roda do mouse aproxima; arraste para mover.</li>
                     <li>Clique numa cidade ou num estado para editar nome, cor e capital.</li>
                     <li>
-                      Elevar e Rebaixar pintam o relevo: crie ilhas, cordilheiras e mares. Rios,
-                      biomas e fronteiras se refazem sozinhos.
+                      Terreno abre o modo de edição: pincéis de terra, mar, montanha, neve e lago.
+                      Rios, lagos, biomas e fronteiras se refazem sozinhos.
                     </li>
                     <li>
                       Cada estado e cidade é um lugar no Mundo: renomear ou apagar de um lado vale

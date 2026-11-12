@@ -453,6 +453,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- Editar terreno (`world/terrain.ts`): `paintTerrain` aplica um pincel (terra, mar, montanha, neve,
+  lago, elevar, rebaixar, suavizar, aplainar) às alturas, com queda suave e ruído fixo por
+  célula; `settleOnLand` leva cidades e centros de povos que ficaram no mar para a terra mais
+  perto (ou tira a cidade, e o estado dela). O resto (rios, lagos, biomas, fronteiras) vem do
+  `deriveWorld` ao gravar.
 - Épocas (`options.era`: `fantasia` ou `atual`, "Real" na tela): `withEra` converte as formas de
   governo por arquétipo (`formForEra`); `deriveWorld` põe `d.era`, aquece o clima (+1,2 °C, mais
   nos polos), cria os biomas 14 (Área urbana) e 15 (Lavouras) em volta das cidades e nomeia as
