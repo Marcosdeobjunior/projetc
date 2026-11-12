@@ -13,6 +13,7 @@ import {
   type Derived,
   type StateForm,
   type WorldMap,
+  eraOf,
 } from "./worldgen";
 
 /*
@@ -51,6 +52,33 @@ export const MARKER_TYPES = {
   caverna: { icon: "🕳️", label: "Caverna" },
   bosque: { icon: "🌳", label: "Bosque sagrado" },
   batalha: { icon: "⚔️", label: "Campo de batalha" },
+  // Época atual
+  parque: { icon: "🏞️", label: "Parque nacional" },
+  estancia: { icon: "♨️", label: "Estância termal" },
+  hidreletrica: { icon: "⚡", label: "Usina hidrelétrica" },
+  mineradora: { icon: "⛏️", label: "Mineradora" },
+  arqueologico: { icon: "🏛️", label: "Sítio arqueológico" },
+  porto: { icon: "🚢", label: "Porto de contêineres" },
+  posto: { icon: "⛽", label: "Posto de serviços" },
+  gruta: { icon: "🕳️", label: "Gruta turística" },
+  reserva: { icon: "🌲", label: "Reserva florestal" },
+  memorial: { icon: "🎖️", label: "Memorial de guerra" },
+  aeroporto: { icon: "✈️", label: "Aeroporto internacional" },
+  universidade: { icon: "🎓", label: "Universidade" },
+  // Época futurista
+  geotermica: { icon: "🌋", label: "Usina geotérmica" },
+  spa: { icon: "♨️", label: "Spa geotermal" },
+  barragem: { icon: "⚡", label: "Barragem automatizada" },
+  extracao: { icon: "🤖", label: "Extração robótica" },
+  antigas: { icon: "🏚️", label: "Ruínas da Era Antiga" },
+  hiperporto: { icon: "🚢", label: "Hiperporto" },
+  estacao: { icon: "🚄", label: "Estação maglev" },
+  bunker: { icon: "🛡️", label: "Bunker" },
+  domo: { icon: "🧬", label: "Domo biológico" },
+  exclusao: { icon: "☢️", label: "Zona de exclusão" },
+  espacoporto: { icon: "🚀", label: "Espaçoporto" },
+  arcologia: { icon: "🏙️", label: "Arcologia" },
+  elevador: { icon: "🛰️", label: "Elevador orbital" },
 } as const;
 export type MarkerType = keyof typeof MARKER_TYPES;
 
@@ -72,6 +100,14 @@ export interface Society {
 
 /** Como se chama a subdivisão em cada forma de governo. */
 const PROVINCE_FORM: Record<StateForm, string> = {
+  Federação: "Estado",
+  União: "Região",
+  Estado: "Departamento",
+  Corporação: "Setor",
+  Consórcio: "Distrito",
+  Diretório: "Zona",
+  Colônia: "Assentamento",
+  Hegemonia: "Domínio",
   Reino: "Condado",
   Império: "Província",
   Principado: "Marca",
@@ -109,7 +145,122 @@ const neighbours = (i: number) => {
   return out;
 };
 
+type EraMarker = {
+  type: MarkerType;
+  name: (place: string) => string;
+  legend: (place: string) => string;
+};
+const ERA_MARKERS: Record<"atual" | "futurista", Partial<Record<MarkerType, EraMarker>>> = {
+  atual: {
+    vulcao: {
+      type: "parque",
+      name: (p) => `Parque Nacional do Vulcão ${p}`,
+      legend: () =>
+        "Trilhas até a cratera, monitorada por sismógrafos; erupção mais recente há 80 anos.",
+    },
+    termas: {
+      type: "estancia",
+      name: (p) => `Estância de ${p}`,
+      legend: () => "Hotéis e piscinas de água quente; lotada nos feriados.",
+    },
+    cachoeira: {
+      type: "hidreletrica",
+      name: (p) => `Usina Hidrelétrica ${p}`,
+      legend: () => "A barragem abastece de energia meia dúzia de cidades da região.",
+    },
+    mina: {
+      type: "mineradora",
+      name: (p) => `Mineradora ${p}`,
+      legend: () => "Mina a céu aberto; a ferrovia leva o minério até o porto.",
+    },
+    ruinas: {
+      type: "arqueologico",
+      name: (p) => `Sítio Arqueológico de ${p}`,
+      legend: () => "Escavações revelaram uma cidade de dois mil anos; há museu no local.",
+    },
+    farol: {
+      type: "porto",
+      name: (p) => `Porto de ${p}`,
+      legend: () => "Terminal de contêineres e guindastes que não param, dia e noite.",
+    },
+    estalagem: {
+      type: "posto",
+      name: (p) => `Posto ${p}`,
+      legend: () => "Combustível, restaurante 24 horas e descanso para caminhoneiros.",
+    },
+    caverna: {
+      type: "gruta",
+      name: (p) => `Gruta de ${p}`,
+      legend: () => "Visitas guiadas por galerias iluminadas e um lago subterrâneo.",
+    },
+    bosque: {
+      type: "reserva",
+      name: (p) => `Reserva Florestal ${p}`,
+      legend: () => "Área protegida com espécies que só existem aqui.",
+    },
+    batalha: {
+      type: "memorial",
+      name: (p) => `Memorial de ${p}`,
+      legend: () => "Monumento aos mortos da última guerra de fronteira.",
+    },
+  },
+  futurista: {
+    vulcao: {
+      type: "geotermica",
+      name: (p) => `Usina Geotérmica ${p}`,
+      legend: () => "Sondas no magma do vulcão alimentam a rede elétrica do continente.",
+    },
+    termas: {
+      type: "spa",
+      name: (p) => `Spa ${p}`,
+      legend: () => "Piscinas termais com regeneração celular; reservas com um ano de espera.",
+    },
+    cachoeira: {
+      type: "barragem",
+      name: (p) => `Barragem ${p}`,
+      legend: () => "Operada só por máquinas; ninguém entra lá há décadas.",
+    },
+    mina: {
+      type: "extracao",
+      name: (p) => `Extração ${p}`,
+      legend: () => "Enxames de robôs mineram terras raras sem parar.",
+    },
+    ruinas: {
+      type: "antigas",
+      name: (p) => `Ruínas de ${p}`,
+      legend: () => "Uma cidade do século XXI, abandonada e tomada pela vegetação.",
+    },
+    farol: {
+      type: "hiperporto",
+      name: (p) => `Hiperporto ${p}`,
+      legend: () => "Cargueiros autônomos e hidroaviões atracam a cada minuto.",
+    },
+    estalagem: {
+      type: "estacao",
+      name: (p) => `Estação ${p}`,
+      legend: () => "Parada da linha maglev, a 900 km/h entre as megacidades.",
+    },
+    caverna: {
+      type: "bunker",
+      name: (p) => `Bunker ${p}`,
+      legend: () => "Abrigo das guerras antigas, hoje um arquivo de sementes e dados.",
+    },
+    bosque: {
+      type: "domo",
+      name: (p) => `Domo ${p}`,
+      legend: () =>
+        "Floresta restaurada sob uma cúpula, com espécies trazidas de volta da extinção.",
+    },
+    batalha: {
+      type: "exclusao",
+      name: (p) => `Zona de Exclusão ${p}`,
+      legend: () => "Contaminada desde a última guerra; drones patrulham o perímetro.",
+    },
+  },
+};
+
 export function deriveSociety(map: WorldMap, d: Derived): Society {
+  const era = eraOf(map);
   const n = COLS * ROWS;
   const h = map.heights;
   const seed = map.options.seed;
@@ -166,7 +317,10 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
         const c = cellOf(b.x, b.y);
         const id = provinces.length;
         provinces.push({
-          name: b === cap ? `${form} Real de ${b.name}` : `${form} de ${b.name}`,
+          name:
+            b === cap
+              ? `${form} ${era === "fantasia" ? "Real" : "Capital"} de ${b.name}`
+              : `${form} de ${b.name}`,
           state: k,
           seat: b.id,
           cells: 0,
@@ -488,6 +642,78 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
         `Campo de ${nameAt(c, 9)}`,
         `Aqui ${a} e ${b2} travaram a batalha que fixou a fronteira; ainda se acham pontas de lança no chão.`,
       );
+    }
+  }
+
+  // Noutras épocas, os mesmos lugares viram o que seriam hoje ou no futuro
+  // (a cachoeira vira usina, o farol vira porto…), e as capitais ganham aeroporto
+  // ou espaçoporto.
+  if (era !== "fantasia") {
+    const table = ERA_MARKERS[era];
+    const mr = rng(seed ^ 0x5eed);
+    for (const m of markers) {
+      const v = table[m.type];
+      if (!v) continue;
+      const place = nameAt(cellOf(m.x, m.y), 17);
+      m.type = v.type;
+      m.name = v.name(place);
+      m.legend = v.legend(place);
+    }
+    map.states.forEach((s, k) => {
+      const b = map.burgs.find((x) => x.id === s.capital);
+      if (!b || !d.land[cellOf(b.x, b.y)]) return;
+      const at = (type: MarkerType, name: string, legend: string, dx: number) =>
+        markers.push({ type, x: b.x + dx, y: b.y + 0.6, name, legend });
+      if (era === "atual") {
+        at(
+          "aeroporto",
+          `Aeroporto Internacional de ${b.name}`,
+          "Voos para todos os continentes; o terminal novo foi inaugurado há poucos anos.",
+          0.8,
+        );
+        if (k % 2 === 0)
+          at(
+            "universidade",
+            `Universidade de ${b.name}`,
+            "A maior do país, com hospital-escola e um observatório no campus.",
+            -0.8,
+          );
+      } else if (mr() < 0.6)
+        at(
+          "espacoporto",
+          `Espaçoporto de ${b.name}`,
+          "Lançamentos diários para as estações em órbita e as colônias lunares.",
+          0.8,
+        );
+      else
+        at(
+          "arcologia",
+          `Arcologia ${b.name}`,
+          "Uma torre-cidade de dois quilômetros, com fazendas verticais e um milhão de moradores.",
+          0.8,
+        );
+    });
+    if (era === "futurista") {
+      // Elevador orbital: na terra mais perto do equador.
+      let best = -1;
+      let bestD = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (!d.land[i]) continue;
+        const dist = Math.abs(((i / COLS) | 0) + 0.5 - ROWS / 2);
+        if (dist < bestD) {
+          bestD = dist;
+          best = i;
+        }
+      }
+      if (best >= 0)
+        markers.push({
+          type: "elevador",
+          x: (best % COLS) + 0.5,
+          y: Math.floor(best / COLS) + 0.5,
+          name: `Elevador Orbital ${nameAt(best, 23)}`,
+          legend:
+            "O cabo sobe 36 mil quilômetros até a estação geoestacionária; a viagem leva cinco dias.",
+        });
     }
   }
 

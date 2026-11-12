@@ -9046,3 +9046,15 @@ select option {
     grid-template-columns: 1fr;
   }
 }
+.wm-era {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.wm-era > span {
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}

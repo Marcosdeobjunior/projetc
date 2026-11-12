@@ -1126,6 +1126,16 @@ inventados) e **estradas** entre elas.
   reinos têm nomes inventados no sotaque do povo do lugar (cadeias de Markov). O estilo
   **Culturas** pinta o território de cada povo, e a legenda lista os povos. No **Editar povoado**,
   a Cultura vem preenchida com o povo do lugar, e o mouse sobre o mapa mostra o povo.
+- **Época:** no alto do painel (e ao gerar um mundo novo) escolha **Fantasia**, **Atual** ou
+  **Futurista**. A época muda o visual do mapa (pergaminho e letras serifadas; atlas moderno com
+  mar claro, autoestradas vermelhas e letras sem serifa; ou mapa noturno com costas e linhas em
+  neon), as formas de governo (Reino, Império… / República, Federação, União… / Federação,
+  Hegemonia, Corporação, Diretório, Colônia…, convertidas sozinhas ao trocar), os nomes das
+  estradas (Rodovia / Autoestrada A1 e rodovias numeradas / Linha Maglev e vias expressas), a
+  população das cidades (milhões hoje e no futuro) e os marcadores (cachoeira vira usina
+  hidrelétrica ou barragem automatizada, farol vira porto de contêineres ou hiperporto, capitais
+  ganham aeroporto, universidade, espaçoporto ou arcologia, e no futuro há um elevador orbital
+  perto do equador). Trocar de época entra no Desfazer.
 - **Configurar mundo:** o botão no painel abre a janela do clima do planeta (arraste pelo título).
   Escolha a temperatura média no **Equador**, no **Polo Norte** e no **Polo Sul** e a
   **Precipitação** (100% = como na Terra). A temperatura cai do equador até cada polo, devagar nos

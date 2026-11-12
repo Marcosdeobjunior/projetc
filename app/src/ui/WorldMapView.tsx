@@ -34,8 +34,11 @@ import {
   type Burg,
   type Route,
   type WorldClimate,
+  type Era,
+  ERAS,
+  FORMS_BY_ERA,
+  withEra,
   ROUTE_TYPES,
-  STATE_FORMS,
   type StateForm,
   type WorldState,
   CULTURE_TYPES,
@@ -204,6 +207,23 @@ function GenerateForm({
         }, 30);
       }}
     >
+      <div className="wm-row">
+        <span>Época</span>
+        <div className="segmented wide" role="radiogroup" aria-label="Época do mundo">
+          {ERAS.map((e) => (
+            <button
+              key={e.value}
+              type="button"
+              role="radio"
+              title={e.hint}
+              aria-checked={(o.era ?? "fantasia") === e.value}
+              onClick={() => setO({ ...o, era: e.value as Era })}
+            >
+              {e.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="wm-row">
         <span>Tipo de mundo</span>
         <Select
@@ -333,6 +353,7 @@ function WorldEditor({
     map.states.map((s) => s.capital).join("|") +
     "#" +
     map.options.seed +
+    (map.options.era ?? "") +
     "#" +
     (map.routes ?? []).map((r) => `${r.id}:${r.type}:${r.points.join(";")}`).join("|") +
     "#" +
@@ -1153,6 +1174,25 @@ function WorldEditor({
               {map.states.length} estados · {map.burgs.length} cidades · {derived.rivers.length}{" "}
               rios
             </p>
+            <div className="wm-era">
+              <span>Época</span>
+              <div className="segmented wide" role="radiogroup" aria-label="Época do mapa">
+                {ERAS.map((e) => (
+                  <button
+                    key={e.value}
+                    type="button"
+                    role="radio"
+                    title={e.hint}
+                    aria-checked={(map.options.era ?? "fantasia") === e.value}
+                    onClick={() =>
+                      (map.options.era ?? "fantasia") !== e.value && commit(withEra(map, e.value))
+                    }
+                  >
+                    {e.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="wm-modes segmented wide" role="radiogroup" aria-label="Estilo do mapa">
               {(
                 [
@@ -1330,7 +1370,12 @@ function WorldEditor({
                 <label>Forma de governo</label>
                 <Select
                   value={state.form ?? "Reino"}
-                  options={STATE_FORMS.map((f) => ({ value: f, label: f }))}
+                  options={[
+                    ...new Set([
+                      ...FORMS_BY_ERA[map.options.era ?? "fantasia"],
+                      ...(state.form ? [state.form] : []),
+                    ]),
+                  ].map((f) => ({ value: f, label: f }))}
                   onChange={(v) =>
                     v &&
                     commit({

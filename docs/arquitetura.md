@@ -453,6 +453,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- Épocas (`options.era`, `Era` em `world/worldgen.ts`): `withEra` converte as formas de governo
+  por arquétipo (`formForEra`); `deriveWorld` põe `d.era` e nomeia as estradas pela época;
+  `deriveSociety` troca os marcadores por equivalentes (`ERA_MARKERS`) e acrescenta os das
+  capitais; `settlementInfo` multiplica a população padrão; `bakeBase` ajusta a paleta e
+  `ui/worldDraw.ts` usa um `Theme` por época (cores, fonte, brilho na costa).
 - Clima configurável (`map.climate`, `ui/ClimateDialog.tsx`): `normalizeClimate` limita os valores;
   `seaLevelTemp` interpola entre o polo do hemisfério e o equador com `(lat/90)^1,6`; em
   `climate()` cada faixa de 30° usa o componente leste-oeste do vento escolhido (quase norte-sul:

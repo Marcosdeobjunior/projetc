@@ -108,16 +108,24 @@ export function settlementInfo(
       if (x + dx < 0 || x + dx >= COLS || j < 0 || j >= d.flux.length) continue;
       if (d.land[j] && d.flux[j]! >= d.riverMin) river = true;
     }
+  // Hoje e no futuro as cidades são muito maiores (metrópoles de milhões).
+  const scale = d.era === "atual" ? 60 : d.era === "futurista" ? 180 : 1;
   const population =
     parsePopulation(fields.populacao) ??
-    (capital ? 6000 + (seed % 18000) : 200 + (seed % 4800) * (coastal || river ? 1.4 : 1)) | 0;
+    ((capital ? 6000 + (seed % 18000) : 200 + (seed % 4800) * (coastal || river ? 1.4 : 1)) *
+      scale) |
+      0;
   // Elementos pela população (em milhares), com sorteio fixo por cidade: cidades
   // grandes quase sempre têm muralha e cidadela; favela e templo vêm com o tamanho.
   const pr = rng(seed ^ 0x5a17);
   const P = (p: number) => pr() < p;
-  const k = population / 1000;
-  const citadel = capital || (k > 50 && P(0.75)) || (k > 15 && P(0.5)) || P(0.1);
-  const walls = capital || k > 30 || (k > 20 && P(0.75)) || (k > 10 && P(0.5)) || P(0.1);
+  const k = population / 1000 / scale;
+  // Hoje e no futuro, muralha e cidadela são raras (centros históricos).
+  const old = scale === 1;
+  const citadel =
+    (old || P(0.15)) && (capital || (k > 50 && P(0.75)) || (k > 15 && P(0.5)) || P(0.1));
+  const walls =
+    (old || P(0.1)) && (capital || k > 30 || (k > 20 && P(0.75)) || (k > 10 && P(0.5)) || P(0.1));
   const shanty = k > 60 || (k > 40 && P(0.75)) || (k > 20 && walls && P(0.4));
   const temple = k > 50 || (k > 35 && P(0.75)) || (k > 20 && P(0.5)) || (k > 3 && P(0.2));
   const plaza = k > 1 || P(0.5);
