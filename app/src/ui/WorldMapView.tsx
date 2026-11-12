@@ -15,6 +15,7 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { ClimateDialog } from "./ClimateDialog";
 import { GlobeView } from "./GlobeView";
 import { makeMarkovNamer, nameBase } from "../world/names";
 import {
@@ -32,6 +33,7 @@ import {
   TEMPLATES,
   type Burg,
   type Route,
+  type WorldClimate,
   ROUTE_TYPES,
   STATE_FORMS,
   type StateForm,
@@ -108,6 +110,7 @@ interface Snapshot {
   burgs: Burg[];
   states: WorldMap["states"];
   routes?: Route[];
+  climate?: WorldClimate;
 }
 
 export function WorldMapView({ session }: { session: Session }) {
@@ -313,6 +316,7 @@ function WorldEditor({
   const [draft, setDraft] = useState<[number, number][]>([]);
   const [hover, setHover] = useState<string>("");
   const [showGen, setShowGen] = useState(false);
+  const [showClimate, setShowClimate] = useState(false);
   const undo = useRef<Snapshot[]>([]);
   const redo = useRef<Snapshot[]>([]);
   // Quantos passos há para desfazer/refazer (para os botões; as pilhas ficam em refs).
@@ -330,7 +334,9 @@ function WorldEditor({
     "#" +
     map.options.seed +
     "#" +
-    (map.routes ?? []).map((r) => `${r.id}:${r.type}:${r.points.join(";")}`).join("|");
+    (map.routes ?? []).map((r) => `${r.id}:${r.type}:${r.points.join(";")}`).join("|") +
+    "#" +
+    JSON.stringify(map.climate ?? null);
   const colorKey = map.states.map((s) => s.color).join("|");
   const geo = useMemo(
     () => ({ ...map, heights: map.heights }),
@@ -566,6 +572,7 @@ function WorldEditor({
     burgs: map.burgs,
     states: map.states,
     routes: map.routes ?? [],
+    climate: map.climate,
   });
   const commit = (next: WorldMap) => {
     undo.current = [...undo.current.slice(-29), snapshot()];
@@ -590,7 +597,7 @@ function WorldEditor({
     if (!s) return;
     to.current.push(snapshot());
     syncHist();
-    setMap({ ...map, ...s, routes: s.routes ?? map.routes });
+    setMap({ ...map, ...s, routes: s.routes ?? map.routes, climate: s.climate });
     // Desfazer uma exclusão traz o lugar de volta ao Mundo.
     void useWorldMap.getState().reconcile({ recreate: true });
   };
@@ -778,6 +785,7 @@ function WorldEditor({
       cu ? `povo ${cu}` : null,
       rel,
       `${metres.toLocaleString("pt-BR")} m`,
+      `${Math.round(derived.tempC[c]!)}°C`,
       coord,
     ]
       .filter(Boolean)
@@ -1065,6 +1073,13 @@ function WorldEditor({
             )}
           </div>
         )}
+        {showClimate && (
+          <ClimateDialog
+            climate={map.climate}
+            onApply={(climate) => commit({ ...map, climate })}
+            onClose={() => setShowClimate(false)}
+          />
+        )}
         {burg && (
           <BurgDialog
             key={burg.id}
@@ -1172,6 +1187,14 @@ function WorldEditor({
               ))}
             </div>
             <div className="wm-actions">
+              <button
+                type="button"
+                className="btn ghost sm"
+                aria-pressed={showClimate}
+                onClick={() => setShowClimate((v) => !v)}
+              >
+                <Icon name="globe" size={14} /> Configurar mundo
+              </button>
               <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
                 <Icon name="refresh" size={14} /> Gerar outro mundo
               </button>
@@ -1189,7 +1212,7 @@ function WorldEditor({
                   initial={{ ...map.options }}
                   submitLabel="Gerar"
                   onGenerate={(o) => {
-                    commit(generateWorld(o, map.name));
+                    commit(generateWorld(o, map.name, map.climate));
                     setSelected(null);
                     setShowGen(false);
                   }}

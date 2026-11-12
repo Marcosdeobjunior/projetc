@@ -133,6 +133,79 @@ export interface WorldMap {
   routes?: Route[];
   /** Culturas (povos); o território de cada uma é calculado a partir do centro. */
   cultures?: Culture[];
+  /** Clima do planeta ("Configurar mundo"); sem ele, o clima da Terra. */
+  climate?: WorldClimate;
+}
+
+/**
+ * Clima do planeta: temperatura média ao nível do mar no equador e em cada polo
+ * (°C), chuva em % do normal, e a direção do vento em cada faixa de 30° de
+ * latitude (graus da bússola para onde ele sopra: 0 = norte, 90 = leste…), do
+ * norte (90°–60°N) ao sul (60°–90°S).
+ */
+export interface WorldClimate {
+  equator: number;
+  northPole: number;
+  southPole: number;
+  precipitation: number;
+  winds: number[];
+}
+
+/** Ventos da Terra: alísios (de nordeste/sudeste), ventos de oeste e polares de leste. */
+export const EARTH_WINDS = [225, 45, 225, 315, 135, 315];
+export const DEFAULT_CLIMATE: WorldClimate = {
+  equator: 28,
+  northPole: -17,
+  southPole: -17,
+  precipitation: 100,
+  winds: EARTH_WINDS,
+};
+
+export const CLIMATE_PRESETS: { label: string; hint: string; climate: WorldClimate }[] = [
+  { label: "Terra", hint: "Como o nosso planeta", climate: DEFAULT_CLIMATE },
+  {
+    label: "Era do gelo",
+    hint: "Polos e serras gelados, desertos frios",
+    climate: { ...DEFAULT_CLIMATE, equator: 20, northPole: -40, southPole: -45, precipitation: 80 },
+  },
+  {
+    label: "Estufa",
+    hint: "Quente e úmido até perto dos polos",
+    climate: { ...DEFAULT_CLIMATE, equator: 34, northPole: 6, southPole: 4, precipitation: 130 },
+  },
+  {
+    label: "Árido",
+    hint: "Pouca chuva: desertos e estepes",
+    climate: { ...DEFAULT_CLIMATE, precipitation: 45 },
+  },
+  {
+    label: "Úmido",
+    hint: "Muita chuva: florestas e pântanos",
+    climate: { ...DEFAULT_CLIMATE, precipitation: 160 },
+  },
+];
+
+/** Clima válido (limita os números e completa o que faltar). */
+export function normalizeClimate(c: Partial<WorldClimate> | undefined | null): WorldClimate {
+  const clamp = (v: unknown, lo: number, hi: number, d: number) =>
+    typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d;
+  const winds = Array.isArray(c?.winds) ? c.winds : [];
+  return {
+    equator: clamp(c?.equator, -20, 50, DEFAULT_CLIMATE.equator),
+    northPole: clamp(c?.northPole, -60, 30, DEFAULT_CLIMATE.northPole),
+    southPole: clamp(c?.southPole, -60, 30, DEFAULT_CLIMATE.southPole),
+    precipitation: clamp(c?.precipitation, 0, 500, DEFAULT_CLIMATE.precipitation),
+    winds: EARTH_WINDS.map((w, k) => {
+      const v = winds[k];
+      return typeof v === "number" && Number.isFinite(v) ? ((Math.round(v) % 360) + 360) % 360 : w;
+    }),
+  };
+}
+
+/** Temperatura média ao nível do mar numa latitude (graus, + = norte). */
+export function seaLevelTemp(c: WorldClimate, lat: number): number {
+  const pole = lat >= 0 ? c.northPole : c.southPole;
+  return pole + (c.equator - pole) * (1 - Math.pow(Math.min(90, Math.abs(lat)) / 90, 1.6));
 }
 
 export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
@@ -544,9 +617,16 @@ function placeCultures(o: WorldOptions, d: Derived, heights: Uint8Array): Cultur
   });
 }
 
-export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
+export function generateWorld(o: WorldOptions, name = "Mundo", climate?: WorldClimate): WorldMap {
   const heights = generateHeights(o);
-  const map: WorldMap = { name, options: o, heights, burgs: [], states: [] };
+  const map: WorldMap = {
+    name,
+    options: o,
+    heights,
+    burgs: [],
+    states: [],
+    ...(climate ? { climate } : {}),
+  };
   const d0 = deriveWorld({ ...map });
   map.cultures = placeCultures(o, d0, heights);
   const d = deriveWorld({ ...map });
@@ -812,15 +892,16 @@ const RAIN_BY_LAT = [4, 2, 2, 2, 1, 1, 1.2, 2, 2, 2, 3, 3, 2, 2, 1, 1, 1, 0.5];
 function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoise>) {
   const n = COLS * ROWS;
   const h = map.heights;
+  const cfg = normalizeClimate(map.climate);
   const temp = new Float32Array(n);
   const tempC = new Float32Array(n);
   const noise = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const x = i % COLS;
     const y = (i / COLS) | 0;
-    const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
-    // Média anual ao nível do mar: ~28 °C no equador, ~16 °C a 40°, ~7 °C a 55°, −17 °C no polo.
-    const sea = 28 - 45 * Math.pow(lat / 90, 1.6);
+    // Média anual ao nível do mar (na Terra: ~28 °C no equador, ~16 °C a 40°,
+    // ~7 °C a 55°, −17 °C no polo), com os valores escolhidos em "Configurar mundo".
+    const sea = seaLevelTemp(cfg, 90 - ((y + 0.5) / ROWS) * 180);
     const km = land[i] ? (((h[i]! - SEA) / 127) ** 1.6 * 5200) / 1000 : 0;
     const t = sea - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
     tempC[i] = t;
@@ -834,30 +915,36 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
   for (let y = 0; y < ROWS; y++) {
     const lat = 90 - ((y + 0.5) / ROWS) * 180;
     const a = Math.abs(lat);
-    const dir = a < 30 || a >= 60 ? -1 : 1; // leste→oeste (−1) ou oeste→leste (+1)
+    // Vento da faixa: o lado leste-oeste dele carrega a umidade; vento quase
+    // norte-sul traz menos umidade, vinda dos dois lados.
+    const wind = (cfg.winds[Math.min(5, Math.floor((90 - lat) / 30))]! * Math.PI) / 180;
+    const east = Math.sin(wind);
+    const dirs = Math.abs(east) >= 0.3 ? [east > 0 ? 1 : -1] : [1, -1];
     const band = RAIN_BY_LAT[Math.min(RAIN_BY_LAT.length - 1, (a / 5) | 0)]!;
-    const maxHum = 30 * band;
+    const maxHum = (30 * band) / dirs.length;
     let start = -1;
     for (let x = 0; x < COLS; x++) if (!land[y * COLS + x]) start = x;
     if (start < 0) continue; // linha toda de terra: sem fonte de umidade
-    let hum = maxHum;
-    for (let k = 1; k <= COLS * 2; k++) {
-      const x = wrapCol(start + dir * k);
-      const i = y * COLS + x;
-      const prev = y * COLS + wrapCol(x - dir);
-      if (!land[i]) {
-        hum = Math.min(maxHum, hum + 6); // o ar se recarrega sobre a água
-        continue;
+    for (const dir of dirs) {
+      let hum = maxHum;
+      for (let k = 1; k <= COLS * 2; k++) {
+        const x = wrapCol(start + dir * k);
+        const i = y * COLS + x;
+        const prev = y * COLS + wrapCol(x - dir);
+        if (!land[i]) {
+          hum = Math.min(maxHum, hum + 6); // o ar se recarrega sobre a água
+          continue;
+        }
+        const rise = Math.max(0, h[i]! - h[prev]!);
+        const e = (h[i]! - SEA) / 127;
+        // Chuva normal + chuva de encosta (o ar sobe, esfria e chove).
+        let p = Math.max(hum / 22, 0.5) + rise * (0.12 + e * 1.0);
+        if (e > 0.82) p = hum; // cordilheira muito alta: despeja tudo, passa seco
+        p = Math.min(p, hum);
+        if (k > COLS) rain[i]! += p; // só a segunda volta conta (o ar já "deu a volta")
+        // Parte da chuva volta ao ar (rios, lagos e plantas evaporam): a umidade avança.
+        hum = Math.max(0, hum - p * 0.55);
       }
-      const rise = Math.max(0, h[i]! - h[prev]!);
-      const e = (h[i]! - SEA) / 127;
-      // Chuva normal + chuva de encosta (o ar sobe, esfria e chove).
-      let p = Math.max(hum / 22, 0.5) + rise * (0.12 + e * 1.0);
-      if (e > 0.82) p = hum; // cordilheira muito alta: despeja tudo, passa seco
-      p = Math.min(p, hum);
-      if (k > COLS) rain[i]! += p; // só a segunda volta conta (o ar já "deu a volta")
-      // Parte da chuva volta ao ar (rios, lagos e plantas evaporam): a umidade avança.
-      hum = Math.max(0, hum - p * 0.55);
     }
   }
   // Um pouco de chuva do mar em toda costa, e suaviza (o ar não é tão preciso).
@@ -888,10 +975,15 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
   for (let i = 0; i < n; i++) if (land[i]) vals.push(cur[i]!);
   vals.sort((a, b) => a - b);
   const p95 = vals[Math.floor(vals.length * 0.95)] ?? 1;
+  // A chuva do planeta ("Precipitação") multiplica a umidade de todas as terras.
+  const rainK = cfg.precipitation / 100;
   const moist = new Float32Array(n);
   for (let i = 0; i < n; i++)
     moist[i] = land[i]
-      ? Math.sqrt(Math.min(1, cur[i]! / (p95 || 1))) * 0.92 + noise[i]! * 0.08
+      ? Math.min(
+          1,
+          (Math.sqrt(Math.min(1, cur[i]! / (p95 || 1))) * 0.92 + noise[i]! * 0.08) * rainK,
+        )
       : 0.6;
   return { temp, tempC, moist, noise };
 }
@@ -1613,6 +1705,7 @@ export function serializeWorld(map: WorldMap): string {
         burgs: map.burgs,
         routes: map.routes ?? [],
         cultures: map.cultures ?? [],
+        ...(map.climate ? { climate: map.climate } : {}),
       },
       null,
       1,
@@ -1739,7 +1832,20 @@ export function parseWorld(raw: string): WorldMap | null {
         y: Math.max(0, Math.min(ROWS, cy * sy)),
       });
     }
-    return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states, routes, cultures };
+    const climate =
+      d.climate && typeof d.climate === "object"
+        ? normalizeClimate(d.climate as Partial<WorldClimate>)
+        : undefined;
+    return {
+      name: str(d.name, 80) || "Mundo",
+      options,
+      heights,
+      burgs,
+      states,
+      routes,
+      cultures,
+      ...(climate ? { climate } : {}),
+    };
   } catch {
     return null;
   }

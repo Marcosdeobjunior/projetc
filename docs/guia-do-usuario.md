@@ -1126,6 +1126,18 @@ inventados) e **estradas** entre elas.
   reinos têm nomes inventados no sotaque do povo do lugar (cadeias de Markov). O estilo
   **Culturas** pinta o território de cada povo, e a legenda lista os povos. No **Editar povoado**,
   a Cultura vem preenchida com o povo do lugar, e o mouse sobre o mapa mostra o povo.
+- **Configurar mundo:** o botão no painel abre a janela do clima do planeta (arraste pelo título).
+  Escolha a temperatura média no **Equador**, no **Polo Norte** e no **Polo Sul** e a
+  **Precipitação** (100% = como na Terra). A temperatura cai do equador até cada polo, devagar nos
+  trópicos e depressa nas latitudes médias, e mais 6,5 °C a cada quilômetro de altitude. O globo
+  ao lado mostra as faixas de temperatura, a linha do equador em vermelho e o meridiano central;
+  as setas à direita são os **ventos** de cada faixa de 30° (clique para girar 45°, Shift+clique
+  para o outro lado; **Restaurar ventos** volta aos da Terra: alísios, ventos de oeste e polares).
+  O vento traz a chuva do mar, então mudar a direção muda onde ficam desertos e florestas.
+  **Predefinições** (Terra, Era do gelo, Estufa, Árido, Úmido) preenchem tudo de uma vez. Com
+  **aplicar alterações automaticamente**, o mapa se refaz ao soltar o controle; senão, use
+  **Atualizar mundo**. A mudança entra no Desfazer e fica gravada no mapa. O mouse sobre o mapa
+  mostra também a temperatura média do lugar.
 - **Rios e lagos:** a chuva que sobra depois da evaporação (que é maior no calor) escorre pelo
   maior declive do relevo e vai se juntando; onde a vazão é grande nasce um rio, que engrossa rio
   abaixo e faz meandros nas planícies. Depressões no terreno enchem e viram **lagos**, até o nível

@@ -453,6 +453,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- Clima configurável (`map.climate`, `ui/ClimateDialog.tsx`): `normalizeClimate` limita os valores;
+  `seaLevelTemp` interpola entre o polo do hemisfério e o equador com `(lat/90)^1,6`; em
+  `climate()` cada faixa de 30° usa o componente leste-oeste do vento escolhido (quase norte-sul:
+  umidade dos dois lados, pela metade) e `precipitation` multiplica a umidade normalizada. Entra no
+  `geoKey` do editor e nos passos de desfazer.
 - Hidrologia (`deriveWorld`): priority-flood dá o nível da água (`filled`); a direção `down` é o
   maior declive sobre `filled` (sempre desce, então não há ciclos). Componentes de depressão
   (`filled − h ≥ 0,3`, ≥ 2 células, profundidade ≥ 1, sem cidade dentro) viram lagos (`d.lakes`,
