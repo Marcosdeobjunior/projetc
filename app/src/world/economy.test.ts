@@ -49,4 +49,31 @@ describe("economia", () => {
     });
     expect(e.cities.get(b.id)).toMatchObject({ main: "turismo", chosen: true });
   }, 60000);
+
+  it("há estados ricos e pobres, e o autor pode mudar a riqueza e a vocação", () => {
+    const { m, d, society, population } = setup("atual");
+    const e = computeEconomy({ map: m, d, society, population });
+    const list = [...e.states.values()];
+    const tiers = new Set(list.map((s) => s.wealth));
+    expect(tiers.has("rico")).toBe(true);
+    expect(tiers.has("pobre")).toBe(true);
+    const per = list.map((s) => s.perCapita).sort((a, b) => a - b);
+    expect(per[per.length - 1]! / per[0]!).toBeGreaterThan(2);
+    const poorest = list.find((s) => s.rank === list.length)!;
+    const id = [...e.states.entries()].find(([, v]) => v === poorest)![0];
+    const e2 = computeEconomy({
+      map: m,
+      d,
+      society,
+      population,
+      stateChoices: new Map([[id, { riqueza: "rico", vocacao: "turismo" }]]),
+    });
+    expect(e2.states.get(id)).toMatchObject({
+      wealth: "rico",
+      wealthChosen: true,
+      main: "turismo",
+      chosen: true,
+    });
+    expect(e2.states.get(id)!.perCapita).toBeGreaterThan(poorest.perCapita * 3);
+  }, 60000);
 });

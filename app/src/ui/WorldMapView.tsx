@@ -15,7 +15,16 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
-import { computeEconomy, SECTOR_COLORS, SECTORS, sectorLabel, type Sector } from "../world/economy";
+import {
+  computeEconomy,
+  SECTOR_COLORS,
+  SECTORS,
+  sectorLabel,
+  WEALTH_COLORS,
+  WEALTH_LABEL,
+  type Sector,
+  type Wealth,
+} from "../world/economy";
 import { BRUSHES, paintTerrain, settleOnLand, type BrushKind } from "../world/terrain";
 import { MarkerDialog } from "./MarkerDialog";
 import { StateDialog } from "./StateDialog";
@@ -418,7 +427,7 @@ function WorldEditor({
   const provinceVectors = useMemo(() => buildProvinceVectors(society, derived), [society, derived]);
   const baseMain = useMemo(
     () =>
-      mode === "economia"
+      mode === "economia" || mode === "riqueza"
         ? null
         : bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados, undefined, {
             cells: society.religion,
@@ -528,19 +537,33 @@ function WorldEditor({
       if (v && (SECTORS as readonly string[]).includes(v)) chosen.set(b.id, v as Sector);
     }
     const population = new Map([...meta].map(([id, m]) => [id, m.population]));
-    return computeEconomy({ map, d: derived, society, population, chosen });
+    const stateChoices = new Map<string, { vocacao?: Sector; riqueza?: Wealth }>();
+    for (const s of map.states) {
+      const f = s.noteId ? notesById.get(s.noteId)?.fields : undefined;
+      if (!f) continue;
+      const vocacao = (SECTORS as readonly string[]).includes(f.vocacao ?? "")
+        ? (f.vocacao as Sector)
+        : undefined;
+      const riqueza = ["rico", "medio", "pobre"].includes(f.riqueza ?? "")
+        ? (f.riqueza as Wealth)
+        : undefined;
+      if (vocacao || riqueza) stateChoices.set(s.id, { vocacao, riqueza });
+    }
+    return computeEconomy({ map, d: derived, society, population, chosen, stateChoices });
   }, [map, derived, society, meta, session.project.notes]);
   const base = useMemo(
     () =>
       baseMain ??
-      bakeBase({ ...geo, states: map.states }, derived, "economia", true, undefined, {
+      bakeBase({ ...geo, states: map.states }, derived, mode, true, undefined, {
         cells: derived.owner,
-        colors: map.states.map(
-          (s) => SECTOR_COLORS[economy.states.get(s.id)?.main ?? "agricultura"],
+        colors: map.states.map((s) =>
+          mode === "riqueza"
+            ? WEALTH_COLORS[economy.states.get(s.id)?.wealth ?? "medio"]
+            : SECTOR_COLORS[economy.states.get(s.id)?.main ?? "agricultura"],
         ),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseMain, economy],
+    [baseMain, economy, mode],
   );
   // População do mundo: as cidades do mapa mais o campo (pela área habitável e a época).
   const rural = useMemo(() => ruralPopulation(derived), [derived]);
@@ -1286,6 +1309,14 @@ function WorldEditor({
             meta={meta}
             capitals={capitals}
             economy={economy}
+            onStateFields={(patch) => {
+              const id = state.noteId;
+              if (!id) return;
+              void useApp.getState().change((p) => {
+                const cur = p.notes.find((n) => n.id === id)?.fields ?? {};
+                return setNoteFields(p, id, { ...cur, ...patch });
+              });
+            }}
             note={session.project.notes.find((n) => n.id === state.noteId)}
             attachments={session.attachments}
             onClose={() => setSelected(null)}
@@ -1670,6 +1701,7 @@ function WorldEditor({
                         ["culturas", "Culturas"],
                         ["religioes", "Religiões"],
                         ["economia", "Economia"],
+                        ["riqueza", "Riqueza"],
                       ] as const
                     ).map(([v, l]) => (
                       <button
@@ -1907,6 +1939,25 @@ function WorldEditor({
                   </button>
                 </section>
               )}
+              <section className="profile-card wm-legend wm-cultures">
+                <h3>Riqueza</h3>
+                <ul>
+                  {(["rico", "medio", "pobre"] as const).map((w) => (
+                    <li key={w}>
+                      <span style={{ background: WEALTH_COLORS[w] }} />
+                      <div>
+                        {WEALTH_LABEL[w]}
+                        <small>
+                          {map.states
+                            .filter((s) => economy.states.get(s.id)?.wealth === w)
+                            .map((s) => s.name)
+                            .join(", ") || "nenhum"}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
               <section className="profile-card wm-legend wm-cultures">
                 <h3>Economia (vocação)</h3>
                 <ul>

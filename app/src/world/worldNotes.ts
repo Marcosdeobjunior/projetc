@@ -10,7 +10,7 @@ import type { WorldMap } from "./worldgen";
  * o mapa já ajustados.
  */
 
-export const AUTO_TYPES = ["Reino", "Capital", "Cidade"];
+export const AUTO_TYPES = ["Reino", "Estado", "Capital", "Cidade"];
 
 const sameTitle = (a: string, b: string) =>
   a.toLocaleLowerCase("pt-BR") === b.toLocaleLowerCase("pt-BR");
@@ -116,7 +116,9 @@ export function applyWorldFields(
     }
   };
   const notes = new Map(p.notes.map((n) => [n.id, n]));
-  for (const s of map.states) if (s.noteId) set(notes.get(s.noteId), { tipo: "Reino" });
+  // Na fantasia, reinos; no mundo real, estados (países).
+  const stateType = map.options.era === "atual" ? "Estado" : "Reino";
+  for (const s of map.states) if (s.noteId) set(notes.get(s.noteId), { tipo: stateType });
   for (const b of map.burgs) {
     if (!b.noteId) continue;
     const k = ownerOf(b.id);

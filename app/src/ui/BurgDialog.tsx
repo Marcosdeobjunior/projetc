@@ -129,14 +129,14 @@ export function BurgDialog({
       className={"burg-dialog" + (min ? " min" : "")}
       style={{ left: pos.x, top: pos.y }}
       role="dialog"
-      aria-label="Editar povoado"
+      aria-label={era === "atual" ? "Editar cidade" : "Editar povoado"}
     >
       <header
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={() => (drag.current = null)}
       >
-        <h2>Editar povoado</h2>
+        <h2>{era === "atual" ? "Editar cidade" : "Editar povoado"}</h2>
         <button
           type="button"
           aria-label="Gerar outra prévia"
@@ -316,7 +316,7 @@ export function BurgDialog({
           </label>
           <div className="burg-preview">
             <div className="burg-preview-head">
-              <span>Prévia do povoado</span>
+              <span>{era === "atual" ? "Prévia da cidade" : "Prévia do povoado"}</span>
               <button
                 type="button"
                 className="link-btn"

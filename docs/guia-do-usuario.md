@@ -1192,7 +1192,15 @@ inventados) e **estradas** entre elas.
   na ficha, campo `vocacao`). A ficha do estado tem a aba **Economia**: vocação, PIB, renda por
   pessoa, setores, principais produtos e cidades por vocação (o estado soma as cidades e o
   campo). O estilo **Economia** pinta cada estado pela vocação, com a legenda na aba Legendas.
-  Na fantasia os valores são em moedas; no mundo Real, em dólares.
+  Na fantasia os valores são em moedas; no mundo Real, em dólares. Há **estados ricos e pobres**: a riqueza
+  vem do acesso ao mar, da terra fértil, do clima (desertos e gelo pesam), das estradas, das
+  minas e de uma parte de história fixa de cada estado, e multiplica a renda das cidades e do
+  campo. A aba Economia do estado mostra se ele é **rico**, **médio** ou **pobre**, a posição em
+  renda por pessoa e o desenvolvimento, e deixa escolher a **riqueza** e a **vocação** do estado
+  (campos `riqueza` e `vocacao` da ficha). O estilo **Riqueza** pinta os estados de verde (ricos),
+  amarelo (médios) e vermelho (pobres). Na fantasia, os estados são **reinos** e as cidades,
+  **povoados** ("Editar povoado"); no mundo Real, o tipo do lugar vira **Estado** e a janela,
+  "Editar cidade".
 - **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
   República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do
   reino; os textos mostram o nome completo ("Reino de Faeris").
@@ -1208,7 +1216,7 @@ inventados) e **estradas** entre elas.
   de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
   ponto sob o mouse.
 - **Estilo:** **Biomas**, **Relevo** (cores de altitude), **Político** (estados em cores
-  chapadas, como num atlas), **Culturas**, **Religiões** ou **Economia**. **Camadas** liga e desliga rios,
+  chapadas, como num atlas), **Culturas**, **Religiões**, **Economia** ou **Riqueza**. **Camadas** liga e desliga rios,
   estradas, fronteiras, a cor dos estados, províncias, cidades, marcadores e nomes.
 - **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade, num estado ou num
   marcador para editar; arraste uma cidade ou um marcador para mudá-lo de lugar), **Terreno**,

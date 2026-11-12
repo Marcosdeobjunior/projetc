@@ -86,8 +86,29 @@ export interface CityEconomy {
   wealth: number;
 }
 
+export type Wealth = "rico" | "medio" | "pobre";
+export const WEALTH_LABEL: Record<Wealth, string> = {
+  rico: "Rico",
+  medio: "Médio",
+  pobre: "Pobre",
+};
+export const WEALTH_COLORS: Record<Wealth, string> = {
+  rico: "#3f9c5a",
+  medio: "#e0b84a",
+  pobre: "#c9503f",
+};
+
 export interface StateEconomy {
   main: Sector;
+  /** Vocação escolhida pelo autor (e não a do lugar)? */
+  chosen: boolean;
+  /** Rico, médio ou pobre (pela renda por pessoa entre os estados), e se foi escolhido. */
+  wealth: Wealth;
+  wealthChosen: boolean;
+  /** Posição na renda por pessoa (1 = o mais rico). */
+  rank: number;
+  /** Quanto o desenvolvimento multiplica a renda (instituições, acesso, recursos). */
+  development: number;
   shares: Record<Sector, number>;
   products: string[];
   gdp: number;
@@ -182,9 +203,18 @@ export interface EconomyInput {
   population: Map<string, number>;
   /** Vocação escolhida pelo autor (pelo id da cidade). */
   chosen?: Map<string, Sector>;
+  /** Escolhas do autor para cada estado (pelo id): vocação e riqueza. */
+  stateChoices?: Map<string, { vocacao?: Sector; riqueza?: Wealth }>;
 }
 
-export function computeEconomy({ map, d, society, population, chosen }: EconomyInput) {
+export function computeEconomy({
+  map,
+  d,
+  society,
+  population,
+  chosen,
+  stateChoices,
+}: EconomyInput) {
   const era = d.era;
   const real = era === "atual";
   const capitals = new Set(map.states.map((s) => s.capital));
@@ -319,6 +349,7 @@ export function computeEconomy({ map, d, society, population, chosen }: EconomyI
   // madeira pelas terras de cada um).
   const states = new Map<string, StateEconomy>();
   const stateShares = new Map<string, Record<Sector, number>>();
+  const devScore = new Map<string, number>();
   map.states.forEach((st, k) => {
     // Metade da vocação vem das cidades (pela população), metade do campo.
     const s = zero();
@@ -339,11 +370,19 @@ export function computeEconomy({ map, d, society, population, chosen }: EconomyI
     let farm = 0;
     let graze = 0;
     let forest = 0;
+    let cellsN = 0;
+    let coastN = 0;
+    let harshN = 0;
+    let fertileN = 0;
     for (let i = 0; i < COLS * ROWS; i++) {
       if (d.owner[i] !== k) continue;
       const cp = cellPopulation(d, i);
       rural += cp;
       const bio = d.biome[i]!;
+      cellsN++;
+      if (d.oceanDist[i]! <= 1) coastN++;
+      if (bio === 1 || bio === 2 || bio === 10 || bio === 11 || bio === 13) harshN++;
+      if (FARM.has(bio)) fertileN++;
       if (FARM.has(bio)) farm += cp;
       else if (GRAZE.has(bio)) graze += cp;
       else if (FOREST.has(bio)) forest += cp;
@@ -362,11 +401,35 @@ export function computeEconomy({ map, d, society, population, chosen }: EconomyI
         : s[x] / ruralTotal;
     pop += rural;
     gdp += rural * (real ? 9000 : 6);
+    // Desenvolvimento: acesso ao mar, terra fértil, clima duro, estradas, minas e
+    // uma parte de "história" (instituições, guerras), fixa por estado.
+    let roadCells = 0;
+    for (const r of d.roads)
+      if (r.type !== "trilha") for (const c of r.cells) if (d.owner[c] === k) roadCells++;
+    const mines = society.markers.filter(
+      (m) => (m.type === "mina" || m.type === "mineradora") && d.owner[cellOf(m.x, m.y)] === k,
+    ).length;
+    const n = Math.max(1, cellsN);
+    const h = (hashSeed(st.id + ":" + map.options.seed) % 2000) / 1000 - 1;
+    devScore.set(
+      st.id,
+      (coastN / n) * 2.5 +
+        (fertileN / n) * 0.8 -
+        (harshN / n) * 1.2 +
+        (roadCells / n) * 3 +
+        Math.min(6, mines) * 0.06 +
+        h * 0.55,
+    );
     const total = SECTORS.reduce((a, x) => a + s[x], 0) || 1;
     for (const x of SECTORS) s[x] /= total;
     stateShares.set(st.id, s);
     states.set(st.id, {
       main: "agricultura",
+      chosen: false,
+      wealth: "medio",
+      wealthChosen: false,
+      rank: 0,
+      development: 1,
       shares: s,
       products: [...products]
         .sort((a, b) => b[1] - a[1])
@@ -377,14 +440,55 @@ export function computeEconomy({ map, d, society, population, chosen }: EconomyI
       population: Math.round(pop),
     });
   });
+  // Ricos e pobres: o desenvolvimento multiplica a renda das cidades e do campo
+  // (de ~0,3× a ~3,5× da média), ou o autor escolhe rico, médio ou pobre.
+  const scores = [...devScore.values()];
+  const meanScore = scores.reduce((a, v) => a + v, 0) / Math.max(1, scores.length);
+  map.states.forEach((st, k) => {
+    const e = states.get(st.id)!;
+    const pick = stateChoices?.get(st.id)?.riqueza;
+    let mult = Math.max(0.3, Math.min(3.5, Math.exp((devScore.get(st.id)! - meanScore) * 1.6)));
+    if (pick === "rico") mult = Math.max(2.4, mult);
+    else if (pick === "pobre") mult = Math.min(0.35, mult);
+    else if (pick === "medio") mult = 1;
+    e.development = mult;
+    e.wealthChosen = !!pick;
+    e.gdp *= mult;
+    e.perCapita *= mult;
+    for (const b of map.burgs)
+      if (d.owner[cellOf(b.x, b.y)] === k) {
+        const c = cities.get(b.id);
+        if (c) c.perCapita *= mult;
+      }
+  });
+  // Faixa de riqueza pela posição entre os estados (o escolhido pelo autor vale).
+  const ranked = [...states.entries()].sort((a, b) => b[1].perCapita - a[1].perCapita);
+  ranked.forEach(([id, e], i) => {
+    e.rank = i + 1;
+    const pick = stateChoices?.get(id)?.riqueza;
+    const q = ranked.length > 1 ? i / (ranked.length - 1) : 0.5;
+    e.wealth = pick ?? (q < 0.3 ? "rico" : q > 0.7 ? "pobre" : "medio");
+  });
+  // Estrelas das cidades pela renda entre todas as cidades do mundo.
+  const incomes = [...cities.values()].map((c) => c.perCapita).sort((a, b) => a - b);
+  for (const c of cities.values()) {
+    const q = incomes.findIndex((v) => v >= c.perCapita) / Math.max(1, incomes.length - 1);
+    c.wealth = Math.max(1, Math.min(5, 1 + Math.floor(q * 5)));
+  }
   // Vocação do estado: o setor em que ele mais se destaca entre os estados.
   const smean = zero();
   for (const s of stateShares.values())
     for (const k of SECTORS) smean[k] += s[k] / Math.max(1, stateShares.size);
-  for (const [id, s] of stateShares)
-    states.get(id)!.main = SECTORS.reduce(
-      (a, k) => (s[k] / Math.max(0.03, smean[k]) > s[a] / Math.max(0.03, smean[a]) ? k : a),
-      "agricultura" as Sector,
-    );
+  for (const [id, s] of stateShares) {
+    const e = states.get(id)!;
+    const pick = stateChoices?.get(id)?.vocacao;
+    e.chosen = !!pick;
+    e.main =
+      pick ??
+      SECTORS.reduce(
+        (a, k) => (s[k] / Math.max(0.03, smean[k]) > s[a] / Math.max(0.03, smean[a]) ? k : a),
+        "agricultura" as Sector,
+      );
+  }
   return { cities, states };
 }

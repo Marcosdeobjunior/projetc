@@ -15,6 +15,8 @@ import { KM_PER_CELL, type BurgMeta } from "./worldDraw";
 import { PlaceFlag } from "./PlaceFlag";
 import {
   type computeEconomy,
+  WEALTH_COLORS,
+  WEALTH_LABEL,
   money,
   SECTOR_COLORS,
   SECTORS,
@@ -22,6 +24,7 @@ import {
   type Sector,
 } from "../world/economy";
 import { Icon } from "./Icon";
+import { Select } from "./Select";
 
 /** Parcela de cada item (por contagem de células), dos maiores aos menores. */
 function shares(counts: Map<number, number>, total: number, top = 4) {
@@ -63,6 +66,7 @@ export function StateDialog({
   meta,
   capitals,
   economy,
+  onStateFields,
   note,
   attachments,
   onClose,
@@ -78,6 +82,8 @@ export function StateDialog({
   meta: Map<string, BurgMeta>;
   capitals: Set<string>;
   economy: ReturnType<typeof computeEconomy>;
+  /** Grava campos na ficha do estado (vocação e riqueza escolhidas). */
+  onStateFields(patch: Record<string, string>): void;
   note: Note | undefined;
   attachments: string[];
   onClose(): void;
@@ -410,6 +416,47 @@ export function StateDialog({
               }
               return (
                 <>
+                  <div className="state-econ-pick">
+                    <label>
+                      <span>Riqueza</span>
+                      <Select
+                        value={e.wealthChosen ? e.wealth : "auto"}
+                        options={[
+                          {
+                            value: "auto",
+                            label: `Pelo lugar: ${WEALTH_LABEL[e.wealth].toLowerCase()}`,
+                          },
+                          { value: "rico", label: "Rico" },
+                          { value: "medio", label: "Médio" },
+                          { value: "pobre", label: "Pobre" },
+                        ]}
+                        onChange={(v) => onStateFields({ riqueza: v === "auto" ? "" : v })}
+                      />
+                    </label>
+                    <label>
+                      <span>Vocação</span>
+                      <Select
+                        value={e.chosen ? e.main : "auto"}
+                        options={[
+                          {
+                            value: "auto",
+                            label: e.chosen
+                              ? "Pelo lugar (automática)"
+                              : `Pelo lugar: ${sectorLabel(e.main, era)}`,
+                          },
+                          ...SECTORS.map((s) => ({ value: s, label: sectorLabel(s, era) })),
+                        ]}
+                        onChange={(v) => onStateFields({ vocacao: v === "auto" ? "" : v })}
+                      />
+                    </label>
+                  </div>
+                  <p className="state-wealth" style={{ borderColor: WEALTH_COLORS[e.wealth] }}>
+                    <b style={{ color: WEALTH_COLORS[e.wealth] }}>
+                      {era === "atual" ? "Estado" : "Reino"} {WEALTH_LABEL[e.wealth].toLowerCase()}
+                    </b>{" "}
+                    · {e.rank}º de {economy.states.size} em renda por pessoa · desenvolvimento{" "}
+                    {e.development.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}× a média
+                  </p>
                   <p className="state-vocation">
                     <span className="state-swatch" style={{ background: SECTOR_COLORS[e.main] }} />
                     Vocação: <b>{sectorLabel(e.main, era)}</b>
@@ -483,7 +530,9 @@ export function StateDialog({
                   </section>
                   <p className="state-note">
                     A vocação vem do lugar (terra, costa, serras, matas, rios, estradas, lugares
-                    famosos) e do tamanho das cidades. Mude a de uma cidade no Editar povoado.
+                    famosos) e do tamanho das cidades; a riqueza, do acesso ao mar, da terra, do
+                    clima, das estradas, das minas e da história de cada um. Escolha outras aqui, e
+                    a vocação de uma cidade na ficha dela.
                   </p>
                 </>
               );
