@@ -88,12 +88,8 @@ export function paintTerrain(
           if (v >= SEA) n = v + (Math.min(254, SNOW + 14) - v) * Math.min(1, 0.3 * f * k);
           break;
         case "lago":
-          // Fundo da bacia baixo (mas ainda terra) e borda um pouco mais alta,
-          // para a água ficar presa e formar um lago.
-          if (v >= SEA) {
-            if (d < 0.72) n = Math.max(SEA, v - 10 * f * k);
-            else n = Math.min(255, v + 3 * k);
-          }
+          // Fundo da bacia baixo (mas ainda terra); a borda é tratada depois.
+          if (v >= SEA && d < 0.72) n = Math.max(SEA, v - 10 * f * k);
           break;
         case "elevar":
           n = v + 6 * f * k + (v < SEA ? 4 * f * k : 0);
@@ -120,6 +116,22 @@ export function paintTerrain(
       }
       out[i] = Math.max(0, Math.min(255, Math.round(n)));
     }
+  if (kind === "lago") {
+    // Borda da bacia: um pouco acima do fundo mais alto, para a água ficar presa
+    // (o lago enche até transbordar pela borda).
+    let floor = 0;
+    const ring: number[] = [];
+    for (let cy = Math.max(0, Math.floor(y - r)); cy <= Math.min(ROWS - 1, Math.ceil(y + r)); cy++)
+      for (let cx = Math.floor(x - r); cx <= Math.ceil(x + r); cx++) {
+        const d = Math.hypot(cx + 0.5 - x, cy + 0.5 - y) / r;
+        if (d >= 1) continue;
+        const i = cy * COLS + wrapCol(cx);
+        if (out[i]! < SEA) continue;
+        if (d < 0.72) floor = Math.max(floor, out[i]!);
+        else ring.push(i);
+      }
+    for (const i of ring) out[i] = Math.min(255, Math.max(out[i]!, floor + 2));
+  }
   return out;
 }
 

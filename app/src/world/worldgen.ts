@@ -46,6 +46,8 @@ export interface WorldOptions {
   burgs: number;
   /** Época do mundo: muda nomes, governos, marcadores e o estilo do mapa. */
   era?: Era;
+  /** Terras nos polos (um continente gelado no sul, ilhas e terras no norte). */
+  polar?: boolean;
 }
 
 export type Era = "fantasia" | "atual";
@@ -308,6 +310,7 @@ export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
   land: 0.34,
   states: 7,
   burgs: 50,
+  polar: true,
 };
 
 /* ---------- Ruído ---------- */
@@ -561,6 +564,20 @@ function generateHeights(o: WorldOptions): Uint8Array {
     }
   }
   const continents = o.template === "continentes";
+  // Terras polares: um continente gelado no polo sul (como a Antártida) e, no
+  // norte, uma terra grande e algumas ilhas (como a Groenlândia e o Ártico).
+  const polarOn = o.polar !== false;
+  const polarBlobs: { lat: number; lon: number; r: number }[] = [];
+  if (polarOn) {
+    polarBlobs.push({ lat: -90, lon: 0, r: between(0.1, 0.15) });
+    const north = 1 + Math.floor(rand() * 3);
+    for (let k = 0; k < north; k++)
+      polarBlobs.push({
+        lat: between(72, 84),
+        lon: between(-180, 180),
+        r: k === 0 ? between(0.06, 0.09) : between(0.025, 0.045),
+      });
+  }
 
   const raw = new Float32Array(COLS * ROWS);
   // O relevo sem os vãos entre continentes: dele sai a profundidade do mar (os
@@ -570,36 +587,87 @@ function generateHeights(o: WorldOptions): Uint8Array {
   const noise3 = makeNoise3(rand);
   const o1 = [rand() * 50, rand() * 50, rand() * 50] as const;
   const o2 = [rand() * 50, rand() * 50, rand() * 50] as const;
-  const centers = blobs.map((b) => ({
-    p: cellOnSphere((b.x / aspect) * COLS, b.y * ROWS),
+  // Cada continente é um corpo principal com 1 a 3 lobos de lado (penínsulas e
+  // subcontinentes), para não ficar redondo; os lobos são do mesmo continente.
+  const centers: { p: [number, number, number]; r: number; id: number }[] = [];
+  blobs.forEach((b, id) => {
+    centers.push({ p: cellOnSphere((b.x / aspect) * COLS, b.y * ROWS), r: b.r, id });
+    if (!continents) return;
+    const lobes = 1 + Math.floor(rand() * 3);
+    for (let k = 0; k < lobes; k++) {
+      const a = rand() * Math.PI * 2;
+      const dist = b.r * between(0.55, 0.95);
+      const lx = b.x + (Math.cos(a) * dist * 2) / Math.max(0.35, Math.sin(b.y * Math.PI));
+      const ly = Math.min(0.78, Math.max(0.22, b.y + Math.sin(a) * dist));
+      centers.push({
+        p: cellOnSphere(((((lx % aspect) + aspect) % aspect) / aspect) * COLS, ly * ROWS),
+        r: b.r * between(0.35, 0.6),
+        id,
+      });
+    }
+  });
+  const polarCenters = polarBlobs.map((b) => ({
+    p: cellOnSphere(((b.lon + 180) / 360) * COLS, ((90 - b.lat) / 180) * ROWS),
     r: b.r,
   }));
+  // Deformação do espaço (domain warping): bordas irregulares, penínsulas e golfos.
+  const o4 = [o2[0] + 11.7, o2[1] + 5.3, o2[2] + 23.9] as const;
+  const polarMask = new Float32Array(COLS * ROWS);
+  const per = new Float32Array(blobs.length);
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       const [px, py, pz] = cellOnSphere(x + 0.5, y + 0.5);
+      const wa = continents ? 0.3 : 0.22;
+      const qx = px + wa * noise3(px * 1.9 + o4[0], py * 1.9 + o4[1], pz * 1.9 + o4[2], 3);
+      const qy = py + wa * noise3(px * 1.9 + o4[1], py * 1.9 + o4[2], pz * 1.9 + o4[0], 3);
+      const qz = pz + wa * noise3(px * 1.9 + o4[2], py * 1.9 + o4[0], pz * 1.9 + o4[1], 3);
+      const ql = Math.hypot(qx, qy, qz) || 1;
+      const wx = qx / ql;
+      const wy = qy / ql;
+      const wz = qz / ql;
       let mask = 0;
       let m1 = -Infinity;
       let m2 = -Infinity;
+      let pm = 0;
+      per.fill(-Infinity);
+      for (const b of polarCenters) {
+        const dot = wx * b.p[0] + wy * b.p[1] + wz * b.p[2];
+        const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI;
+        pm = Math.max(pm, 1 - ang / b.r);
+      }
+      polarMask[y * COLS + x] = Math.max(0, pm);
       for (const b of centers) {
-        const dot = px * b.p[0] + py * b.p[1] + pz * b.p[2];
+        const dot = wx * b.p[0] + wy * b.p[1] + wz * b.p[2];
         const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI; // 0 a 1 (meia volta)
         const v = 1 - ang / b.r;
         mask = Math.max(mask, v);
+        per[b.id] = Math.max(per[b.id]!, v);
+      }
+      for (const v of per)
         if (v > m1) {
           m2 = m1;
           m1 = v;
         } else if (v > m2) m2 = v;
-      }
       const n = noise3(px * 1.05 + o1[0], py * 1.05 + o1[1], pz * 1.05 + o1[2]);
       const ridge = 1 - Math.abs(noise3(px * 1.6 + o2[0], py * 1.6 + o2[1], pz * 1.6 + o2[2], 4));
+      // Serras junto às bordas dos continentes (como os Andes e as Rochosas) e
+      // interiores mais planos; o resto do relevo vem do ruído em cristas.
+      const edgeBand = Math.exp(-(((mask - 0.18) / 0.16) ** 2));
+      const relief = ridge * ridge * (0.08 + 0.3 * edgeBand);
+      const i = y * COLS + x;
       if (continents) {
         // Oceano entre continentes: onde dois centros "puxam" quase igual, afunda.
         const gap = Math.max(0, 1 - (m1 - m2) / 0.35);
-        plain[y * COLS + x] = mask * 0.75 + n * 0.3 + ridge * ridge * 0.12;
-        raw[y * COLS + x] = plain[y * COLS + x]! - gap * gap * 0.45;
+        plain[i] = mask * 0.75 + n * 0.3 + relief;
+        raw[i] = plain[i]! - gap * gap * 0.45;
       } else {
-        raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12;
-        plain[y * COLS + x] = raw[y * COLS + x]!;
+        raw[i] = mask * 0.55 + n * 0.5 + relief;
+        plain[i] = raw[i]!;
+      }
+      if (pm > 0) {
+        const polarLand = pm * 0.8 + n * 0.25 + relief;
+        raw[i] = Math.max(raw[i]!, polarLand);
+        plain[i] = Math.max(plain[i]!, polarLand);
       }
     }
   }
@@ -629,6 +697,10 @@ function generateHeights(o: WorldOptions): Uint8Array {
     for (let y = 0; y < ROWS; y++)
       for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = plain[y * COLS + wrapCol(x + bestX)]!;
     plain.set(rolled);
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        rolled[y * COLS + x] = polarMask[y * COLS + wrapCol(x + bestX)]!;
+    polarMask.set(rolled);
   }
   // Afasta a terra dos polos e da borda de 180° aos poucos, com um limite que
   // ondula pelo ruído: a costa segue o relevo e não vira uma linha reta ao longo
@@ -649,9 +721,13 @@ function generateHeights(o: WorldOptions): Uint8Array {
         const w = noise3(px * 2.3 + o3[0], py * 2.3 + o3[1], pz * 2.3 + o3[2], 3);
         const w2 = noise3(px * 7 + o3[1], py * 7 + o3[2], pz * 7 + o3[0], 2);
         const limit = 50 + w * 8 + w2 * 12;
-        const polar = smooth((lat - limit) / 24);
+        // Terras polares ficam (não são afastadas do polo nem da borda).
+        const keep = polarOn ? smooth(polarMask[y * COLS + x]! * 4) : 0;
+        const polar = smooth((lat - limit) / 24) * (1 - keep);
         const edge = Math.min(x + 0.5, COLS - x - 0.5);
-        const side = smooth(1 - (edge - 2) / (10 + w * 5 + w2 * 2));
+        const side =
+          smooth(1 - (edge - 2) / (10 + w * 5 + w2 * 2)) *
+          (polarOn && lat > 60 ? 1 - smooth((lat - 60) / 8) : 1);
         // Mais um pouco de detalhe miúdo em toda costa (recortes, cabos e baías).
         raw[y * COLS + x]! -= Math.max(polar, side) * 1.0 - w2 * 0.12;
       }
@@ -677,10 +753,12 @@ function generateHeights(o: WorldOptions): Uint8Array {
   for (let y = 0; y < ROWS; y++) {
     const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
     // Garantia final (quase nunca age, porque a terra já foi afastada acima).
-    const polar = Math.min(1, Math.max(0, (lat - 70) / 6));
+    const polar = polarOn ? 0 : Math.min(1, Math.max(0, (lat - 70) / 6));
     for (let x = 0; x < COLS; x++) {
       const edge = Math.min(x + 0.5, COLS - x - 0.5);
-      const f = Math.max(polar, Math.max(0, 1 - edge / 3));
+      // Com terras polares, a borda de 180° pode cortar só o continente do polo.
+      const seam = polarOn && lat > 62 ? 0 : Math.max(0, 1 - edge / 3);
+      const f = Math.max(polar, seam);
       if (f <= 0) continue;
       const i = y * COLS + x;
       const v = out[i]!;
@@ -1993,6 +2071,7 @@ export function parseWorld(raw: string): WorldMap | null {
       states: Math.min(30, Math.max(1, Math.round(num(o.states) ?? DEFAULT_OPTIONS.states))),
       burgs: Math.min(300, Math.max(1, Math.round(num(o.burgs) ?? DEFAULT_OPTIONS.burgs))),
       ...(ERAS.some((e) => e.value === o.era) && o.era !== "fantasia" ? { era: o.era as Era } : {}),
+      ...(o.polar === true ? { polar: true } : {}),
     };
     const burgs: Burg[] = [];
     for (const b of Array.isArray(d.burgs)

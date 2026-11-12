@@ -281,6 +281,14 @@ function GenerateForm({
           onChange={(e) => setO({ ...o, burgs: Math.max(+e.target.value, o.states) })}
         />
       </label>
+      <label className="region-check">
+        <input
+          type="checkbox"
+          checked={o.polar !== false}
+          onChange={(e) => setO({ ...o, polar: e.target.checked })}
+        />
+        Terras nos polos (continente gelado no sul, ilhas no norte)
+      </label>
       <button type="submit" className="btn primary" disabled={busy}>
         <Icon name="refresh" size={15} /> {busy ? "Gerando…" : submitLabel}
       </button>

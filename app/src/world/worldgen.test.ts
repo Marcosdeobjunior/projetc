@@ -211,7 +211,7 @@ describe("mapa plano sem cortes", () => {
   it("nenhum continente cruza a borda de 180° nem chega aos polos", () => {
     for (const seed of [41, 42, 43]) {
       for (const template of ["continentes", "ilhas", "pangeia"] as const) {
-        const m = generateWorld({ ...DEFAULT_OPTIONS, seed, template });
+        const m = generateWorld({ ...DEFAULT_OPTIONS, seed, template, polar: false });
         for (let y = 0; y < ROWS; y++) {
           expect(m.heights[y * COLS]!).toBeLessThan(SEA);
           expect(m.heights[y * COLS + COLS - 1]!).toBeLessThan(SEA);
@@ -219,6 +219,22 @@ describe("mapa plano sem cortes", () => {
         for (const y of [0, 1, 2, ROWS - 3, ROWS - 2, ROWS - 1])
           for (let x = 0; x < COLS; x++) expect(m.heights[y * COLS + x]!).toBeLessThan(SEA);
       }
+    }
+  }, 60000);
+
+  it("com terras polares, há um continente no polo sul e terras no norte", () => {
+    for (const seed of [44, 45]) {
+      const m = generateWorld({ ...DEFAULT_OPTIONS, seed, polar: true });
+      let south = 0;
+      let north = 0;
+      for (let y = 0; y < ROWS; y++)
+        for (let x = 0; x < COLS; x++) {
+          if (m.heights[y * COLS + x]! < SEA) continue;
+          if (y > ROWS - 20) south++;
+          if (y < 20) north++;
+        }
+      expect(south).toBeGreaterThan(COLS * 5);
+      expect(north).toBeGreaterThan(20);
     }
   }, 60000);
 });

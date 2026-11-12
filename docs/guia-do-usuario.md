@@ -1106,7 +1106,11 @@ há terra nas latitudes muito altas (onde o plano deforma). No mapa plano, como 
 fica perto dos polos aparece esticado na horizontal, e a sobra acima e abaixo mostra o que existe
 do outro lado do polo. Na primeira vez, escolha o **tipo de
 mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
-**cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
+**cidades**, se há **terras nos polos**, e clique em **Gerar mapa**. Em Continentes, o app cria de
+3 a 6 continentes separados por oceano, cada um com penínsulas, golfos e serras junto às bordas
+(como os Andes); com terras nos polos, há um continente gelado no polo sul e uma terra grande com
+ilhas no norte (no mapa plano, como em todo mapa-múndi, elas aparecem esticadas; no globo, no
+tamanho real). O app cria continentes com relevo, clima e **biomas**
 (desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que
 descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
 inventados) e **estradas** entre elas.

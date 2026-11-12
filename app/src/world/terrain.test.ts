@@ -61,7 +61,17 @@ describe("editar terreno", () => {
       const x = (i % COLS) + 0.5;
       const y = Math.floor(i / COLS) + 0.5;
       return (
-        v > SEA + 20 && y > 40 && y < 140 && m.burgs.every((q) => Math.hypot(q.x - x, q.y - y) > 6)
+        v > SEA + 20 &&
+        // longe do mar (uma bacia colada à costa vira enseada, não lago)
+        [-5, 0, 5].every((dy) =>
+          [-5, 0, 5].every(
+            (dx) =>
+              m.heights[(Math.floor(y) + dy) * COLS + ((Math.floor(x) + dx + COLS) % COLS)]! >= SEA,
+          ),
+        ) &&
+        y > 40 &&
+        y < 140 &&
+        m.burgs.every((q) => Math.hypot(q.x - x, q.y - y) > 6)
       );
     });
     const lx = (spot % COLS) + 0.5;
