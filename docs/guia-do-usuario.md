@@ -1182,6 +1182,17 @@ inventados) e **estradas** entre elas.
   seu (o gerado some e fica a cópia); **Tirar do mapa** esconde um gerado, e **Excluir** apaga um
   seu. Tudo entra no Desfazer. Províncias, religiões e
   marcadores saem do mapa e se refazem sozinhos quando ele muda.
+- **Economia:** cada cidade tem uma **vocação** (o caminho da sua economia) tirada do lugar: terra
+  boa e rio dão agricultura, campos dão pecuária, a costa dá pesca e comércio, serras e minas dão
+  mineração, matas dão madeira, cidades grandes e capitais dão indústria e serviços, e praias
+  quentes, picos nevados, termas, parques e ruínas dão turismo (na fantasia, peregrinação). A
+  vocação é o setor em que a cidade mais se destaca no mundo, então há caminhos diferentes. No
+  **Editar povoado**, a seção **Economia** mostra os principais setores, o que a cidade produz, a
+  riqueza (de 1 a 5 estrelas), a renda por pessoa e o PIB, e deixa escolher outra vocação (fica
+  na ficha, campo `vocacao`). A ficha do estado tem a aba **Economia**: vocação, PIB, renda por
+  pessoa, setores, principais produtos e cidades por vocação (o estado soma as cidades e o
+  campo). O estilo **Economia** pinta cada estado pela vocação, com a legenda na aba Legendas.
+  Na fantasia os valores são em moedas; no mundo Real, em dólares.
 - **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
   República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do
   reino; os textos mostram o nome completo ("Reino de Faeris").
@@ -1197,7 +1208,7 @@ inventados) e **estradas** entre elas.
   de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
   ponto sob o mouse.
 - **Estilo:** **Biomas**, **Relevo** (cores de altitude), **Político** (estados em cores
-  chapadas, como num atlas), **Culturas** ou **Religiões**. **Camadas** liga e desliga rios,
+  chapadas, como num atlas), **Culturas**, **Religiões** ou **Economia**. **Camadas** liga e desliga rios,
   estradas, fronteiras, a cor dos estados, províncias, cidades, marcadores e nomes.
 - **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade, num estado ou num
   marcador para editar; arraste uma cidade ou um marcador para mudá-lo de lugar), **Terreno**,

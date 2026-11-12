@@ -15,6 +15,7 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { computeEconomy, SECTOR_COLORS, SECTORS, sectorLabel, type Sector } from "../world/economy";
 import { BRUSHES, paintTerrain, settleOnLand, type BrushKind } from "../world/terrain";
 import { MarkerDialog } from "./MarkerDialog";
 import { StateDialog } from "./StateDialog";
@@ -415,12 +416,14 @@ function WorldEditor({
     [geo, derived, socKey],
   );
   const provinceVectors = useMemo(() => buildProvinceVectors(society, derived), [society, derived]);
-  const base = useMemo(
+  const baseMain = useMemo(
     () =>
-      bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados, undefined, {
-        cells: society.religion,
-        colors: society.religions.map((r) => r.color),
-      }),
+      mode === "economia"
+        ? null
+        : bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados, undefined, {
+            cells: society.religion,
+            colors: society.religions.map((r) => r.color),
+          }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [geo, derived, mode, layers.estados, colorKey, mode === "religioes" ? society : null],
   );
@@ -516,6 +519,29 @@ function WorldEditor({
     }
     return m;
   }, [map.burgs, capitals, heights, derived, session.project.notes]);
+  // Economia: vocação de cada cidade (pelo lugar, ou a escolhida na ficha) e dos estados.
+  const economy = useMemo(() => {
+    const notesById = new Map(session.project.notes.map((n) => [n.id, n]));
+    const chosen = new Map<string, Sector>();
+    for (const b of map.burgs) {
+      const v = b.noteId ? notesById.get(b.noteId)?.fields?.vocacao : undefined;
+      if (v && (SECTORS as readonly string[]).includes(v)) chosen.set(b.id, v as Sector);
+    }
+    const population = new Map([...meta].map(([id, m]) => [id, m.population]));
+    return computeEconomy({ map, d: derived, society, population, chosen });
+  }, [map, derived, society, meta, session.project.notes]);
+  const base = useMemo(
+    () =>
+      baseMain ??
+      bakeBase({ ...geo, states: map.states }, derived, "economia", true, undefined, {
+        cells: derived.owner,
+        colors: map.states.map(
+          (s) => SECTOR_COLORS[economy.states.get(s.id)?.main ?? "agricultura"],
+        ),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseMain, economy],
+  );
   // População do mundo: as cidades do mapa mais o campo (pela área habitável e a época).
   const rural = useMemo(() => ruralPopulation(derived), [derived]);
   let cityPop = 0;
@@ -1259,6 +1285,7 @@ function WorldEditor({
             society={society}
             meta={meta}
             capitals={capitals}
+            economy={economy}
             note={session.project.notes.find((n) => n.id === state.noteId)}
             attachments={session.attachments}
             onClose={() => setSelected(null)}
@@ -1287,6 +1314,8 @@ function WorldEditor({
             heights={map.heights}
             derived={derived}
             cultures={map.cultures ?? []}
+            economy={economy.cities.get(burg.id)}
+            era={map.options.era ?? "fantasia"}
             attachments={session.attachments}
             onClose={() => setSelected(null)}
             onRename={(name) => {
@@ -1640,6 +1669,7 @@ function WorldEditor({
                         ["politico", "Político"],
                         ["culturas", "Culturas"],
                         ["religioes", "Religiões"],
+                        ["economia", "Economia"],
                       ] as const
                     ).map(([v, l]) => (
                       <button
@@ -1877,6 +1907,24 @@ function WorldEditor({
                   </button>
                 </section>
               )}
+              <section className="profile-card wm-legend wm-cultures">
+                <h3>Economia (vocação)</h3>
+                <ul>
+                  {SECTORS.map((s) => (
+                    <li key={s}>
+                      <span style={{ background: SECTOR_COLORS[s] }} />
+                      <div>
+                        {sectorLabel(s, map.options.era ?? "fantasia")}
+                        <small>
+                          {[...economy.cities.values()].filter((c) => c.main === s).length} cidades
+                          · {[...economy.states.values()].filter((c) => c.main === s).length}{" "}
+                          estados
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
               <section className="profile-card wm-legend">
                 <h3>Biomas</h3>
                 <ul>

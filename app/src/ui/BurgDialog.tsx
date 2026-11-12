@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 import type { Note } from "../manuscript/types";
-import type { Burg, Derived } from "../world/worldgen";
+import type { Burg, Derived, Era } from "../world/worldgen";
 import { generateVillage, serializeMapOptions } from "../world/village";
 import { generateEmblem, parseEmblemOptions } from "../world/heraldry";
 import { hashSeed } from "../world/geom";
@@ -18,6 +18,7 @@ import { PlaceMap } from "./PlaceMap";
 import { EmblemArt } from "./EmblemArt";
 import { Icon } from "./Icon";
 import { Select } from "./Select";
+import { money, SECTOR_COLORS, SECTORS, sectorLabel, type CityEconomy } from "../world/economy";
 import { useAttachmentImage } from "./NoteProfile";
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32);
@@ -34,6 +35,8 @@ export function BurgDialog({
   heights,
   derived,
   cultures,
+  economy,
+  era = "fantasia",
   attachments,
   onClose,
   onRename,
@@ -49,6 +52,9 @@ export function BurgDialog({
   heights: Uint8Array;
   derived: Derived;
   cultures?: { name: string }[];
+  /** Economia da cidade (vocação, setores, produtos, renda). */
+  economy?: CityEconomy;
+  era?: Era;
   attachments: string[];
   onClose(): void;
   onRename(name: string): void;
@@ -246,6 +252,55 @@ export function BurgDialog({
               ))}
             </div>
           </div>
+          {economy && (
+            <section className="burg-economy" aria-label="Economia">
+              <div className="burg-economy-head">
+                <span>Economia</span>
+                <Select
+                  value={economy.chosen ? economy.main : "auto"}
+                  options={[
+                    {
+                      value: "auto",
+                      label: economy.chosen
+                        ? "Pelo lugar (automática)"
+                        : `Pelo lugar: ${sectorLabel(economy.main, era)}`,
+                    },
+                    ...SECTORS.map((s) => ({ value: s, label: sectorLabel(s, era) })),
+                  ]}
+                  onChange={(v) => onFields({ vocacao: v === "auto" ? "" : v })}
+                />
+              </div>
+              <ul className="state-bars">
+                {[...SECTORS]
+                  .sort((a, b) => economy.shares[b] - economy.shares[a])
+                  .slice(0, 4)
+                  .map((s) => (
+                    <li key={s}>
+                      <span className="state-bar-label">{sectorLabel(s, era)}</span>
+                      <span className="state-bar">
+                        <i
+                          style={{
+                            width: `${Math.round(economy.shares[s] * 100)}%`,
+                            background: SECTOR_COLORS[s],
+                          }}
+                        />
+                      </span>
+                      <span className="state-bar-pct">{Math.round(economy.shares[s] * 100)}%</span>
+                    </li>
+                  ))}
+              </ul>
+              <p className="burg-stat">
+                <span>Produz</span>
+                {economy.products.join(", ")}
+              </p>
+              <p className="burg-stat">
+                <span>Riqueza</span>
+                {"★".repeat(economy.wealth)}
+                {"☆".repeat(5 - economy.wealth)} · {money(economy.perCapita, era)} por pessoa/ano ·
+                PIB {money(economy.perCapita * info.population, era)}
+              </p>
+            </section>
+          )}
           <label className="burg-tags">
             <span>Etiquetas</span>
             <input

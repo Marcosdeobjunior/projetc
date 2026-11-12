@@ -13,6 +13,14 @@ import { markerIcon, type Society } from "../world/society";
 import { bigNumber, cellPopulation, metres } from "../world/settlement";
 import { KM_PER_CELL, type BurgMeta } from "./worldDraw";
 import { PlaceFlag } from "./PlaceFlag";
+import {
+  type computeEconomy,
+  money,
+  SECTOR_COLORS,
+  SECTORS,
+  sectorLabel,
+  type Sector,
+} from "../world/economy";
 import { Icon } from "./Icon";
 
 /** Parcela de cada item (por contagem de células), dos maiores aos menores. */
@@ -54,6 +62,7 @@ export function StateDialog({
   society,
   meta,
   capitals,
+  economy,
   note,
   attachments,
   onClose,
@@ -68,6 +77,7 @@ export function StateDialog({
   society: Society;
   meta: Map<string, BurgMeta>;
   capitals: Set<string>;
+  economy: ReturnType<typeof computeEconomy>;
   note: Note | undefined;
   attachments: string[];
   onClose(): void;
@@ -77,7 +87,7 @@ export function StateDialog({
 }) {
   const [pos, setPos] = useState({ x: 140, y: 12 });
   const [min, setMin] = useState(false);
-  const [tab, setTab] = useState<"geral" | "cidades">("geral");
+  const [tab, setTab] = useState<"geral" | "economia" | "cidades">("geral");
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const k = map.states.indexOf(state);
 
@@ -247,6 +257,14 @@ export function StateDialog({
             >
               Cidades ({info.cities.length})
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "economia"}
+              onClick={() => setTab("economia")}
+            >
+              Economia
+            </button>
           </div>
 
           {tab === "geral" ? (
@@ -379,6 +397,97 @@ export function StateDialog({
                 </section>
               )}
             </>
+          ) : tab === "economia" ? (
+            (() => {
+              const e = economy.states.get(state.id);
+              if (!e) return null;
+              const era = map.options.era ?? "fantasia";
+              const byMain = new Map<string, string[]>();
+              for (const c of info.cities) {
+                const ce = economy.cities.get(c.b.id);
+                if (!ce) continue;
+                byMain.set(ce.main, [...(byMain.get(ce.main) ?? []), c.b.name]);
+              }
+              return (
+                <>
+                  <p className="state-vocation">
+                    <span className="state-swatch" style={{ background: SECTOR_COLORS[e.main] }} />
+                    Vocação: <b>{sectorLabel(e.main, era)}</b>
+                    <small>
+                      (o que mais se destaca entre os estados
+                      {(() => {
+                        const top = [...SECTORS].sort((a, b) => e.shares[b] - e.shares[a])[0]!;
+                        return top !== e.main
+                          ? `; o maior setor é ${sectorLabel(top, era).toLowerCase()}`
+                          : "";
+                      })()}
+                      )
+                    </small>
+                  </p>
+                  <dl className="wm-stats state-stats">
+                    <div>
+                      <dd>{money(e.gdp, era)}</dd>
+                      <dt>PIB por ano</dt>
+                    </div>
+                    <div>
+                      <dd>{money(e.perCapita, era)}</dd>
+                      <dt>por pessoa</dt>
+                    </div>
+                    <div>
+                      <dd>{bigNumber(e.population)}</dd>
+                      <dt>habitantes</dt>
+                    </div>
+                    <div>
+                      <dd>{info.cities.filter((c) => c.port).length}</dd>
+                      <dt>portos</dt>
+                    </div>
+                  </dl>
+                  <section className="state-block">
+                    <h4>Setores</h4>
+                    <Bars
+                      items={[...SECTORS]
+                        .sort((a, b) => e.shares[b] - e.shares[a])
+                        .filter((s) => e.shares[s] >= 0.02)
+                        .map((s) => ({
+                          label: sectorLabel(s, era),
+                          pct: Math.round(e.shares[s] * 100),
+                          color: SECTOR_COLORS[s],
+                        }))}
+                    />
+                  </section>
+                  {e.products.length > 0 && (
+                    <section className="state-block">
+                      <h4>Principais produtos</h4>
+                      <div className="state-chips">
+                        {e.products.map((p) => (
+                          <span key={p} className="state-chip">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                  <section className="state-block">
+                    <h4>Cidades por vocação</h4>
+                    <ul className="state-places">
+                      {[...byMain].map(([s, names]) => (
+                        <li key={s}>
+                          <span
+                            className="state-swatch"
+                            style={{ background: SECTOR_COLORS[s as Sector] }}
+                          />{" "}
+                          <b>{sectorLabel(s as Sector, era)}:</b> {names.join(", ")}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  <p className="state-note">
+                    A vocação vem do lugar (terra, costa, serras, matas, rios, estradas, lugares
+                    famosos) e do tamanho das cidades. Mude a de uma cidade no Editar povoado.
+                  </p>
+                </>
+              );
+            })()
           ) : (
             <table className="state-cities">
               <thead>

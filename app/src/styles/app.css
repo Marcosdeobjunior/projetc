@@ -9553,3 +9553,53 @@ select option {
 .wm-terrain:has(~ .wm-tools.compact) {
   left: 64px;
 }
+
+/* ---------- Economia ---------- */
+.burg-economy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.burg-economy-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.burg-economy-head > span {
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.burg-economy .state-bars li {
+  grid-template-columns: 130px minmax(0, 1fr) 36px;
+}
+.state-vocation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 14px var(--font-ui);
+  color: var(--fg);
+}
+.state-chip {
+  display: inline-flex;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  font: 12.5px var(--font-ui);
+  color: var(--fg);
+}
+.state-vocation small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.state-vocation {
+  flex-wrap: wrap;
+}

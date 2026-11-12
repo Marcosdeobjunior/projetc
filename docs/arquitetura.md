@@ -453,6 +453,13 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- Economia (`world/economy.ts`, `computeEconomy`): por cidade, pontuação de 9 setores pelo
+  entorno (biomas num raio de 2 células, umidade, rio, costa, lago, altitude, marcadores
+  próximos, estradas, população, capital e época); a vocação é o setor de maior vantagem
+  relativa (pontuação ÷ média do mundo), ou a do campo `vocacao` da ficha. Renda por pessoa e
+  riqueza vêm do valor dos setores, do tamanho e das ligações. Estados: 55% cidades (pela
+  população) + 45% campo (`cellPopulation` por bioma), vocação também relativa; PIB = cidades +
+  campo. O estilo `economia` de `bakeBase` pinta a cor da vocação de cada estado.
 - Editar terreno (`world/terrain.ts`): `paintTerrain` aplica um pincel (terra, mar, montanha, neve,
   lago, elevar, rebaixar, suavizar, aplainar) às alturas, com queda suave e ruído fixo por
   célula; `settleOnLand` leva cidades e centros de povos que ficaram no mar para a terra mais
