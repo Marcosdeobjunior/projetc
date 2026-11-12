@@ -578,27 +578,57 @@ function generateHeights(o: WorldOptions): Uint8Array {
       for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = raw[y * COLS + wrapCol(x + bestX)]!;
     raw.set(rolled);
   }
+  // Afasta a terra dos polos e da borda de 180° aos poucos, com um limite que
+  // ondula pelo ruído: a costa segue o relevo e não vira uma linha reta ao longo
+  // de um paralelo ou de um meridiano.
+  // Guarda o relevo antes do afastamento: a profundidade do mar vem dele (o mar
+  // não fica artificialmente fundo perto dos polos e da borda).
+  const before = Float32Array.from(raw);
+  {
+    const o3 = [o1[0] + 17.3, o1[1] + 31.1, o1[2] + 7.9] as const;
+    const smooth = (v: number) => {
+      const c = Math.max(0, Math.min(1, v));
+      return c * c * (3 - 2 * c);
+    };
+    for (let y = 0; y < ROWS; y++) {
+      const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
+      for (let x = 0; x < COLS; x++) {
+        const [px, py, pz] = cellOnSphere(x + 0.5, y + 0.5);
+        const w = noise3(px * 2.3 + o3[0], py * 2.3 + o3[1], pz * 2.3 + o3[2], 3);
+        const w2 = noise3(px * 7 + o3[1], py * 7 + o3[2], pz * 7 + o3[0], 2);
+        const limit = 50 + w * 8 + w2 * 12;
+        const polar = smooth((lat - limit) / 24);
+        const edge = Math.min(x + 0.5, COLS - x - 0.5);
+        const side = smooth(1 - (edge - 2) / (10 + w * 5 + w2 * 2));
+        // Mais um pouco de detalhe miúdo em toda costa (recortes, cabos e baías).
+        raw[y * COLS + x]! -= Math.max(polar, side) * 1.0 - w2 * 0.12;
+      }
+    }
+  }
   // Nível do mar pela fração de terra pedida: o quantil vira 128.
   const sorted = Float32Array.from(raw).sort();
   const t = sorted[Math.floor((1 - Math.min(0.6, Math.max(0.15, o.land))) * (sorted.length - 1))]!;
-  const lo = sorted[0]!;
   const hi = sorted[sorted.length - 1]!;
   const out = new Uint8Array(COLS * ROWS);
+  const lo0 = before.reduce((a, v) => Math.min(a, v), Infinity);
   for (let i = 0; i < raw.length; i++) {
     const v = raw[i]!;
+    // No mar: a profundidade natural (terra afastada vira plataforma rasa).
+    const sea = Math.min(before[i]!, t - (t - lo0) * 0.04);
     out[i] =
       v < t
-        ? Math.round(((v - lo) / (t - lo || 1)) * 127)
+        ? Math.min(127, Math.round(((sea - lo0) / (t - lo0 || 1)) * 127))
         : Math.min(255, 128 + Math.round(Math.pow((v - t) / (hi - t || 1), 0.9) * 127));
   }
   // Mar na borda de 180° e nas latitudes altas, com profundidade média (sem faixa
   // escura nem clara): terra ali vira mar raso; o mar mantém a profundidade natural.
   for (let y = 0; y < ROWS; y++) {
     const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
-    const polar = Math.min(1, Math.max(0, (lat - 58) / 12));
+    // Garantia final (quase nunca age, porque a terra já foi afastada acima).
+    const polar = Math.min(1, Math.max(0, (lat - 70) / 6));
     for (let x = 0; x < COLS; x++) {
       const edge = Math.min(x + 0.5, COLS - x - 0.5);
-      const f = Math.max(polar, Math.max(0, 1 - edge / 12));
+      const f = Math.max(polar, Math.max(0, 1 - edge / 3));
       if (f <= 0) continue;
       const i = y * COLS + x;
       const v = out[i]!;
