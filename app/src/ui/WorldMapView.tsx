@@ -209,7 +209,7 @@ function GenerateForm({
     >
       <div className="wm-row">
         <span>Época</span>
-        <div className="segmented wide" role="radiogroup" aria-label="Época do mundo">
+        <div className="segmented wide wm-grid-2" role="radiogroup" aria-label="Época do mundo">
           {ERAS.map((e) => (
             <button
               key={e.value}
@@ -1175,18 +1175,34 @@ function WorldEditor({
                 commit({ ...map, name: e.target.value.trim() })
               }
             />
-            <p className="wm-meta">
-              {map.states.length} estados · {map.burgs.length} cidades · {derived.rivers.length}{" "}
-              rios · {derived.lakes.length} lagos
-            </p>
-            <p className="wm-meta" title="Cidades do mapa mais a população do campo">
-              População do mundo: <strong>{bigNumber(worldPop)}</strong>
-              {" · "}
-              {Math.round((cityPop / Math.max(1, worldPop)) * 100)}% nas cidades do mapa
-            </p>
-            <div className="wm-era">
-              <span>Época</span>
-              <div className="segmented wide" role="radiogroup" aria-label="Época do mapa">
+            <dl className="wm-stats">
+              {(
+                [
+                  [map.states.length, "estados"],
+                  [map.burgs.length, "cidades"],
+                  [derived.rivers.length, "rios"],
+                  [derived.lakes.length, "lagos"],
+                ] as const
+              ).map(([v, l]) => (
+                <div key={l}>
+                  <dd>{v.toLocaleString("pt-BR")}</dd>
+                  <dt>{l}</dt>
+                </div>
+              ))}
+              <div className="wm-stats-wide" title="Cidades do mapa mais a população do campo">
+                <dd>{bigNumber(worldPop)}</dd>
+                <dt>
+                  habitantes no mundo · {bigNumber(cityPop)} nas {map.burgs.length} cidades do mapa
+                </dt>
+              </div>
+            </dl>
+            <div className="wm-group">
+              <span className="wm-group-label">Época</span>
+              <div
+                className="segmented wide wm-grid-2"
+                role="radiogroup"
+                aria-label="Época do mapa"
+              >
                 {ERAS.map((e) => (
                   <button
                     key={e.value}
@@ -1203,38 +1219,44 @@ function WorldEditor({
                 ))}
               </div>
             </div>
-            <div className="wm-modes segmented wide" role="radiogroup" aria-label="Estilo do mapa">
-              {(
-                [
-                  ["biomas", "Biomas"],
-                  ["relevo", "Relevo"],
-                  ["politico", "Político"],
-                  ["culturas", "Culturas"],
-                  ["religioes", "Religiões"],
-                ] as const
-              ).map(([v, l]) => (
-                <button
-                  key={v}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === v}
-                  onClick={() => setMode(v)}
-                >
-                  {l}
-                </button>
-              ))}
+            <div className="wm-group">
+              <span className="wm-group-label">Estilo do mapa</span>
+              <div className="wm-modes" role="radiogroup" aria-label="Estilo do mapa">
+                {(
+                  [
+                    ["biomas", "Biomas"],
+                    ["relevo", "Relevo"],
+                    ["politico", "Político"],
+                    ["culturas", "Culturas"],
+                    ["religioes", "Religiões"],
+                  ] as const
+                ).map(([v, l]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === v}
+                    onClick={() => setMode(v)}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="wm-layers">
-              {LAYERS.map(([k, l]) => (
-                <label key={k} className="region-check">
-                  <input
-                    type="checkbox"
-                    checked={layers[k]}
-                    onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })}
-                  />
-                  {l}
-                </label>
-              ))}
+            <div className="wm-group">
+              <span className="wm-group-label">Camadas</span>
+              <div className="wm-layers">
+                {LAYERS.map(([k, l]) => (
+                  <label key={k} className="region-check">
+                    <input
+                      type="checkbox"
+                      checked={layers[k]}
+                      onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })}
+                    />
+                    {l}
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="wm-actions">
               <button
@@ -1245,11 +1267,16 @@ function WorldEditor({
               >
                 <Icon name="globe" size={14} /> Configurar mundo
               </button>
-              <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
-                <Icon name="refresh" size={14} /> Gerar outro mundo
-              </button>
               <button type="button" className="btn ghost sm" onClick={() => void exportPng()}>
                 <Icon name="export" size={14} /> Exportar imagem
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm wm-actions-wide"
+                aria-expanded={showGen}
+                onClick={() => setShowGen((v) => !v)}
+              >
+                <Icon name="refresh" size={14} /> Gerar outro mundo
               </button>
             </div>
             {showGen && (

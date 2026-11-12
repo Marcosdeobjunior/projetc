@@ -8675,9 +8675,25 @@ select option {
   }
 }
 .wm-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.wm-actions .btn {
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+.wm-actions .wm-actions-wide {
+  grid-column: 1 / -1;
+}
+.wm-actions .btn[aria-expanded="true"],
+.wm-actions .btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .wm.panel-closed {
   grid-template-columns: minmax(0, 1fr);
@@ -9046,17 +9062,87 @@ select option {
     grid-template-columns: 1fr;
   }
 }
-.wm-era {
+/* Painel do mapa: números do mundo e grupos de opções com título. */
+.wm-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 2px 0 0;
+}
+.wm-stats > div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  min-width: 0;
 }
-.wm-era > span {
+.wm-stats dd {
+  margin: 0;
+  font: 700 17px/1.1 var(--font-text);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.wm-stats dt {
+  font: 11px/1.2 var(--font-ui);
+  color: var(--muted);
+}
+.wm-stats .wm-stats-wide {
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel-2));
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+.wm-stats .wm-stats-wide dd {
+  font-size: 19px;
+}
+.wm-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wm-group-label,
+.wm-form .wm-row > span {
   font: 600 11px var(--font-ui);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--faint);
+}
+.segmented.wm-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.wm-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.wm-modes button {
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font: 500 12.5px var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wm-modes button:hover {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+.wm-modes button[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
 }
 .world-card-image {
   position: relative;
@@ -9087,4 +9173,13 @@ select option {
   display: block;
   width: 100%;
   height: auto;
+}
+.segmented.wm-grid-2 button {
+  width: auto;
+  justify-content: center;
+  text-align: center;
+}
+.wm-actions .btn {
+  padding-inline: 8px;
+  gap: 6px;
 }
