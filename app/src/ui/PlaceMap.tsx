@@ -17,19 +17,13 @@ export const MAP_COLORS = {
   treeEdge: "#6b7a4f",
 };
 
-/** Cores dos prédios e ruas por época: pergaminho, cidade de concreto e asfalto, ou futuro. */
+/** Cores dos prédios e ruas por época: pergaminho, ou cidade de concreto e asfalto. */
 const ERA_COLORS = {
   atual: {
     road: "#f4f4f2",
     roadEdge: "#8d9096",
     house: ["#cfd2d6", "#bfc4ca", "#dcd9d2", "#c8bfb3"],
     houseEdge: "#4a4f57",
-  },
-  futurista: {
-    road: "#2a3442",
-    roadEdge: "#3ff0ff",
-    house: ["#2f4a63", "#25405a", "#3a5874", "#1f3550"],
-    houseEdge: "#7ff6ff",
   },
 } as const;
 function colorsFor(era: VillageMap["era"]) {

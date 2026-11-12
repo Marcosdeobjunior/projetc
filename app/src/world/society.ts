@@ -52,7 +52,7 @@ export const MARKER_TYPES = {
   caverna: { icon: "🕳️", label: "Caverna" },
   bosque: { icon: "🌳", label: "Bosque sagrado" },
   batalha: { icon: "⚔️", label: "Campo de batalha" },
-  // Época atual
+  // Mundo real
   parque: { icon: "🏞️", label: "Parque nacional" },
   estancia: { icon: "♨️", label: "Estância termal" },
   hidreletrica: { icon: "⚡", label: "Usina hidrelétrica" },
@@ -65,20 +65,6 @@ export const MARKER_TYPES = {
   memorial: { icon: "🎖️", label: "Memorial de guerra" },
   aeroporto: { icon: "✈️", label: "Aeroporto internacional" },
   universidade: { icon: "🎓", label: "Universidade" },
-  // Época futurista
-  geotermica: { icon: "🌋", label: "Usina geotérmica" },
-  spa: { icon: "♨️", label: "Spa geotermal" },
-  barragem: { icon: "⚡", label: "Barragem automatizada" },
-  extracao: { icon: "🤖", label: "Extração robótica" },
-  antigas: { icon: "🏚️", label: "Ruínas da Era Antiga" },
-  hiperporto: { icon: "🚢", label: "Hiperporto" },
-  estacao: { icon: "🚄", label: "Estação maglev" },
-  bunker: { icon: "🛡️", label: "Bunker" },
-  domo: { icon: "🧬", label: "Domo biológico" },
-  exclusao: { icon: "☢️", label: "Zona de exclusão" },
-  espacoporto: { icon: "🚀", label: "Espaçoporto" },
-  arcologia: { icon: "🏙️", label: "Arcologia" },
-  elevador: { icon: "🛰️", label: "Elevador orbital" },
 } as const;
 export type MarkerType = keyof typeof MARKER_TYPES;
 
@@ -103,11 +89,6 @@ const PROVINCE_FORM: Record<StateForm, string> = {
   Federação: "Estado",
   União: "Região",
   Estado: "Departamento",
-  Corporação: "Setor",
-  Consórcio: "Distrito",
-  Diretório: "Zona",
-  Colônia: "Assentamento",
-  Hegemonia: "Domínio",
   Reino: "Condado",
   Império: "Província",
   Principado: "Marca",
@@ -150,7 +131,7 @@ type EraMarker = {
   name: (place: string) => string;
   legend: (place: string) => string;
 };
-const ERA_MARKERS: Record<"atual" | "futurista", Partial<Record<MarkerType, EraMarker>>> = {
+const ERA_MARKERS: Record<"atual", Partial<Record<MarkerType, EraMarker>>> = {
   atual: {
     vulcao: {
       type: "parque",
@@ -202,59 +183,6 @@ const ERA_MARKERS: Record<"atual" | "futurista", Partial<Record<MarkerType, EraM
       type: "memorial",
       name: (p) => `Memorial de ${p}`,
       legend: () => "Monumento aos mortos da última guerra de fronteira.",
-    },
-  },
-  futurista: {
-    vulcao: {
-      type: "geotermica",
-      name: (p) => `Usina Geotérmica ${p}`,
-      legend: () => "Sondas no magma do vulcão alimentam a rede elétrica do continente.",
-    },
-    termas: {
-      type: "spa",
-      name: (p) => `Spa ${p}`,
-      legend: () => "Piscinas termais com regeneração celular; reservas com um ano de espera.",
-    },
-    cachoeira: {
-      type: "barragem",
-      name: (p) => `Barragem ${p}`,
-      legend: () => "Operada só por máquinas; ninguém entra lá há décadas.",
-    },
-    mina: {
-      type: "extracao",
-      name: (p) => `Extração ${p}`,
-      legend: () => "Enxames de robôs mineram terras raras sem parar.",
-    },
-    ruinas: {
-      type: "antigas",
-      name: (p) => `Ruínas de ${p}`,
-      legend: () => "Uma cidade do século XXI, abandonada e tomada pela vegetação.",
-    },
-    farol: {
-      type: "hiperporto",
-      name: (p) => `Hiperporto ${p}`,
-      legend: () => "Cargueiros autônomos e hidroaviões atracam a cada minuto.",
-    },
-    estalagem: {
-      type: "estacao",
-      name: (p) => `Estação ${p}`,
-      legend: () => "Parada da linha maglev, a 900 km/h entre as megacidades.",
-    },
-    caverna: {
-      type: "bunker",
-      name: (p) => `Bunker ${p}`,
-      legend: () => "Abrigo das guerras antigas, hoje um arquivo de sementes e dados.",
-    },
-    bosque: {
-      type: "domo",
-      name: (p) => `Domo ${p}`,
-      legend: () =>
-        "Floresta restaurada sob uma cúpula, com espécies trazidas de volta da extinção.",
-    },
-    batalha: {
-      type: "exclusao",
-      name: (p) => `Zona de Exclusão ${p}`,
-      legend: () => "Contaminada desde a última guerra; drones patrulham o perímetro.",
     },
   },
 };
@@ -645,12 +573,10 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
     }
   }
 
-  // Noutras épocas, os mesmos lugares viram o que seriam hoje ou no futuro
-  // (a cachoeira vira usina, o farol vira porto…), e as capitais ganham aeroporto
-  // ou espaçoporto.
+  // No mundo real, os mesmos lugares viram o que seriam hoje (a cachoeira vira
+  // usina, o farol vira porto…), e as capitais ganham aeroporto e universidade.
   if (era !== "fantasia") {
     const table = ERA_MARKERS[era];
-    const mr = rng(seed ^ 0x5eed);
     for (const m of markers) {
       const v = table[m.type];
       if (!v) continue;
@@ -678,43 +604,8 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
             "A maior do país, com hospital-escola e um observatório no campus.",
             -0.8,
           );
-      } else if (mr() < 0.6)
-        at(
-          "espacoporto",
-          `Espaçoporto de ${b.name}`,
-          "Lançamentos diários para as estações em órbita e as colônias lunares.",
-          0.8,
-        );
-      else
-        at(
-          "arcologia",
-          `Arcologia ${b.name}`,
-          "Uma torre-cidade de dois quilômetros, com fazendas verticais e um milhão de moradores.",
-          0.8,
-        );
-    });
-    if (era === "futurista") {
-      // Elevador orbital: na terra mais perto do equador.
-      let best = -1;
-      let bestD = Infinity;
-      for (let i = 0; i < n; i++) {
-        if (!d.land[i]) continue;
-        const dist = Math.abs(((i / COLS) | 0) + 0.5 - ROWS / 2);
-        if (dist < bestD) {
-          bestD = dist;
-          best = i;
-        }
       }
-      if (best >= 0)
-        markers.push({
-          type: "elevador",
-          x: (best % COLS) + 0.5,
-          y: Math.floor(best / COLS) + 0.5,
-          name: `Elevador Orbital ${nameAt(best, 23)}`,
-          legend:
-            "O cabo sobe 36 mil quilômetros até a estação geoestacionária; a viagem leva cinco dias.",
-        });
-    }
+    });
   }
 
   return { province, provinces, religion, religions, markers };

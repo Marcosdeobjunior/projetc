@@ -32,8 +32,8 @@ export interface MapOptions {
 
 /** O que o mapa-múndi diz sobre o lugar da cidade. Ângulos em radianos (y para baixo). */
 export interface VillageGeo {
-  /** Época (prédios modernos ou torres futuristas); sem ela, fantasia. */
-  era?: "atual" | "futurista";
+  /** Mundo real (prédios modernos); sem ela, fantasia. */
+  era?: "atual";
   /** Semente da geografia (fixa por cidade: costa, rio, estradas, árvores). */
   seed: number;
   /** Direção em que fica o mar ou lago (se a cidade está na margem). */
@@ -137,7 +137,7 @@ export interface VillageMap {
   /** Cor do chão (pelo bioma). */
   ground?: string;
   /** Época dos prédios (para as cores e a vista de rua). */
-  era?: "atual" | "futurista";
+  era?: "atual";
 }
 
 export const MAP_W = 480;
@@ -167,7 +167,7 @@ function wander(rand: () => number, start: Pt, dir: number, length: number, step
 
 /**
  * Andares pela época e pela distância ao centro (0 = centro, 1 = borda): sobrados
- * na fantasia, prédios de até 12 andares hoje e torres de até 45 no futuro.
+ * na fantasia e prédios de até 12 andares no mundo real.
  */
 function floorsFor(era: VillageGeo["era"], r: number, rand: () => number): number {
   if (era === "atual")
@@ -176,12 +176,6 @@ function floorsFor(era: VillageGeo["era"], r: number, rand: () => number): numbe
       : r < 0.7
         ? 2 + Math.floor(rand() * 3)
         : 1 + Math.floor(rand() * 2);
-  if (era === "futurista")
-    return r < 0.35
-      ? 18 + Math.floor(rand() * 28)
-      : r < 0.7
-        ? 6 + Math.floor(rand() * 10)
-        : 2 + Math.floor(rand() * 3);
   return r < 0.5 && rand() < 0.5 ? (rand() < 0.3 ? 3 : 2) : 1;
 }
 

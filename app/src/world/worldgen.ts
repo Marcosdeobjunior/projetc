@@ -48,11 +48,14 @@ export interface WorldOptions {
   era?: Era;
 }
 
-export type Era = "fantasia" | "atual" | "futurista";
+export type Era = "fantasia" | "atual";
 export const ERAS: { value: Era; label: string; hint: string }[] = [
   { value: "fantasia", label: "Fantasia", hint: "Reinos, castelos, trilhas e ruínas antigas" },
-  { value: "atual", label: "Atual", hint: "Países, rodovias, aeroportos e metrópoles" },
-  { value: "futurista", label: "Futurista", hint: "Megacidades, linhas maglev e espaçoportos" },
+  {
+    value: "atual",
+    label: "Real",
+    hint: "Como o mundo de hoje: países, rodovias, aeroportos e metrópoles",
+  },
 ];
 export const eraOf = (map: { options: WorldOptions }): Era => map.options.era ?? "fantasia";
 
@@ -90,11 +93,6 @@ export const STATE_FORMS = [
   "Federação",
   "União",
   "Estado",
-  "Corporação",
-  "Consórcio",
-  "Diretório",
-  "Colônia",
-  "Hegemonia",
 ] as const;
 export type StateForm = (typeof STATE_FORMS)[number];
 
@@ -119,15 +117,6 @@ const ERA_FORMS: Record<Era, Record<Archetype, StateForm>> = {
     tribal: "República",
     liga: "União",
   },
-  futurista: {
-    monarquia: "Diretório",
-    imperio: "Hegemonia",
-    menor: "Colônia",
-    republica: "Federação",
-    teocracia: "Teocracia",
-    tribal: "Consórcio",
-    liga: "Corporação",
-  },
 };
 const ARCHETYPE: Record<StateForm, Archetype> = {
   Reino: "monarquia",
@@ -141,11 +130,6 @@ const ARCHETYPE: Record<StateForm, Archetype> = {
   Federação: "imperio",
   União: "liga",
   Estado: "menor",
-  Corporação: "liga",
-  Consórcio: "tribal",
-  Diretório: "monarquia",
-  Colônia: "menor",
-  Hegemonia: "imperio",
 };
 /** Formas de governo oferecidas em cada época. */
 export const FORMS_BY_ERA: Record<Era, StateForm[]> = {
@@ -160,15 +144,6 @@ export const FORMS_BY_ERA: Record<Era, StateForm[]> = {
     "Liga",
   ],
   atual: ["República", "Federação", "Reino", "Estado", "União", "Teocracia"],
-  futurista: [
-    "Federação",
-    "Hegemonia",
-    "Corporação",
-    "Consórcio",
-    "Diretório",
-    "Colônia",
-    "Teocracia",
-  ],
 };
 /** A forma equivalente noutra época (um Império vira Federação, depois Hegemonia…). */
 export function formForEra(form: StateForm | undefined, era: Era): StateForm {
@@ -1014,8 +989,8 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
     // ~7 °C a 55°, −17 °C no polo), com os valores escolhidos em "Configurar mundo".
     const sea = seaLevelTemp(cfg, 90 - ((y + 0.5) / ROWS) * 180);
     const km = land[i] ? (((h[i]! - SEA) / 127) ** 1.6 * 5200) / 1000 : 0;
-    // Aquecimento da época (mais forte perto dos polos): +1,2 °C hoje, +3,5 °C no futuro.
-    const warm = era === "atual" ? 1.2 : era === "futurista" ? 3.5 : 0;
+    // Aquecimento de hoje (mais forte perto dos polos): +1,2 °C em relação ao passado.
+    const warm = era === "atual" ? 1.2 : 0;
     const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
     const t = sea + warm * (1 + (lat / 90) * 1.5) - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
     tempC[i] = t;
@@ -1123,26 +1098,6 @@ export function deriveWorld(map: WorldMap): Derived {
   const h = map.heights;
   const land = new Uint8Array(n);
   for (let i = 0; i < n; i++) land[i] = h[i]! >= SEA ? 1 : 0;
-  // No futuro o mar subiu (o gelo derreteu): as terras mais baixas da costa
-  // ficam embaixo d'água, menos onde há cidade (protegida por diques).
-  const flooded = new Uint8Array(n);
-  if (eraOf(map) === "futurista") {
-    const keep = new Set(map.burgs.map((b) => cellOf(b.x, b.y)));
-    for (let i = 0; i < n; i++) {
-      if (!land[i] || h[i]! > SEA + 1 || keep.has(i)) continue;
-      const x = i % COLS;
-      const y = (i / COLS) | 0;
-      for (const [dx, dy] of N8) {
-        const ny = y + dy;
-        if (ny < 0 || ny >= ROWS) continue;
-        if (h[ny * COLS + wrapCol(x + dx)]! < SEA) {
-          flooded[i] = 1;
-          break;
-        }
-      }
-    }
-    for (let i = 0; i < n; i++) if (flooded[i]) land[i] = 0;
-  }
 
   const rand = rng(map.options.seed ^ 0x77);
   const fbm = makeNoise(rand);
@@ -1284,7 +1239,6 @@ export function deriveWorld(map: WorldMap): Derived {
   for (const lk of lakes) for (const i of lk.cells) land[i] = 0;
   // Alturas "efetivas" para desenhar: lago = água (mais escura onde é mais fundo).
   const eff = new Uint8Array(h);
-  for (let i = 0; i < n; i++) if (flooded[i]) eff[i] = SEA - 3;
   for (const lk of lakes)
     for (const i of lk.cells) eff[i] = Math.max(70, Math.round(SEA - 3 - (filled[i]! - h[i]!) * 3));
 
@@ -1432,8 +1386,8 @@ export function deriveWorld(map: WorldMap): Derived {
     if (flux[i]! >= riverMin) m = Math.min(1, m + 0.12);
     biome[i] = biomeFor(tc, m, e);
   }
-  // Hoje e no futuro: cidades viram manchas urbanas e o campo em volta vira
-  // lavoura (no futuro menos, com fazendas verticais e matas replantadas).
+  // No mundo real, as cidades viram manchas urbanas e o campo em volta vira
+  // lavoura.
   {
     const era = eraOf(map);
     if (era !== "fantasia") {
@@ -1442,14 +1396,14 @@ export function deriveWorld(map: WorldMap): Derived {
         const s = Math.sin(i * 78.233 + map.options.seed * 0.0007) * 43758.5453;
         return s - Math.floor(s);
       };
-      const farmP = era === "atual" ? 0.55 : 0.25;
+      const farmP = 0.55;
       const FARMABLE = new Set([3, 4, 5, 6, 8]);
       for (const b of map.burgs) {
         const c = cellOf(b.x, b.y);
         const cx = c % COLS;
         const cy = (c / COLS) | 0;
         const big = caps.has(b.id);
-        const urban = big ? (era === "futurista" ? 1.5 : 1) : era === "futurista" ? 0.5 : 0;
+        const urban = big ? 1 : 0;
         for (let dy = -3; dy <= 3; dy++)
           for (let dx = -3; dx <= 3; dx++) {
             const y = cy + dy;
@@ -1781,11 +1735,7 @@ export function deriveWorld(map: WorldMap): Derived {
       addRoad(
         path,
         "principal",
-        era === "atual"
-          ? `Autoestrada A${++roadNo}`
-          : era === "futurista"
-            ? `Linha Maglev ${ca.name}–${cb.name}`
-            : `Rodovia ${ca.name}–${cb.name}`,
+        era === "atual" ? `Autoestrada A${++roadNo}` : `Rodovia ${ca.name}–${cb.name}`,
       );
   }
   // Estradas: de cada cidade até a capital do seu estado (pela rede que já existe).
@@ -1804,9 +1754,7 @@ export function deriveWorld(map: WorldMap): Derived {
         "estrada",
         era === "atual"
           ? `Rodovia ${stateCode(map.states[k]!.name)}-${100 + ++roadNo}`
-          : era === "futurista"
-            ? `Via Expressa ${b.name}`
-            : `Estrada de ${b.name}`,
+          : `Estrada de ${b.name}`,
       );
   }
   // Trilhas: de cada povoado ao vizinho mais perto, se o caminho for novo.
@@ -1828,9 +1776,7 @@ export function deriveWorld(map: WorldMap): Derived {
       "trilha",
       era === "atual"
         ? `Estrada vicinal ${b.name}–${other.name}`
-        : era === "futurista"
-          ? `Corredor ${b.name}–${other.name}`
-          : `Trilha ${b.name}–${other.name}`,
+        : `Trilha ${b.name}–${other.name}`,
     );
   }
 

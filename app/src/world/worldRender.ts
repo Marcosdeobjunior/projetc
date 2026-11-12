@@ -37,8 +37,6 @@ const SNOW = hex("#f5f7f8");
 const POLITICAL_LAND = hex("#efe6d0");
 const MODERN_DEEP = hex("#5f9ccb");
 const MODERN_SHALLOW = hex("#b9dcf2");
-const FUTURE_DEEP = hex("#03070f");
-const FUTURE_SHALLOW = hex("#0c2a44");
 
 /** Relevo: verde baixo → amarelo → marrom → branco no alto. */
 const RELIEF: [number, [number, number, number]][] = [
@@ -196,8 +194,7 @@ export function bakeBase(
         } else if ((states || mode === "politico") && o >= 0 && stateRgb[o])
           rgb = lerp3(rgb, stateRgb[o]!, mode === "politico" ? 0.55 : 0.32);
       }
-      // Estilo da época: atlas moderno (mar claro, cores limpas) ou futurista
-      // (noite: mar quase preto e terras escuras com um brilho frio).
+      // Mundo real: estilo de atlas moderno (mar claro, cores limpas).
       if (d.era === "atual") {
         if (v < SEA - 0.5) {
           const depth = Math.max(0, Math.min(1, v / (SEA - 1)));
@@ -208,18 +205,6 @@ export function bakeBase(
             Math.min(255, g + (rgb[0] - g) * 1.15 + 6),
             Math.min(255, g + (rgb[1] - g) * 1.15 + 8),
             Math.min(255, g + (rgb[2] - g) * 1.15 + 4),
-          ];
-        }
-      } else if (d.era === "futurista") {
-        if (v < SEA - 0.5) {
-          const depth = Math.max(0, Math.min(1, v / (SEA - 1)));
-          rgb = lerp3(FUTURE_DEEP, FUTURE_SHALLOW, Math.pow(depth, 2.2));
-        } else {
-          const g = (rgb[0] + rgb[1] + rgb[2]) / 3;
-          rgb = [
-            g * 0.22 + rgb[0] * 0.12 + 8,
-            g * 0.26 + rgb[1] * 0.16 + 14,
-            g * 0.3 + rgb[2] * 0.18 + 22,
           ];
         }
       }

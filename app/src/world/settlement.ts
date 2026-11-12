@@ -108,8 +108,8 @@ export function settlementInfo(
       if (x + dx < 0 || x + dx >= COLS || j < 0 || j >= d.flux.length) continue;
       if (d.land[j] && d.flux[j]! >= d.riverMin) river = true;
     }
-  // Hoje e no futuro as cidades são muito maiores (metrópoles de milhões).
-  const scale = d.era === "atual" ? 60 : d.era === "futurista" ? 180 : 1;
+  // No mundo real as cidades são muito maiores (metrópoles de milhões).
+  const scale = d.era === "atual" ? 60 : 1;
   const population =
     parsePopulation(fields.populacao) ??
     ((capital ? 6000 + (seed % 18000) : 200 + (seed % 4800) * (coastal || river ? 1.4 : 1)) *
@@ -120,7 +120,7 @@ export function settlementInfo(
   const pr = rng(seed ^ 0x5a17);
   const P = (p: number) => pr() < p;
   const k = population / 1000 / scale;
-  // Hoje e no futuro, muralha e cidadela são raras (centros históricos).
+  // No mundo real, muralha e cidadela são raras (centros históricos).
   const old = scale === 1;
   const citadel =
     (old || P(0.15)) && (capital || (k > 50 && P(0.75)) || (k > 15 && P(0.5)) || P(0.1));
@@ -215,8 +215,8 @@ const BIOME_LOOK: { ground: string; trees: number; farmland: boolean }[] = [
 ];
 
 /** Gente por célula inteira (no equador) e por hábitat, conforme a época. */
-const RURAL_DENSITY = { fantasia: 50_000, atual: 900_000, futurista: 900_000 } as const;
-const URBAN_DENSITY = { fantasia: 0, atual: 10_000_000, futurista: 45_000_000 } as const;
+const RURAL_DENSITY = { fantasia: 50_000, atual: 900_000 } as const;
+const URBAN_DENSITY = { fantasia: 0, atual: 10_000_000 } as const;
 const HABITAT = [0, 0.05, 0.03, 0.5, 0.9, 0.7, 0.8, 0.5, 0.6, 0.15, 0.03, 0, 0.2, 0.08, 1, 1];
 
 /** População fora das cidades do mapa (campo e periferias), pela área habitável. */

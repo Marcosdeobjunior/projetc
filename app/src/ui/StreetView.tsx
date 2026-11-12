@@ -33,17 +33,12 @@ const hex = (h: string): [number, number, number] => [
 ];
 const WALLS = ["#e6d8bb", "#d9c39b", "#efe5d0", "#d4bf98"].map(hex);
 const ROOFS = ["#9b4a33", "#7d5a3e", "#a8573a", "#6f5b4b"].map(hex);
-/** Prédios de hoje (concreto, laje) e do futuro (vidro escuro, topo iluminado). */
+/** Prédios de hoje: concreto e laje plana. */
 const ERA_LOOK = {
   atual: {
     walls: ["#d4d6d9", "#c2c7cd", "#e2ded6", "#cbbfae"].map(hex),
     roof: hex("#8e9298"),
     road: hex("#6b6f75"),
-  },
-  futurista: {
-    walls: ["#3a5a78", "#2d4a66", "#46698a", "#27405a"].map(hex),
-    roof: hex("#5ff3ff"),
-    road: hex("#2a3442"),
   },
 } as const;
 const GROUND = hex("#a9b27f");
@@ -109,7 +104,7 @@ export function buildScene(map: VillageMap) {
         color: wall,
       });
     }
-    // Hoje e no futuro: laje plana no topo.
+    // Hoje: laje plana no topo.
     if (look) {
       faces.push({ pts: c.map(([x, y]) => [x, y, h] as V3), color: look.roof });
       continue;

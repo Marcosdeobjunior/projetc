@@ -453,15 +453,13 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
-- Épocas (`options.era`, `Era` em `world/worldgen.ts`): `withEra` converte as formas de governo
-  por arquétipo (`formForEra`); `deriveWorld` põe `d.era` e nomeia as estradas pela época;
-  `deriveSociety` troca os marcadores por equivalentes (`ERA_MARKERS`) e acrescenta os das
-  capitais; `settlementInfo` multiplica a população padrão; `bakeBase` ajusta a paleta e
-  `ui/worldDraw.ts` usa um `Theme` por época (cores, fonte, brilho na costa). Efeitos no mundo:
-  aquecimento em `climate()`; no futuro, `deriveWorld` alaga (`flooded`) terras com altura ≤ SEA+1
-  junto ao mar, fora das células de cidade; biomas 14 (Área urbana) e 15 (Lavouras) em volta das
-  cidades; `ruralPopulation` (densidade por bioma × área da célula, por época); `localGeo` passa a
-  época para a vila (`floorsFor`, cores em `PlaceMap`, laje plana em `StreetView`).
+- Épocas (`options.era`: `fantasia` ou `atual`, "Real" na tela): `withEra` converte as formas de
+  governo por arquétipo (`formForEra`); `deriveWorld` põe `d.era`, aquece o clima (+1,2 °C, mais
+  nos polos), cria os biomas 14 (Área urbana) e 15 (Lavouras) em volta das cidades e nomeia as
+  estradas; `deriveSociety` troca os marcadores (`ERA_MARKERS`) e põe aeroporto/universidade nas
+  capitais; `settlementInfo` multiplica a população; `ruralPopulation` dá a população do campo;
+  `bakeBase` e o `Theme` de `ui/worldDraw.ts` fazem o estilo de atlas; `localGeo` passa a época à
+  vila (`floorsFor`, cores em `PlaceMap`, laje em `StreetView`).
 - Clima configurável (`map.climate`, `ui/ClimateDialog.tsx`): `normalizeClimate` limita os valores;
   `seaLevelTemp` interpola entre o polo do hemisfério e o equador com `(lat/90)^1,6`; em
   `climate()` cada faixa de 30° usa o componente leste-oeste do vento escolhido (quase norte-sul:
