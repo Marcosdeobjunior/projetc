@@ -1238,6 +1238,11 @@ inventados) e **estradas** entre elas.
   povos e religiões, os vizinhos e as províncias (clique para ir até eles) e os lugares notáveis
   (lagos e marcadores); em **Cidades**, a lista das cidades com província e população (a capital
   primeiro; clique para abrir o Editar povoado). **Abrir ficha** abre o lugar do estado no Mundo.
+- **Abas do painel:** o painel lateral abre na aba **Mundo** (números, época, estilo, camadas,
+  Configurar mundo, exportar e gerar). As outras abas, no alto do painel, são **História** (cenas
+  e jornadas), **Rotas**, **Lugares** (lugares do Mundo que ainda não estão no mapa, com o
+  número deles na aba) e **Legendas** (culturas, religiões, marcadores e biomas). O que estiver
+  selecionado no mapa (estado, rota, estrada) aparece no topo de qualquer aba.
 - **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
   canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
   lembra a escolha.

@@ -9484,3 +9484,53 @@ select option {
   font-size: 11.5px;
   font-weight: 600;
 }
+
+/* Abas do painel do mapa (Mundo é a principal). */
+.wm-tabs {
+  flex: none;
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  margin: -14px -14px 0;
+  padding: 8px 6px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wm-tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: 600 12px var(--font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.wm-tabs button:hover {
+  color: var(--fg);
+}
+.wm-tabs button[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.wm-tab-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
