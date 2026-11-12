@@ -255,7 +255,9 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     do quadro), embaixo da imagem: um brasão é gerado a partir do nome, com campo, divisão e
     figura seguindo as cores da heráldica; **Gerar outro** sorteia outro, e **Usar imagem** põe
     um desenho seu no lugar (**Voltar ao gerado** desfaz). Brasão e bandeira são independentes: cada
-    um tem o seu desenho gerado e a sua imagem, e a imagem enviada numa aba não muda a outra;
+    um tem o seu desenho gerado e a sua imagem, e a imagem enviada numa aba não muda a outra.
+    Nos cartões de Lugares e Organizações aparece a bandeira: a imagem que você enviou ou, sem
+    ela, a bandeira padrão gerada (a mesma do mapa); se o lugar tem foto, a bandeira fica no canto;
   - na ficha de **lugar**, o **Mapa da região**: **Gerar mapa** cria um mapa ilustrado com
     estrada, rio, casas ao longo das ruas, campos cultivados e árvores. Escolha **Aldeia**, **Vila**
     ou **Cidade**, ligue ou desligue **Estrada**, **Rio** e **Campos**, e use **Gerar outro** para
