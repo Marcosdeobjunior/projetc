@@ -31,6 +31,8 @@ interface TimelineState {
   setBirth(noteId: string, day: number | null): Promise<void>;
   /** Tempo de viagem entre dois lugares (null tira). */
   setTravelTime(a: string, b: string, days: number | null): Promise<void>;
+  /** Onde se passa uma cena (com ou sem data); null volta ao lugar deduzido do texto. */
+  setScenePlace(sceneId: string, placeId: string | null): Promise<void>;
   /** Local e "ignorar avisos" de uma cena com data. */
   setSceneMeta(sceneId: string, patch: { place?: string | null; ignore?: boolean }): Promise<void>;
 }
@@ -97,6 +99,22 @@ export const useTimeline = create<TimelineState>((set, get) => {
     },
     async setTravelTime(a, b, days) {
       await save({ ...get().data, travel: setTravel(get().data.travel, a, b, days) });
+    },
+    async setScenePlace(sceneId, placeId) {
+      const data = get().data;
+      const places = { ...data.places };
+      if (placeId) places[sceneId] = placeId;
+      else delete places[sceneId];
+      // Cena com data: o local fica também na data (é o que a linha do tempo mostra).
+      const scenes = { ...data.scenes };
+      const cur = scenes[sceneId];
+      if (cur) {
+        const next = { ...cur };
+        if (placeId) next.place = placeId;
+        else delete next.place;
+        scenes[sceneId] = next;
+      }
+      await save({ ...data, scenes, places });
     },
     async setSceneMeta(sceneId, patch) {
       const cur = get().data.scenes[sceneId];

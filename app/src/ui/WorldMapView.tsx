@@ -15,6 +15,10 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { StoryPanel } from "./StoryPanel";
+import { useTimeline } from "../state/timeline";
+import { buildGraph } from "../links/links";
+import { journey, JOURNEY_COLORS, placePositions, scenePlaces, type Journey } from "../world/story";
 import { StateDialog } from "./StateDialog";
 import { ClimateDialog } from "./ClimateDialog";
 import { GlobeView } from "./GlobeView";
@@ -103,6 +107,7 @@ const LAYERS = [
   ["provincias", "Províncias"],
   ["cidades", "Cidades"],
   ["marcadores", "Marcadores"],
+  ["cenas", "Cenas e jornadas"],
   ["rotulos", "Nomes"],
 ] as const;
 type Layer = (typeof LAYERS)[number][0];
@@ -316,6 +321,7 @@ function WorldEditor({
     rotulos: true,
     provincias: true,
     marcadores: true,
+    cenas: true,
   });
   const [brush, setBrush] = useState(8);
   // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
@@ -451,6 +457,64 @@ function WorldEditor({
 
   const capitals = useMemo(() => new Set(map.states.map((s) => s.capital)), [map.states]);
 
+  /* ----- A história no mapa: cenas e jornadas ----- */
+  const timeline = useTimeline((s) => s.data);
+  useEffect(() => {
+    void useTimeline.getState().load();
+  }, [session.root]);
+  const { project, texts } = session;
+  const linksOf = useMemo(() => {
+    const g = buildGraph(project, texts, { mentions: true });
+    const out = new Map<string, string[]>();
+    const add = (a: string, b: string) => out.set(a, [...(out.get(a) ?? []), b]);
+    for (const e of g.edges) {
+      add(e.source, e.target);
+      add(e.target, e.source);
+    }
+    return out;
+  }, [project, texts]);
+  const placePos = useMemo(() => placePositions(map), [map]);
+  const storyScenes = useMemo(
+    () => scenePlaces(project, texts, timeline, new Set(placePos.keys())),
+    [project, texts, timeline, placePos],
+  );
+  const [storyChapter, setStoryChapter] = useState("all");
+  const [focusScene, setFocusScene] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string[]>([]);
+  const journeys = useMemo(() => {
+    const out = new Map<string, Journey>();
+    for (const n of project.notes)
+      if (n.kind === "personagens") {
+        const j = journey(n.id, storyScenes, linksOf, placePos);
+        if (j.stops.length) out.set(n.id, j);
+      }
+    return out;
+  }, [project.notes, storyScenes, linksOf, placePos]);
+  const story = useMemo(() => {
+    if (!layers.cenas) return null;
+    const focus = storyScenes.find((s) => s.sceneId === focusScene);
+    const counts = new Map<string, number>();
+    for (const s of storyScenes)
+      if (s.place && (storyChapter === "all" || s.chapterId === storyChapter))
+        counts.set(s.place, (counts.get(s.place) ?? 0) + 1);
+    const pins = [...counts].flatMap(([id, count]) => {
+      const p = placePos.get(id);
+      return p ? [{ x: p.x, y: p.y, count, active: focus?.place === id }] : [];
+    });
+    const js = chosen.flatMap((id, i) => {
+      const j = journeys.get(id);
+      return j
+        ? [
+            {
+              color: JOURNEY_COLORS[i % JOURNEY_COLORS.length]!,
+              points: j.stops.map((s) => [s.x, s.y] as [number, number]),
+            },
+          ]
+        : [];
+    });
+    return { pins, journeys: js };
+  }, [layers.cenas, storyScenes, focusScene, storyChapter, placePos, chosen, journeys]);
+
   // Mundo mudou (lugar renomeado, apagado…): o mapa acompanha.
   const notes = session.project.notes;
   useEffect(() => {
@@ -524,6 +588,7 @@ function WorldEditor({
       layers,
       society,
       provinceVectors,
+      story,
       capitals,
       meta,
       selectedBurg: selected?.kind === "burg" ? selected.id : null,
@@ -555,6 +620,7 @@ function WorldEditor({
     draft,
     society,
     provinceVectors,
+    story,
   ]);
 
   /** Exporta o mapa inteiro como imagem PNG (em alta resolução). */
@@ -1627,6 +1693,31 @@ function WorldEditor({
               <Icon name="link" size={14} /> Traçar rota
             </button>
           </section>
+          {layers.cenas && (
+            <StoryPanel
+              scenes={storyScenes}
+              places={session.project.notes.filter(
+                (n) => n.kind === "lugares" && placePos.has(n.id),
+              )}
+              characters={session.project.notes.filter((n) => journeys.has(n.id))}
+              journeys={journeys}
+              chosen={chosen}
+              era={map.options.era ?? "fantasia"}
+              chapter={storyChapter}
+              focusScene={focusScene}
+              onChapter={setStoryChapter}
+              onChosen={setChosen}
+              onFocusScene={(s) => {
+                setFocusScene(s.sceneId);
+                const p = s.place ? placePos.get(s.place) : undefined;
+                if (!p) return;
+                const sc = Math.max(view.s, fitScale(size) * 2.5);
+                setViewT({ s: sc, x: size.w / 2 - p.x * sc, y: size.h / 2 - p.y * sc });
+              }}
+              onPlace={(id, place) => void useTimeline.getState().setScenePlace(id, place)}
+              onOpenScene={(id) => useApp.getState().openDoc(id)}
+            />
+          )}
           {(map.cultures ?? []).length > 0 && (
             <section className="profile-card wm-legend wm-cultures">
               <h3>Culturas</h3>

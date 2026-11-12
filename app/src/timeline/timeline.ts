@@ -56,6 +56,8 @@ export interface TimelineData {
   births: Record<string, number>;
   /** Tempos de viagem entre lugares (referência; só servem para avisos). */
   travel: Travel[];
+  /** Onde se passa cada cena, mesmo sem data (id da cena → id da nota de lugar). */
+  places?: Record<string, string>;
 }
 
 export const EMPTY_TIMELINE: TimelineData = {
@@ -89,6 +91,7 @@ export function sanitizeTimeline(raw: unknown): TimelineData {
     events?: unknown;
     calendars?: unknown;
     activeCalendar?: unknown;
+    places?: unknown;
   };
   const scenes: Record<string, SceneDate> = {};
   if (o.scenes && typeof o.scenes === "object") {
@@ -150,7 +153,19 @@ export function sanitizeTimeline(raw: unknown): TimelineData {
         travel.push({ from: t.from.slice(0, 64), to: t.to.slice(0, 64), days: t.days });
     }
   }
-  return { scenes, events, calendars, activeCalendar, births, travel };
+  const places: Record<string, string> = {};
+  if (o.places && typeof o.places === "object")
+    for (const [id, v] of Object.entries(o.places as Record<string, unknown>).slice(0, 20000))
+      if (id.length <= 64 && typeof v === "string" && v && v.length <= 64) places[id] = v;
+  return {
+    scenes,
+    events,
+    calendars,
+    activeCalendar,
+    births,
+    travel,
+    ...(Object.keys(places).length ? { places } : {}),
+  };
 }
 
 export async function readTimeline(fs: VaultFs): Promise<TimelineData> {
@@ -351,8 +366,9 @@ export function continuity({ project, data, linksOf, yearLength }: ContinuityInp
         .filter((n) => data.births[n] !== undefined)
         .map((n) => ({ noteId: n, age: ageOn(data.births[n]!, d.day, yearLength) }));
       if (list.length) ages.set(s.id, list);
-      if (d.place && kindOf.get(d.place) === "lugares")
-        places.set(s.id, { place: d.place, auto: false });
+      const chosen = d.place ?? data.places?.[s.id];
+      if (chosen && kindOf.get(chosen) === "lugares")
+        places.set(s.id, { place: chosen, auto: false });
       else {
         const linked = (linksOf.get(s.id) ?? []).filter((x) => kindOf.get(x) === "lugares");
         if (linked.length === 1) places.set(s.id, { place: linked[0]!, auto: true });

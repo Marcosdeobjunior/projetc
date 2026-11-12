@@ -453,6 +453,12 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- História no mapa (`world/story.ts`, `ui/StoryPanel.tsx`): `placePositions` liga notas de lugar
+  às cidades (e estados, pela capital); `scenePlaces` dá o lugar de cada cena (o escolhido em
+  `linha-do-tempo.json`, `scenes[id].place` ou `places[id]`, ou o lugar do mapa mais citado no
+  texto); `journey` ordena as cenas de um personagem (links/menções) pela data e mede os trechos
+  pelo arco (`distanceKm`); `TRAVEL_MODES` estima os dias por época. O desenho fica em
+  `drawWorld` (`story`: selos e caminhos tracejados com paradas numeradas).
 - Épocas (`options.era`: `fantasia` ou `atual`, "Real" na tela): `withEra` converte as formas de
   governo por arquétipo (`formForEra`); `deriveWorld` põe `d.era`, aquece o clima (+1,2 °C, mais
   nos polos), cria os biomas 14 (Área urbana) e 15 (Lavouras) em volta das cidades e nomeia as
