@@ -219,16 +219,19 @@ const RURAL_DENSITY = { fantasia: 50_000, atual: 900_000 } as const;
 const URBAN_DENSITY = { fantasia: 0, atual: 10_000_000 } as const;
 const HABITAT = [0, 0.05, 0.03, 0.5, 0.9, 0.7, 0.8, 0.5, 0.6, 0.15, 0.03, 0, 0.2, 0.08, 1, 1];
 
+/** Gente no campo de uma célula (pela área, o bioma e a época). */
+export function cellPopulation(d: Derived, i: number): number {
+  if (!d.land[i]) return 0;
+  const y = Math.floor(i / COLS);
+  const area = Math.cos(((y + 0.5) / ROWS - 0.5) * Math.PI);
+  const b = d.biome[i]!;
+  return area * (b === 14 ? URBAN_DENSITY[d.era] : RURAL_DENSITY[d.era] * (HABITAT[b] ?? 0.3));
+}
+
 /** População fora das cidades do mapa (campo e periferias), pela área habitável. */
 export function ruralPopulation(d: Derived): number {
   let sum = 0;
-  for (let i = 0; i < d.land.length; i++) {
-    if (!d.land[i]) continue;
-    const y = Math.floor(i / COLS);
-    const area = Math.cos(((y + 0.5) / ROWS - 0.5) * Math.PI);
-    const b = d.biome[i]!;
-    sum += area * (b === 14 ? URBAN_DENSITY[d.era] : RURAL_DENSITY[d.era] * (HABITAT[b] ?? 0.3));
-  }
+  for (let i = 0; i < d.land.length; i++) sum += cellPopulation(d, i);
   return Math.round(sum);
 }
 

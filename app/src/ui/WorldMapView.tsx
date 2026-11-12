@@ -15,6 +15,7 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { StateDialog } from "./StateDialog";
 import { ClimateDialog } from "./ClimateDialog";
 import { GlobeView } from "./GlobeView";
 import { makeMarkovNamer, nameBase } from "../world/names";
@@ -1104,6 +1105,24 @@ function WorldEditor({
             climate={map.climate}
             onApply={(climate) => commit({ ...map, climate })}
             onClose={() => setShowClimate(false)}
+          />
+        )}
+        {state && (
+          <StateDialog
+            key={state.id}
+            state={state}
+            fullName={fullStateName(state)}
+            map={map}
+            derived={derived}
+            society={society}
+            meta={meta}
+            capitals={capitals}
+            note={session.project.notes.find((n) => n.id === state.noteId)}
+            attachments={session.attachments}
+            onClose={() => setSelected(null)}
+            onOpenBurg={(id) => setSelected({ kind: "burg", id })}
+            onOpenState={(id) => setSelected({ kind: "state", id })}
+            onOpenNote={() => state.noteId && openNote(state.noteId)}
           />
         )}
         {burg && (

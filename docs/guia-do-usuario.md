@@ -1218,7 +1218,13 @@ inventados) e **estradas** entre elas.
   **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
-  quantas cidades tem e a capital.
+  quantas cidades tem e a capital. Clicar num estado também abre a **ficha do estado** sobre o
+  mapa (arraste pelo título): bandeira, forma de governo, capital e se tem litoral; em **Visão
+  geral**, habitantes, área em km², densidade, províncias, temperatura média (mínima e máxima),
+  ponto mais alto, rios e lagos, quanto da gente vive nas cidades, barras de paisagens (biomas),
+  povos e religiões, os vizinhos e as províncias (clique para ir até eles) e os lugares notáveis
+  (lagos e marcadores); em **Cidades**, a lista das cidades com província e população (a capital
+  primeiro; clique para abrir o Editar povoado). **Abrir ficha** abre o lugar do estado no Mundo.
 - **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
   canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
   lembra a escolha.

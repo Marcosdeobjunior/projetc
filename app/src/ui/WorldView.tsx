@@ -9,10 +9,7 @@ import { NoteProfile, useAttachmentImage } from "./NoteProfile";
 import { TimelineView } from "./TimelineView";
 import { useWorldNav } from "../state/worldNav";
 import { WritingView } from "./WritingView";
-import { EmblemArt } from "./EmblemArt";
-import { generateEmblem, parseEmblemOptions } from "../world/heraldry";
-import { hashSeed } from "../world/geom";
-import { validNoteImage } from "../vault/vault";
+import { PlaceFlag } from "./PlaceFlag";
 import type { Note } from "../manuscript/types";
 
 const KIND_ICON = DOC_ICON;
@@ -56,38 +53,15 @@ function CardImage({ src, icon }: { src?: string; icon: string }) {
   );
 }
 
-/**
- * Bandeira do lugar (ou organização): a imagem que o autor enviou, ou a bandeira
- * padrão gerada pelo mapa (a mesma da ficha e do mapa-múndi).
- */
-function CardFlag({ note, attachments }: { note: Note; attachments: string[] }) {
-  const fields = note.fields ?? {};
-  const custom = fields.bandeiraImagem;
-  const ok =
-    validNoteImage(custom) && attachments.includes(custom.slice("anexos/".length))
-      ? custom
-      : undefined;
-  const url = useAttachmentImage(ok);
-  const seed = parseEmblemOptions(fields.bandeira)?.seed ?? hashSeed(note.title + "#bandeira");
-  const emblem = useMemo(() => generateEmblem({ seed, kind: "bandeira" }), [seed]);
-  return ok ? (
-    url ? (
-      <img src={url} alt={`Bandeira de ${note.title}`} />
-    ) : null
-  ) : (
-    <EmblemArt emblem={emblem} title={note.title} />
-  );
-}
-
 /** Cartão de lugar: a foto com a bandeira no canto, ou só a bandeira. */
 function PlaceCardImage({ note, attachments }: { note: Note; attachments: string[] }) {
   const photo = useAttachmentImage(note.image);
   return (
     <span className={"world-card-image" + (photo ? "" : " flag")}>
-      {photo ? <img src={photo} alt="" /> : <CardFlag note={note} attachments={attachments} />}
+      {photo ? <img src={photo} alt="" /> : <PlaceFlag note={note} attachments={attachments} />}
       {photo && (
         <span className="world-card-flag">
-          <CardFlag note={note} attachments={attachments} />
+          <PlaceFlag note={note} attachments={attachments} />
         </span>
       )}
     </span>
