@@ -8,7 +8,7 @@ import {
   type WorldMap,
 } from "../world/worldgen";
 import type { buildProvinceVectors, buildVectors } from "../world/worldRender";
-import { MARKER_TYPES, type Society } from "../world/society";
+import { markerIcon, type Society } from "../world/society";
 
 /*
  * Desenho do mapa-múndi num canvas (tela ou exportação): fundo assado,
@@ -43,6 +43,8 @@ export interface DrawOptions {
   meta: Map<string, BurgMeta>;
   selectedBurg?: string | null;
   selectedRoute?: string | null;
+  /** Marcador selecionado (pela chave). */
+  selectedMarker?: string | null;
   /** Estrada gerada selecionada (pelo nome). */
   selectedRoad?: string | null;
   /** Rota sendo desenhada (pontos em células). */
@@ -552,7 +554,14 @@ function drawCopy(
       ctx.strokeStyle = T.markerStroke;
       ctx.stroke();
       ctx.fillStyle = "#2b2a26";
-      ctx.fillText(MARKER_TYPES[m.type].icon, sx, sy + 0.5);
+      ctx.fillText(markerIcon(m), sx, sy + 0.5);
+      if (o.selectedMarker === m.key) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, r + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = "#e0a52c";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
       placed.push([sx - r, sy - r, sx + r, sy + r]);
     }
     for (const m of o.society.markers) {

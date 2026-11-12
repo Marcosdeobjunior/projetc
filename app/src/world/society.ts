@@ -69,6 +69,12 @@ export const MARKER_TYPES = {
 export type MarkerType = keyof typeof MARKER_TYPES;
 
 export interface Marker {
+  /** Chave estável: "g:tipo:nome" (gerado) ou o id do marcador do autor. */
+  key: string;
+  /** Marcador do autor (editável e móvel), e não gerado. */
+  user?: boolean;
+  /** Ícone próprio (senão, o do tipo). */
+  icon?: string;
   type: MarkerType;
   x: number;
   y: number;
@@ -374,7 +380,14 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
       );
     const add = (type: MarkerType, c: number, name: string, legend: string, ox = 0.5, oy = 0.5) => {
       taken.push(c);
-      markers.push({ type, x: (c % COLS) + ox, y: Math.floor(c / COLS) + oy, name, legend });
+      markers.push({
+        key: "",
+        type,
+        x: (c % COLS) + ox,
+        y: Math.floor(c / COLS) + oy,
+        name,
+        legend,
+      });
     };
     const quota = (k: number) => Math.round(k * scale);
     const e = (c: number) => (h[c]! - SEA) / 127;
@@ -589,7 +602,7 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
       const b = map.burgs.find((x) => x.id === s.capital);
       if (!b || !d.land[cellOf(b.x, b.y)]) return;
       const at = (type: MarkerType, name: string, legend: string, dx: number) =>
-        markers.push({ type, x: b.x + dx, y: b.y + 0.6, name, legend });
+        markers.push({ key: "", type, x: b.x + dx, y: b.y + 0.6, name, legend });
       if (era === "atual") {
         at(
           "aeroporto",
@@ -608,5 +621,54 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
     });
   }
 
-  return { province, provinces, religion, religions, markers };
+  // Chave de cada gerado; tira os que o autor ocultou e põe os dele.
+  for (const m of markers) m.key = `g:${m.type}:${m.name}`;
+  const hidden = new Set(map.hiddenMarkers ?? []);
+  const finalMarkers: Marker[] = markers.filter((m) => !hidden.has(m.key));
+  for (const u of map.markers ?? [])
+    finalMarkers.push({
+      key: u.id,
+      user: true,
+      ...(u.icon ? { icon: u.icon } : {}),
+      type: (u.type in MARKER_TYPES ? u.type : "ruinas") as MarkerType,
+      x: u.x,
+      y: u.y,
+      name: u.name,
+      legend: u.legend,
+    });
+
+  return { province, provinces, religion, religions, markers: finalMarkers };
 }
+
+/** Ícone de um marcador (o próprio, ou o do tipo). */
+export const markerIcon = (m: Pick<Marker, "icon" | "type">) => m.icon || MARKER_TYPES[m.type].icon;
+
+/** Tipos de marcador de cada época (para escolher ao criar ou editar). */
+export const MARKER_TYPES_BY_ERA: Record<"fantasia" | "atual", MarkerType[]> = {
+  fantasia: [
+    "vulcao",
+    "termas",
+    "cachoeira",
+    "mina",
+    "ruinas",
+    "farol",
+    "estalagem",
+    "caverna",
+    "bosque",
+    "batalha",
+  ],
+  atual: [
+    "parque",
+    "estancia",
+    "hidreletrica",
+    "mineradora",
+    "arqueologico",
+    "porto",
+    "posto",
+    "gruta",
+    "reserva",
+    "memorial",
+    "aeroporto",
+    "universidade",
+  ],
+};

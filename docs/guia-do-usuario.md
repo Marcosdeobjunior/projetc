@@ -1170,7 +1170,13 @@ inventados) e **estradas** entre elas.
 - **Marcadores:** vulcões, fontes termais, cachoeiras (onde o rio cai de um degrau alto), minas,
   ruínas, faróis, estalagens nas estradas, cavernas, bosques sagrados e campos de batalha nas
   fronteiras, cada um com nome e uma pequena lenda (passe o mouse sobre o ícone). A camada
-  **Marcadores** liga e desliga os ícones; os nomes aparecem bem de perto. Províncias, religiões e
+  **Marcadores** liga e desliga os ícones; os nomes aparecem bem de perto. Para pôr um marcador seu,
+  use a ferramenta **Marcador** (ou **Pôr marcador** na aba Legendas) e clique no mapa: abre a
+  janela **Editar marcador**, com nome, tipo, ícone (os dos tipos e outros, como castelo,
+  dragão, caveira, tesouro) e lenda. Clicar em qualquer marcador abre essa janela, e com a
+  ferramenta **Mover** dá para arrastá-lo. Editar ou mover um marcador gerado pelo mapa o torna
+  seu (o gerado some e fica a cópia); **Tirar do mapa** esconde um gerado, e **Excluir** apaga um
+  seu. Tudo entra no Desfazer. Províncias, religiões e
   marcadores saem do mapa e se refazem sozinhos quando ele muda.
 - **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
   República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do

@@ -15,6 +15,7 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import { MarkerDialog } from "./MarkerDialog";
 import { StateDialog } from "./StateDialog";
 import { ClimateDialog } from "./ClimateDialog";
 import { GlobeView } from "./GlobeView";
@@ -35,6 +36,7 @@ import {
   type Burg,
   type Route,
   type WorldClimate,
+  type UserMarker,
   type Era,
   ERAS,
   FORMS_BY_ERA,
@@ -56,7 +58,7 @@ import {
   coastPath,
   type MapMode,
 } from "../world/worldRender";
-import { deriveSociety, MARKER_TYPES } from "../world/society";
+import { deriveSociety, MARKER_TYPES, MARKER_TYPES_BY_ERA, type Marker } from "../world/society";
 import { bigNumber, ruralPopulation, settlementInfo } from "../world/settlement";
 import { drawWorld, KM_PER_CELL, stateMask, type BurgMeta } from "./worldDraw";
 import { Icon } from "./Icon";
@@ -69,7 +71,7 @@ import { Select } from "./Select";
  * Mundo.
  */
 
-type Tool = "mover" | "elevar" | "rebaixar" | "suavizar" | "cidade" | "rota";
+type Tool = "mover" | "elevar" | "rebaixar" | "suavizar" | "cidade" | "marcador" | "rota";
 
 const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
   {
@@ -87,6 +89,12 @@ const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
   },
   { value: "suavizar", icon: "wave", label: "Suavizar", hint: "Pinte para suavizar o relevo" },
   { value: "cidade", icon: "pin", label: "Cidade", hint: "Clique em terra para pôr uma cidade" },
+  {
+    value: "marcador",
+    icon: "star",
+    label: "Marcador",
+    hint: "Clique no mapa para pôr um marcador (ruínas, mina, caverna…)",
+  },
   {
     value: "rota",
     icon: "link",
@@ -124,6 +132,8 @@ interface Snapshot {
   states: WorldMap["states"];
   routes?: Route[];
   climate?: WorldClimate;
+  markers?: UserMarker[];
+  hiddenMarkers?: string[];
 }
 
 export function WorldMapView({ session }: { session: Session }) {
@@ -339,7 +349,7 @@ function WorldEditor({
     return () => document.removeEventListener("fullscreenchange", on);
   }, []);
   const [selected, setSelected] = useState<{
-    kind: "burg" | "state" | "route" | "road";
+    kind: "burg" | "state" | "route" | "road" | "marker";
     id: string;
   } | null>(null);
   // Rota sendo desenhada (pontos de passagem em células).
@@ -378,9 +388,21 @@ function WorldEditor({
   const derived = useMemo(() => deriveWorld(geo), [geo]);
   // Províncias, religiões e marcadores (dependem também dos nomes e das formas de governo).
   const socKey =
-    map.states.map((s) => s.form ?? "").join("|") + map.burgs.map((b) => b.name).join("|");
+    map.states.map((s) => s.form ?? "").join("|") +
+    map.burgs.map((b) => b.name).join("|") +
+    JSON.stringify([map.markers ?? [], map.hiddenMarkers ?? []]);
   const society = useMemo(
-    () => deriveSociety({ ...geo, states: map.states, burgs: map.burgs }, derived),
+    () =>
+      deriveSociety(
+        {
+          ...geo,
+          states: map.states,
+          burgs: map.burgs,
+          markers: map.markers,
+          hiddenMarkers: map.hiddenMarkers,
+        },
+        derived,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [geo, derived, socKey],
   );
@@ -514,6 +536,20 @@ function WorldEditor({
     [map, dragging],
   );
   const painterTool = tool === "elevar" || tool === "rebaixar" || tool === "suavizar";
+  // Marcador sendo arrastado: só o ícone anda; grava ao soltar.
+  const [dragMarker, setDragMarker] = useState<{ key: string; x: number; y: number } | null>(null);
+  const societyShown = useMemo(
+    () =>
+      dragMarker
+        ? {
+            ...society,
+            markers: society.markers.map((m) =>
+              m.key === dragMarker.key ? { ...m, x: dragMarker.x, y: dragMarker.y } : m,
+            ),
+          }
+        : society,
+    [society, dragMarker],
+  );
 
   // Desenho.
   useEffect(() => {
@@ -532,12 +568,13 @@ function WorldEditor({
       view,
       size,
       layers,
-      society,
+      society: societyShown,
       provinceVectors,
       capitals,
       meta,
       selectedBurg: selected?.kind === "burg" ? selected.id : null,
       selectedRoute: selected?.kind === "route" ? selected.id : null,
+      selectedMarker: selected?.kind === "marker" ? selected.id : null,
       selectedRoad: selected?.kind === "road" ? selected.id : null,
       draft: tool === "rota" ? draft : null,
       highlight,
@@ -563,7 +600,7 @@ function WorldEditor({
     brush,
     tool,
     draft,
-    society,
+    societyShown,
     provinceVectors,
   ]);
 
@@ -585,7 +622,7 @@ function WorldEditor({
       view: { s: scale, x: 0, y: 0 },
       size: { w, h },
       layers,
-      society,
+      society: societyShown,
       provinceVectors,
       capitals,
       meta,
@@ -610,6 +647,8 @@ function WorldEditor({
     states: map.states,
     routes: map.routes ?? [],
     climate: map.climate,
+    markers: map.markers,
+    hiddenMarkers: map.hiddenMarkers,
   });
   const commit = (next: WorldMap) => {
     undo.current = [...undo.current.slice(-29), snapshot()];
@@ -634,7 +673,14 @@ function WorldEditor({
     if (!s) return;
     to.current.push(snapshot());
     syncHist();
-    setMap({ ...map, ...s, routes: s.routes ?? map.routes, climate: s.climate });
+    setMap({
+      ...map,
+      ...s,
+      routes: s.routes ?? map.routes,
+      climate: s.climate,
+      markers: s.markers,
+      hiddenMarkers: s.hiddenMarkers,
+    });
     // Desfazer uma exclusão traz o lugar de volta ao Mundo.
     void useWorldMap.getState().reconcile({ recreate: true });
   };
@@ -690,6 +736,11 @@ function WorldEditor({
     const x = (e.clientX - r.left - view.x) / view.s;
     return [((x % COLS) + COLS) % COLS, (e.clientY - r.top - view.y) / view.s] as const;
   };
+  /** Marcador sob o clique (só com a camada ligada). */
+  const markerAt = (x: number, y: number) =>
+    layers.marcadores
+      ? society.markers.find((m) => Math.hypot(dCol(m.x, x), m.y - y) * view.s < 10)
+      : undefined;
   const burgAt = (x: number, y: number) =>
     map.burgs.find((b) => Math.hypot(dCol(b.x, x), b.y - y) * view.s < 9);
   const near = (pts: [number, number][], x: number, y: number) =>
@@ -741,6 +792,7 @@ function WorldEditor({
     vy: number;
     moved: boolean;
     burg?: string;
+    marker?: string;
   } | null>(null);
   const painting = useRef<{ h: Uint8Array; last: number } | null>(null);
 
@@ -748,7 +800,8 @@ function WorldEditor({
     canvas.current!.setPointerCapture(e.pointerId);
     const [x, y] = toMap(e);
     if (tool === "mover") {
-      const b = burgAt(x, y);
+      const m = markerAt(x, y);
+      const b = m ? undefined : burgAt(x, y);
       drag.current = {
         x: e.clientX,
         y: e.clientY,
@@ -756,7 +809,22 @@ function WorldEditor({
         vy: view.y,
         moved: false,
         burg: b?.id,
+        marker: m?.key,
       };
+    } else if (tool === "marcador") {
+      const era = map.options.era ?? "fantasia";
+      const type = MARKER_TYPES_BY_ERA[era][4]!; // ruínas / sítio arqueológico
+      const m: UserMarker = {
+        id: newId("m"),
+        type,
+        name: `${MARKER_TYPES[type].label} ${nameFor(cellOf(x, y))}`,
+        legend: "",
+        x,
+        y,
+      };
+      commit({ ...map, markers: [...(map.markers ?? []), m] });
+      setSelected({ kind: "marker", id: m.id });
+      setTool("mover");
     } else if (tool === "rota") {
       // Cada clique marca um ponto (perto de uma cidade, encaixa nela); duplo clique conclui.
       const b = burgAt(x, y);
@@ -833,11 +901,12 @@ function WorldEditor({
     const [x, y] = toMap(e);
     setHover(hoverText(x, y));
     if (tool === "mover" && !drag.current)
-      canvas.current!.style.cursor = burgAt(x, y) ? "pointer" : "";
+      canvas.current!.style.cursor = markerAt(x, y) || burgAt(x, y) ? "pointer" : "";
     const d = drag.current;
     if (d) {
       if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) d.moved = true;
-      if (d.moved && d.burg) {
+      if (d.moved && d.marker) setDragMarker({ key: d.marker, x, y });
+      else if (d.moved && d.burg) {
         // Arrastar uma cidade a muda de lugar (só em terra); o mapa se refaz ao soltar.
         if (heights[cellOf(x, y)]! >= SEA) setDragging({ id: d.burg, x, y });
       } else if (d.moved)
@@ -861,7 +930,12 @@ function WorldEditor({
     const d = drag.current;
     drag.current = null;
     if (d) {
-      if (d.moved && d.burg) {
+      if (d.moved && d.marker) {
+        const to = dragMarker;
+        setDragMarker(null);
+        const m = society.markers.find((q) => q.key === d.marker);
+        if (to && m) editMarker(m, { x: to.x, y: to.y });
+      } else if (d.moved && d.burg) {
         const to = dragging;
         setDragging(null);
         if (to)
@@ -871,6 +945,11 @@ function WorldEditor({
           });
       } else if (!d.moved) {
         const [x, y] = toMap(e);
+        const mk = markerAt(x, y);
+        if (mk) {
+          setSelected({ kind: "marker", id: mk.key });
+          return;
+        }
         const b = burgAt(x, y);
         const route = b ? undefined : routeAt(x, y);
         const road = b || route ? undefined : roadAt(x, y);
@@ -939,6 +1018,45 @@ function WorldEditor({
   const offMap = session.project.notes
     .filter((n) => n.kind === "lugares" && !onMap.has(n.id))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+  const marker =
+    selected?.kind === "marker" ? society.markers.find((m) => m.key === selected.id) : undefined;
+  /** Muda um marcador; um gerado vira do autor (o gerado some, fica a cópia). */
+  const editMarker = (
+    m: Marker,
+    patch: Partial<Pick<UserMarker, "type" | "icon" | "name" | "legend" | "x" | "y">>,
+  ) => {
+    if (m.user) {
+      commit({
+        ...map,
+        markers: (map.markers ?? []).map((u) => (u.id === m.key ? { ...u, ...patch } : u)),
+      });
+      return;
+    }
+    const u: UserMarker = {
+      id: newId("m"),
+      type: m.type,
+      ...(m.icon ? { icon: m.icon } : {}),
+      name: m.name,
+      legend: m.legend,
+      x: m.x,
+      y: m.y,
+      ...patch,
+    };
+    commit({
+      ...map,
+      markers: [...(map.markers ?? []), u],
+      hiddenMarkers: [...(map.hiddenMarkers ?? []), m.key],
+    });
+    setSelected({ kind: "marker", id: u.id });
+  };
+  const removeMarker = (m: Marker) => {
+    commit(
+      m.user
+        ? { ...map, markers: (map.markers ?? []).filter((u) => u.id !== m.key) }
+        : { ...map, hiddenMarkers: [...(map.hiddenMarkers ?? []), m.key] },
+    );
+    setSelected(null);
+  };
   const updateBurg = (id: string, patch: Partial<Burg>) =>
     commit({ ...map, burgs: map.burgs.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
   const openNote = (id: string) => {
@@ -1133,6 +1251,16 @@ function WorldEditor({
             onOpenBurg={(id) => setSelected({ kind: "burg", id })}
             onOpenState={(id) => setSelected({ kind: "state", id })}
             onOpenNote={() => state.noteId && openNote(state.noteId)}
+          />
+        )}
+        {marker && (
+          <MarkerDialog
+            key={marker.key}
+            marker={marker}
+            era={map.options.era ?? "fantasia"}
+            onChange={(patch) => editMarker(marker, patch)}
+            onDelete={() => removeMarker(marker)}
+            onClose={() => setSelected(null)}
           />
         )}
         {burg && (
@@ -1726,6 +1854,13 @@ function WorldEditor({
                         </li>
                       ))}
                   </ul>
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={() => setTool("marcador")}
+                  >
+                    <Icon name="star" size={14} /> Pôr marcador
+                  </button>
                 </section>
               )}
               <section className="profile-card wm-legend">

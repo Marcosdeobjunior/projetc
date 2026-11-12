@@ -592,6 +592,8 @@ biomas, rios, fronteiras e estradas são recalculados ao abrir (`world/worldgen.
 | `routes`   | array  | Rotas desenhadas: `id`, `name`, `type` (`principal`/`estrada`/`trilha`/`maritima`) e `points` (pontos de passagem `[x, y]`, em células). O caminho entre os pontos é recalculado ao abrir. As estradas geradas não ficam aqui                                                        |
 | `cultures` | array  | Povos: `id`, `name`, `base` (base de nomes: `lusitana`, `nordica`, `elfica`, `desertica`, `eslava`, `latina`, `celta`), `type` (`navegante`, `montanhes`, `ribeirinho`, `lacustre`, `nomade`, `cacador`, `generico`), `color` e o centro `x`, `y`. O território é calculado ao abrir |
 | `options.era` | texto | Opcional: `atual` (mundo real, "Real" na tela); sem ele, fantasia. Muda estilo, clima, nomes de estradas, população e marcadores |
+| `markers` | array | Opcional. Marcadores do autor: `id`, `type` (vulcao, ruinas, mina…), `icon` opcional (emoji), `name`, `legend`, `x`, `y` (células) |
+| `hiddenMarkers` | array | Opcional. Chaves (`g:tipo:nome`) dos marcadores gerados que o autor tirou ou trocou por um seu |
 | `climate` | objeto | Opcional ("Configurar mundo"): `equator`, `northPole`, `southPole` (°C ao nível do mar), `precipitation` (% da chuva da Terra) e `winds` (6 direções em graus da bússola, para onde sopra o vento em cada faixa de 30°, de 90°N a 90°S). Sem ele, vale o clima da Terra |
 
 Ao abrir, um arquivo da grade antiga (320×200, só uma região) é convertido para o planeta (as alturas são reamostradas e as posições, escaladas); outro tamanho ou formato é ignorado (como se não houvesse mapa); cidades

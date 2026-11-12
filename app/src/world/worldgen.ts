@@ -215,6 +215,21 @@ export interface WorldMap {
   cultures?: Culture[];
   /** Clima do planeta ("Configurar mundo"); sem ele, o clima da Terra. */
   climate?: WorldClimate;
+  /** Marcadores postos ou editados pelo autor. */
+  markers?: UserMarker[];
+  /** Marcadores gerados que o autor tirou (ou trocou por um seu), pela chave. */
+  hiddenMarkers?: string[];
+}
+
+/** Marcador do autor: tipo (vulcão, ruínas…), ícone próprio opcional, nome e lenda. */
+export interface UserMarker {
+  id: string;
+  type: string;
+  icon?: string;
+  name: string;
+  legend: string;
+  x: number;
+  y: number;
 }
 
 /**
@@ -1885,6 +1900,8 @@ export function serializeWorld(map: WorldMap): string {
         routes: map.routes ?? [],
         cultures: map.cultures ?? [],
         ...(map.climate ? { climate: map.climate } : {}),
+        ...(map.markers?.length ? { markers: map.markers } : {}),
+        ...(map.hiddenMarkers?.length ? { hiddenMarkers: map.hiddenMarkers } : {}),
       },
       null,
       1,
@@ -2016,6 +2033,30 @@ export function parseWorld(raw: string): WorldMap | null {
       d.climate && typeof d.climate === "object"
         ? normalizeClimate(d.climate as Partial<WorldClimate>)
         : undefined;
+    const markers: UserMarker[] = [];
+    for (const m of Array.isArray(d.markers)
+      ? (d.markers as Record<string, unknown>[]).slice(0, 2000)
+      : []) {
+      const mx = num(m.x);
+      const my = num(m.y);
+      const id = str(m.id, 64);
+      if (!id || mx === null || my === null || mx < 0 || my < 0 || mx > COLS || my > ROWS) continue;
+      const icon = str(m.icon, 16);
+      markers.push({
+        id,
+        type: str(m.type, 32) || "ruinas",
+        ...(icon ? { icon } : {}),
+        name: str(m.name, 120) || "Marcador",
+        legend: str(m.legend, 2000),
+        x: mx * sx,
+        y: my * sy,
+      });
+    }
+    const hiddenMarkers = Array.isArray(d.hiddenMarkers)
+      ? (d.hiddenMarkers as unknown[])
+          .filter((k): k is string => typeof k === "string" && k.length <= 200)
+          .slice(0, 5000)
+      : [];
     return {
       name: str(d.name, 80) || "Mundo",
       options,
@@ -2025,6 +2066,8 @@ export function parseWorld(raw: string): WorldMap | null {
       routes,
       cultures,
       ...(climate ? { climate } : {}),
+      ...(markers.length ? { markers } : {}),
+      ...(hiddenMarkers.length ? { hiddenMarkers } : {}),
     };
   } catch {
     return null;

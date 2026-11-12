@@ -9,7 +9,7 @@ import {
   type WorldMap,
   type WorldState,
 } from "../world/worldgen";
-import { MARKER_TYPES, type Society } from "../world/society";
+import { markerIcon, type Society } from "../world/society";
 import { bigNumber, cellPopulation, metres } from "../world/settlement";
 import { KM_PER_CELL, type BurgMeta } from "./worldDraw";
 import { PlaceFlag } from "./PlaceFlag";
@@ -372,7 +372,7 @@ export function StateDialog({
                     ))}
                     {info.markers.map((m) => (
                       <li key={m.name} title={m.legend}>
-                        <span>{MARKER_TYPES[m.type].icon}</span> {m.name}
+                        <span>{markerIcon(m)}</span> {m.name}
                       </li>
                     ))}
                   </ul>
