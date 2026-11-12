@@ -55,14 +55,6 @@ export interface DrawOptions {
   furniture?: boolean;
   /** Um planeta só (sem repetir na horizontal), recortado nas bordas. */
   single?: boolean;
-  /** A história no mapa: lugares com cenas e caminhos dos personagens. */
-  story?: StoryLayer | null;
-}
-
-export interface StoryLayer {
-  /** Lugares com cenas: quantas, e se estão no capítulo/cena em foco. */
-  pins: { x: number; y: number; count: number; active: boolean }[];
-  journeys: { color: string; points: [number, number][] }[];
 }
 
 /** Quilômetros por célula (1° no equador de um planeta do tamanho da Terra). */
@@ -481,38 +473,6 @@ function drawCopy(
       ctx.fill();
     }
   }
-  if (o.story?.journeys.length) {
-    // Caminhos dos personagens: linha colorida com contorno claro, seguindo o
-    // arco entre as paradas (curva suave, sem atravessar a costura de 180°).
-    for (const j of o.story.journeys) {
-      if (j.points.length < 2) continue;
-      const path = new Path2D();
-      const pts = j.points;
-      for (let i = 1; i < pts.length; i++) {
-        const [ax, ay] = pts[i - 1]!;
-        const by = pts[i]![1];
-        let bx = pts[i]![0];
-        if (bx - ax > COLS / 2) bx -= COLS;
-        if (ax - bx > COLS / 2) bx += COLS;
-        const len = Math.hypot(bx - ax, by - ay) || 1;
-        // Leve arco, para as idas e voltas não ficarem uma em cima da outra.
-        const cx = (ax + bx) / 2 - ((by - ay) / len) * len * 0.12;
-        const cy = (ay + by) / 2 + ((bx - ax) / len) * len * 0.12;
-        path.moveTo(ax, ay);
-        path.quadraticCurveTo(cx, cy, bx, by);
-      }
-      ctx.setLineDash([]);
-      ctx.lineCap = "round";
-      ctx.strokeStyle = "rgba(255,255,255,0.8)";
-      ctx.lineWidth = px * 5;
-      ctx.stroke(path);
-      ctx.strokeStyle = j.color;
-      ctx.lineWidth = px * 2.6;
-      ctx.setLineDash([px * 7, px * 4]);
-      ctx.stroke(path);
-      ctx.setLineDash([]);
-    }
-  }
   if (o.brush) {
     ctx.beginPath();
     ctx.arc(o.brush.x, o.brush.y, o.brush.r, 0, Math.PI * 2);
@@ -729,47 +689,6 @@ function drawCopy(
         ctx.fillText(b.name, lx, ly);
       }
     }
-  }
-  if (o.story) {
-    // Lugares com cenas: um selo com o número de cenas, acima da cidade.
-    for (const p of o.story.pins) {
-      const [sx, sy] = toS(p.x, p.y);
-      if (sx < -30 || sy < -30 || sx > size.w + 30 || sy > size.h + 30) continue;
-      const bx = sx + 7;
-      const by = sy - 14;
-      const label = String(p.count);
-      ctx.font = `700 10px ${T.font}`;
-      const w = Math.max(16, ctx.measureText(label).width + 9);
-      ctx.beginPath();
-      ctx.roundRect(bx - w / 2, by - 8, w, 16, 8);
-      ctx.fillStyle = p.active ? "#e0a52c" : "rgba(43,42,38,0.88)";
-      ctx.fill();
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = "#fffaf0";
-      ctx.stroke();
-      ctx.fillStyle = p.active ? "#2b2a26" : "#fffaf0";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, bx, by + 0.5);
-    }
-    // Paradas numeradas de cada caminho.
-    for (const j of o.story.journeys)
-      j.points.forEach(([x, y], i) => {
-        const [sx, sy] = toS(x, y);
-        if (sx < -30 || sy < -30 || sx > size.w + 30 || sy > size.h + 30) return;
-        ctx.beginPath();
-        ctx.arc(sx - 9, sy + 9, 7, 0, Math.PI * 2);
-        ctx.fillStyle = j.color;
-        ctx.fill();
-        ctx.lineWidth = 1.4;
-        ctx.strokeStyle = "#fff";
-        ctx.stroke();
-        ctx.fillStyle = "#fff";
-        ctx.font = `700 9px ${T.font}`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(String(i + 1), sx - 9, sy + 9.5);
-      });
   }
   if (o.furniture) {
     scaleBar(ctx, view, size);

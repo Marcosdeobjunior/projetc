@@ -1139,19 +1139,6 @@ inventados) e **estradas** entre elas.
   **população do mundo** no painel passa de centenas de milhões a bilhões, e a prévia e a vista
   de rua mostram prédios de concreto de até 12 andares, com laje. O relevo e as cidades gravados
   não mudam: voltar à Fantasia devolve tudo. Trocar de época entra no Desfazer.
-- **História no mapa (cenas e jornadas):** com a camada **Cenas e jornadas** ligada, cada cidade
-  (ou reino) onde se passam cenas ganha um selo com o número de cenas. O painel **História no
-  mapa** tem duas abas:
-  - **Cenas:** as cenas do livro por capítulo (filtre um capítulo para ver só as dele no mapa).
-    O lugar de cada cena é o escolhido na lista (qualquer lugar que esteja no mapa) ou, sem
-    escolha, o lugar do mapa mais citado no texto da cena ("Pelo texto: …"). Clicar no nome
-    leva o mapa até o lugar e destaca o selo; o lápis abre a cena no editor. O lugar escolhido
-    também vale na linha do tempo.
-  - **Jornadas:** marque personagens para ver o caminho de cada um, em cores, com as paradas
-    numeradas, na ordem das datas da linha do tempo (sem data, na ordem do livro). Para cada
-    trecho: a distância, quantos dias passaram entre as cenas e quanto a viagem levaria (a pé,
-    a cavalo, de navio; no mundo Real, de carro e de avião). Se o tempo entre as cenas é curto
-    demais até para o meio mais rápido, aparece o aviso **Rápido demais**.
 - **Configurar mundo:** o botão no painel abre a janela do clima do planeta (arraste pelo título).
   Escolha a temperatura média no **Equador**, no **Polo Norte** e no **Polo Sul** e a
   **Precipitação** (100% = como na Terra). A temperatura cai do equador até cada polo, devagar nos
@@ -1239,9 +1226,9 @@ inventados) e **estradas** entre elas.
   (lagos e marcadores); em **Cidades**, a lista das cidades com província e população (a capital
   primeiro; clique para abrir o Editar povoado). **Abrir ficha** abre o lugar do estado no Mundo.
 - **Abas do painel:** o painel lateral abre na aba **Mundo** (números, época, estilo, camadas,
-  Configurar mundo, exportar e gerar). As outras abas, no alto do painel, são **História** (cenas
-  e jornadas), **Rotas**, **Lugares** (lugares do Mundo que ainda não estão no mapa, com o
-  número deles na aba) e **Legendas** (culturas, religiões, marcadores e biomas). O que estiver
+  Configurar mundo, exportar e gerar). As outras abas, no alto do painel, são **Rotas**,
+  **Lugares** (lugares do Mundo que ainda não estão no mapa, com o número deles na aba) e
+  **Legendas** (culturas, religiões, marcadores e biomas). O que estiver
   selecionado no mapa (estado, rota, estrada) aparece no topo de qualquer aba.
 - **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
   canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app

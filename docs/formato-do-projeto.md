@@ -298,7 +298,6 @@ calcula intervalos.
 | `scenes[id].place`  | string         | Opcional. Id do lugar onde a cena se passa                                                       |
 | `scenes[id].ignore` | boolean        | Opcional. `true` = ignorar os avisos de viagem desta cena                                        |
 | `births`            | objeto         | Por id de personagem: dia da história em que nasceu (inteiro; negativo = antes do dia 1)         |
-| `places`            | objeto         | Opcional. Por id de cena: id da nota de lugar onde ela se passa (vale também sem data; usado pelo mapa-múndi) |
 | `travel[]`          | array          | Tempos de viagem: `from`, `to` (ids de lugares), `days` (≥ 0). Vale nos dois sentidos; um par só |
 
 Definição de um calendário (`timeline/calendar.ts`, lida com `sanitizeCalendar`):
