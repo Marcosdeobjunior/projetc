@@ -56,7 +56,7 @@ import {
   type MapMode,
 } from "../world/worldRender";
 import { deriveSociety, MARKER_TYPES } from "../world/society";
-import { settlementInfo } from "../world/settlement";
+import { bigNumber, ruralPopulation, settlementInfo } from "../world/settlement";
 import { drawWorld, KM_PER_CELL, stateMask, type BurgMeta } from "./worldDraw";
 import { Icon } from "./Icon";
 import { Select } from "./Select";
@@ -475,6 +475,11 @@ function WorldEditor({
     }
     return m;
   }, [map.burgs, capitals, heights, derived, session.project.notes]);
+  // População do mundo: as cidades do mapa mais o campo (pela área habitável e a época).
+  const rural = useMemo(() => ruralPopulation(derived), [derived]);
+  let cityPop = 0;
+  for (const v of meta.values()) cityPop += v.population;
+  const worldPop = rural + cityPop;
 
   const selectedStateIndex =
     selected?.kind === "state" ? map.states.findIndex((s) => s.id === selected.id) : -1;
@@ -1172,7 +1177,12 @@ function WorldEditor({
             />
             <p className="wm-meta">
               {map.states.length} estados · {map.burgs.length} cidades · {derived.rivers.length}{" "}
-              rios
+              rios · {derived.lakes.length} lagos
+            </p>
+            <p className="wm-meta" title="Cidades do mapa mais a população do campo">
+              População do mundo: <strong>{bigNumber(worldPop)}</strong>
+              {" · "}
+              {Math.round((cityPop / Math.max(1, worldPop)) * 100)}% nas cidades do mapa
             </p>
             <div className="wm-era">
               <span>Época</span>
@@ -1625,12 +1635,14 @@ function WorldEditor({
           <section className="profile-card wm-legend">
             <h3>Biomas</h3>
             <ul>
-              {BIOMES.slice(1).map((b) => (
-                <li key={b.name}>
-                  <span style={{ background: b.color }} />
-                  {b.name}
-                </li>
-              ))}
+              {BIOMES.slice(1, (map.options.era ?? "fantasia") === "fantasia" ? 14 : undefined).map(
+                (b) => (
+                  <li key={b.name}>
+                    <span style={{ background: b.color }} />
+                    {b.name}
+                  </li>
+                ),
+              )}
             </ul>
           </section>
         </aside>

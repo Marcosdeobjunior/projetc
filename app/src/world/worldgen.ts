@@ -746,7 +746,7 @@ export function generateWorld(o: WorldOptions, name = "Mundo", climate?: WorldCl
   // Lugares bons para cidades (como num mundo real): bioma habitável, clima ameno,
   // terreno plano, água por perto — rio (mais ainda num encontro de rios), lago ou
   // mar. A costa ajuda, mas não domina: o interior também recebe cidades.
-  const HABITABLE = [0, 0.35, 0.25, 0.75, 1, 0.85, 1, 0.7, 0.8, 0.45, 0.2, 0, 0.3, 0.15];
+  const HABITABLE = [0, 0.35, 0.25, 0.75, 1, 0.85, 1, 0.7, 0.8, 0.45, 0.2, 0, 0.3, 0.15, 1, 1];
   const scored: { i: number; s: number; inland: boolean }[] = [];
   for (let i = 0; i < COLS * ROWS; i++) {
     if (!d.land[i]) continue;
@@ -869,6 +869,8 @@ export const BIOMES = [
   { name: "Geleira", color: "#eef3f5" },
   { name: "Pântano", color: "#5d8659" },
   { name: "Montanha", color: "#8f8577" },
+  { name: "Área urbana", color: "#a6a39d" },
+  { name: "Lavouras", color: "#d9cf7a" },
 ] as const;
 
 export interface Derived {
@@ -1001,6 +1003,7 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
   const n = COLS * ROWS;
   const h = map.heights;
   const cfg = normalizeClimate(map.climate);
+  const era = eraOf(map);
   const temp = new Float32Array(n);
   const tempC = new Float32Array(n);
   const noise = new Float32Array(n);
@@ -1011,7 +1014,10 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
     // ~7 °C a 55°, −17 °C no polo), com os valores escolhidos em "Configurar mundo".
     const sea = seaLevelTemp(cfg, 90 - ((y + 0.5) / ROWS) * 180);
     const km = land[i] ? (((h[i]! - SEA) / 127) ** 1.6 * 5200) / 1000 : 0;
-    const t = sea - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
+    // Aquecimento da época (mais forte perto dos polos): +1,2 °C hoje, +3,5 °C no futuro.
+    const warm = era === "atual" ? 1.2 : era === "futurista" ? 3.5 : 0;
+    const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
+    const t = sea + warm * (1 + (lat / 90) * 1.5) - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
     tempC[i] = t;
     temp[i] = Math.max(0, Math.min(1, (t + 14) / 42));
     noise[i] = fbm(x / 9 + 30, y / 9 + 30, 4) * 0.5 + 0.5;
@@ -1117,6 +1123,26 @@ export function deriveWorld(map: WorldMap): Derived {
   const h = map.heights;
   const land = new Uint8Array(n);
   for (let i = 0; i < n; i++) land[i] = h[i]! >= SEA ? 1 : 0;
+  // No futuro o mar subiu (o gelo derreteu): as terras mais baixas da costa
+  // ficam embaixo d'água, menos onde há cidade (protegida por diques).
+  const flooded = new Uint8Array(n);
+  if (eraOf(map) === "futurista") {
+    const keep = new Set(map.burgs.map((b) => cellOf(b.x, b.y)));
+    for (let i = 0; i < n; i++) {
+      if (!land[i] || h[i]! > SEA + 1 || keep.has(i)) continue;
+      const x = i % COLS;
+      const y = (i / COLS) | 0;
+      for (const [dx, dy] of N8) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= ROWS) continue;
+        if (h[ny * COLS + wrapCol(x + dx)]! < SEA) {
+          flooded[i] = 1;
+          break;
+        }
+      }
+    }
+    for (let i = 0; i < n; i++) if (flooded[i]) land[i] = 0;
+  }
 
   const rand = rng(map.options.seed ^ 0x77);
   const fbm = makeNoise(rand);
@@ -1258,6 +1284,7 @@ export function deriveWorld(map: WorldMap): Derived {
   for (const lk of lakes) for (const i of lk.cells) land[i] = 0;
   // Alturas "efetivas" para desenhar: lago = água (mais escura onde é mais fundo).
   const eff = new Uint8Array(h);
+  for (let i = 0; i < n; i++) if (flooded[i]) eff[i] = SEA - 3;
   for (const lk of lakes)
     for (const i of lk.cells) eff[i] = Math.max(70, Math.round(SEA - 3 - (filled[i]! - h[i]!) * 3));
 
@@ -1405,6 +1432,38 @@ export function deriveWorld(map: WorldMap): Derived {
     if (flux[i]! >= riverMin) m = Math.min(1, m + 0.12);
     biome[i] = biomeFor(tc, m, e);
   }
+  // Hoje e no futuro: cidades viram manchas urbanas e o campo em volta vira
+  // lavoura (no futuro menos, com fazendas verticais e matas replantadas).
+  {
+    const era = eraOf(map);
+    if (era !== "fantasia") {
+      const caps = new Set(map.states.map((s) => s.capital));
+      const hash = (i: number) => {
+        const s = Math.sin(i * 78.233 + map.options.seed * 0.0007) * 43758.5453;
+        return s - Math.floor(s);
+      };
+      const farmP = era === "atual" ? 0.55 : 0.25;
+      const FARMABLE = new Set([3, 4, 5, 6, 8]);
+      for (const b of map.burgs) {
+        const c = cellOf(b.x, b.y);
+        const cx = c % COLS;
+        const cy = (c / COLS) | 0;
+        const big = caps.has(b.id);
+        const urban = big ? (era === "futurista" ? 1.5 : 1) : era === "futurista" ? 0.5 : 0;
+        for (let dy = -3; dy <= 3; dy++)
+          for (let dx = -3; dx <= 3; dx++) {
+            const y = cy + dy;
+            if (y < 0 || y >= ROWS) continue;
+            const j = y * COLS + wrapCol(cx + dx);
+            if (!land[j] || biome[j] === 11 || biome[j] === 13) continue;
+            const dist = Math.hypot(dx, dy);
+            if (dist <= urban || j === c) biome[j] = 14;
+            else if (biome[j] !== 14 && FARMABLE.has(biome[j]!) && hash(j) < farmP * (1 - dist / 4))
+              biome[j] = 15;
+          }
+      }
+    }
+  }
 
   // Culturas: cada povo se espalha a partir do centro, com custos do seu jeito de
   // viver (o nômade avança rápido em campos e desertos, o caçador nas matas, o
@@ -1412,7 +1471,7 @@ export function deriveWorld(map: WorldMap): Derived {
   const culture = new Int16Array(n).fill(-1);
   {
     const cults = map.cultures ?? [];
-    const BIOME_COST = [0, 4, 3, 1.2, 1, 1.4, 1.4, 1.6, 1.8, 4, 10, 40, 3, 6];
+    const BIOME_COST = [0, 4, 3, 1.2, 1, 1.4, 1.4, 1.6, 1.8, 4, 10, 40, 3, 6, 0.6, 0.8];
     const cost = new Float64Array(n).fill(Infinity);
     const q = new Heap();
     const native: number[] = [];
@@ -1507,7 +1566,7 @@ export function deriveWorld(map: WorldMap): Derived {
     owner[c] = k;
     sh.push(c, 0);
   });
-  const terrainCost = [0, 2.2, 1.6, 0.6, 0.2, 0.7, 0.9, 1.4, 1.2, 1.6, 2.2, 6, 2.5, 4];
+  const terrainCost = [0, 2.2, 1.6, 0.6, 0.2, 0.7, 0.9, 1.4, 1.2, 1.6, 2.2, 6, 2.5, 4, 0.2, 0.3];
   const maxCost = Math.max(60, Math.sqrt(order.length / Math.max(1, map.states.length)) * 5);
   while (sh.size) {
     const i = sh.pop();
@@ -1562,7 +1621,7 @@ export function deriveWorld(map: WorldMap): Derived {
     const s = Math.sin(i * 12.9898 + map.options.seed * 0.001) * 43758.5453;
     rough[i] = (s - Math.floor(s)) * 0.22;
   }
-  const BIOME_ROAD = [0, 0.5, 0.3, 0.1, 0, 0.35, 0.3, 0.7, 0.45, 0.5, 0.6, 5, 1.6, 1.2];
+  const BIOME_ROAD = [0, 0.5, 0.3, 0.1, 0, 0.35, 0.3, 0.7, 0.45, 0.5, 0.6, 5, 1.6, 1.2, 0, 0.05];
   // 16 direções: as 8 vizinhas e os "pulos de cavalo" (menos retas e diagonais forçadas).
   const DIRS: [number, number][] = [
     ...N8.map(([dx, dy]) => [dx, dy] as [number, number]),

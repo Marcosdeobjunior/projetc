@@ -1135,7 +1135,15 @@ inventados) e **estradas** entre elas.
   população das cidades (milhões hoje e no futuro) e os marcadores (cachoeira vira usina
   hidrelétrica ou barragem automatizada, farol vira porto de contêineres ou hiperporto, capitais
   ganham aeroporto, universidade, espaçoporto ou arcologia, e no futuro há um elevador orbital
-  perto do equador). Trocar de época entra no Desfazer.
+  perto do equador). A época também muda o mundo em si: **clima** (hoje +1,2 °C, no futuro
+  +3,5 °C, mais forte perto dos polos), **geografia** (no futuro o mar subiu e cobre as terras
+  mais baixas da costa, menos as cidades, protegidas por diques; hoje e no futuro as cidades viram
+  manchas de **Área urbana** e o campo em volta vira **Lavouras**, menos no futuro, com fazendas
+  verticais), a **população do mundo** mostrada no painel (centenas de milhões na fantasia,
+  bilhões hoje e no futuro) e as **construções** da prévia e da vista de rua (sobrados com
+  telhado; prédios de concreto de até 12 andares; torres de vidro de até 45 andares). Os dados
+  gravados (relevo, cidades) não mudam: voltar à fantasia devolve tudo. Trocar de época entra no
+  Desfazer.
 - **Configurar mundo:** o botão no painel abre a janela do clima do planeta (arraste pelo título).
   Escolha a temperatura média no **Equador**, no **Polo Norte** e no **Polo Sul** e a
   **Precipitação** (100% = como na Terra). A temperatura cai do equador até cada polo, devagar nos

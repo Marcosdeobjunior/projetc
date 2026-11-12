@@ -457,7 +457,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   por arquétipo (`formForEra`); `deriveWorld` põe `d.era` e nomeia as estradas pela época;
   `deriveSociety` troca os marcadores por equivalentes (`ERA_MARKERS`) e acrescenta os das
   capitais; `settlementInfo` multiplica a população padrão; `bakeBase` ajusta a paleta e
-  `ui/worldDraw.ts` usa um `Theme` por época (cores, fonte, brilho na costa).
+  `ui/worldDraw.ts` usa um `Theme` por época (cores, fonte, brilho na costa). Efeitos no mundo:
+  aquecimento em `climate()`; no futuro, `deriveWorld` alaga (`flooded`) terras com altura ≤ SEA+1
+  junto ao mar, fora das células de cidade; biomas 14 (Área urbana) e 15 (Lavouras) em volta das
+  cidades; `ruralPopulation` (densidade por bioma × área da célula, por época); `localGeo` passa a
+  época para a vila (`floorsFor`, cores em `PlaceMap`, laje plana em `StreetView`).
 - Clima configurável (`map.climate`, `ui/ClimateDialog.tsx`): `normalizeClimate` limita os valores;
   `seaLevelTemp` interpola entre o polo do hemisfério e o equador com `(lat/90)^1,6`; em
   `climate()` cada faixa de 30° usa o componente leste-oeste do vento escolhido (quase norte-sul:

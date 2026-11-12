@@ -210,7 +210,35 @@ const BIOME_LOOK: { ground: string; trees: number; farmland: boolean }[] = [
   { ground: "#f1f4f4", trees: 0, farmland: false }, // geleira
   { ground: "#dbe0c4", trees: 0.9, farmland: false }, // pântano
   { ground: "#e3ddcf", trees: 0.35, farmland: false }, // montanha
+  { ground: "#dedbd4", trees: 0.25, farmland: false }, // área urbana
+  { ground: "#e8e2bc", trees: 0.3, farmland: true }, // lavouras
 ];
+
+/** Gente por célula inteira (no equador) e por hábitat, conforme a época. */
+const RURAL_DENSITY = { fantasia: 50_000, atual: 900_000, futurista: 900_000 } as const;
+const URBAN_DENSITY = { fantasia: 0, atual: 10_000_000, futurista: 45_000_000 } as const;
+const HABITAT = [0, 0.05, 0.03, 0.5, 0.9, 0.7, 0.8, 0.5, 0.6, 0.15, 0.03, 0, 0.2, 0.08, 1, 1];
+
+/** População fora das cidades do mapa (campo e periferias), pela área habitável. */
+export function ruralPopulation(d: Derived): number {
+  let sum = 0;
+  for (let i = 0; i < d.land.length; i++) {
+    if (!d.land[i]) continue;
+    const y = Math.floor(i / COLS);
+    const area = Math.cos(((y + 0.5) / ROWS - 0.5) * Math.PI);
+    const b = d.biome[i]!;
+    sum += area * (b === 14 ? URBAN_DENSITY[d.era] : RURAL_DENSITY[d.era] * (HABITAT[b] ?? 0.3));
+  }
+  return Math.round(sum);
+}
+
+/** Número grande em palavras ("8,1 bilhões"). */
+export function bigNumber(n: number): string {
+  const f = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  if (n >= 1e9) return `${f(n / 1e9)} ${n >= 2e9 ? "bilhões" : "bilhão"}`;
+  if (n >= 1e6) return `${f(n / 1e6)} ${n >= 2e6 ? "milhões" : "milhão"}`;
+  return n.toLocaleString("pt-BR");
+}
 
 /**
  * Geografia em volta da cidade, lida do mapa-múndi: de que lado está a água,
@@ -287,6 +315,7 @@ export function localGeo(burg: Burg, d: Derived): VillageGeo {
     ground: look.ground,
     trees: look.trees,
     farmland: look.farmland,
+    ...(d.era !== "fantasia" ? { era: d.era } : {}),
   };
 }
 

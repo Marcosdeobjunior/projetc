@@ -36,3 +36,47 @@ describe("épocas do mapa", () => {
     for (const s of back.states) expect(FORMS_BY_ERA.fantasia).toContain(s.form);
   }, 60000);
 });
+
+describe("épocas: mundo de verdade", () => {
+  it("população, aquecimento, mar mais alto, cidades e lavouras", async () => {
+    const { ruralPopulation } = await import("./settlement");
+    const { generateVillage } = await import("./village");
+    const { localGeo } = await import("./settlement");
+    const f = generateWorld({ ...DEFAULT_OPTIONS, seed: 41 });
+    const res = (["fantasia", "atual", "futurista"] as const).map((era) => {
+      const m = withEra(f, era);
+      const d = deriveWorld(m);
+      let t = 0;
+      let k = 0;
+      for (let i = 0; i < d.land.length; i++)
+        if (d.land[i]) {
+          t += d.tempC[i]!;
+          k++;
+        }
+      const v = generateVillage({
+        seed: 3,
+        size: "cidade",
+        road: true,
+        river: false,
+        fields: true,
+        geo: localGeo(m.burgs[0]!, d),
+      });
+      return {
+        pop: ruralPopulation(d),
+        temp: t / k,
+        land: k,
+        urban: d.biome.filter((b) => b === 14).length,
+        floors: Math.max(...v.buildings.map((b) => b.floors)),
+      };
+    });
+    const [old, now, future] = res as [(typeof res)[0], (typeof res)[0], (typeof res)[0]];
+    expect(now.pop).toBeGreaterThan(old.pop * 5);
+    expect(now.temp).toBeGreaterThan(old.temp);
+    expect(future.temp).toBeGreaterThan(now.temp);
+    expect(future.land).toBeLessThan(now.land); // o mar subiu
+    expect(old.urban).toBe(0);
+    expect(now.urban).toBeGreaterThan(0);
+    expect(old.floors).toBeLessThanOrEqual(3);
+    expect(future.floors).toBeGreaterThan(now.floors);
+  }, 60000);
+});

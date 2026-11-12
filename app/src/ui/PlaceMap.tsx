@@ -17,6 +17,25 @@ export const MAP_COLORS = {
   treeEdge: "#6b7a4f",
 };
 
+/** Cores dos prédios e ruas por época: pergaminho, cidade de concreto e asfalto, ou futuro. */
+const ERA_COLORS = {
+  atual: {
+    road: "#f4f4f2",
+    roadEdge: "#8d9096",
+    house: ["#cfd2d6", "#bfc4ca", "#dcd9d2", "#c8bfb3"],
+    houseEdge: "#4a4f57",
+  },
+  futurista: {
+    road: "#2a3442",
+    roadEdge: "#3ff0ff",
+    house: ["#2f4a63", "#25405a", "#3a5874", "#1f3550"],
+    houseEdge: "#7ff6ff",
+  },
+} as const;
+function colorsFor(era: VillageMap["era"]) {
+  return era ? ERA_COLORS[era] : MAP_COLORS;
+}
+
 const path = (pts: Pt[]) =>
   pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join("");
 const poly = (pts: Pt[]) => path(pts) + "Z";
@@ -43,6 +62,7 @@ export function PlaceMap({
   onPick?(p: Pt): void;
 }) {
   const ids = useId();
+  const C = colorsFor(map.era);
   const svg = useRef<SVGSVGElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, w: map.width, h: map.height });
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean } | null>(
@@ -174,7 +194,7 @@ export function PlaceMap({
             key={`e${i}`}
             d={path(r.points)}
             fill="none"
-            stroke={MAP_COLORS.roadEdge}
+            stroke={C.roadEdge}
             strokeWidth={r.width + 1.4}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -185,7 +205,7 @@ export function PlaceMap({
             key={`r${i}`}
             d={path(r.points)}
             fill="none"
-            stroke={MAP_COLORS.road}
+            stroke={C.road}
             strokeWidth={r.width}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -208,7 +228,7 @@ export function PlaceMap({
             cy={map.plaza.y}
             r={map.plaza.r}
             fill="#f3ead4"
-            stroke={MAP_COLORS.roadEdge}
+            stroke={C.roadEdge}
             strokeWidth="0.8"
           />
         )}
@@ -216,8 +236,8 @@ export function PlaceMap({
           <path
             key={i}
             d={poly(b.corners)}
-            fill={b.kind === "templo" ? "#a8916b" : MAP_COLORS.house[b.tone]}
-            stroke={MAP_COLORS.houseEdge}
+            fill={b.kind === "templo" ? "#a8916b" : C.house[b.tone]}
+            stroke={C.houseEdge}
             strokeWidth={b.kind === "templo" ? 1.4 : 0.9}
             strokeLinejoin="round"
           />
@@ -227,12 +247,12 @@ export function PlaceMap({
             <path
               d={poly(map.citadel)}
               fill="#bda983"
-              stroke={MAP_COLORS.houseEdge}
+              stroke={C.houseEdge}
               strokeWidth="2.4"
               strokeLinejoin="round"
             />
             {map.citadel.map(([x, y], i) => (
-              <circle key={i} cx={x} cy={y} r="2.8" fill="#8c7a5a" stroke={MAP_COLORS.houseEdge} />
+              <circle key={i} cx={x} cy={y} r="2.8" fill="#8c7a5a" stroke={C.houseEdge} />
             ))}
           </g>
         )}
@@ -241,12 +261,12 @@ export function PlaceMap({
             <path
               d={poly(map.wall)}
               fill="none"
-              stroke={MAP_COLORS.houseEdge}
+              stroke={C.houseEdge}
               strokeWidth="2.6"
               strokeLinejoin="round"
             />
             {map.wall.map(([x, y], i) => (
-              <circle key={i} cx={x} cy={y} r="3" fill="#8c7a5a" stroke={MAP_COLORS.houseEdge} />
+              <circle key={i} cx={x} cy={y} r="3" fill="#8c7a5a" stroke={C.houseEdge} />
             ))}
           </g>
         )}
