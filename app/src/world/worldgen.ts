@@ -544,9 +544,28 @@ function generateHeights(o: WorldOptions): Uint8Array {
     blobs.push({ x: rand() * aspect, y: between(0.42, 0.58), r: between(0.4, 0.48) });
     add(3, 0.08, 0.16);
   } else if (o.template === "ilhas") add(24 + Math.floor(rand() * 12), 0.05, 0.11);
-  else add(5 + Math.floor(rand() * 3), 0.16, 0.28);
+  else {
+    // Continentes de verdade: 3 a 6 centros bem afastados uns dos outros (pelo
+    // arco), para não se juntarem numa pangeia; entre eles fica oceano.
+    const want = 3 + Math.floor(rand() * 4);
+    const toP = (b: { x: number; y: number }) => cellOnSphere((b.x / aspect) * COLS, b.y * ROWS);
+    for (let tries = 0; blobs.length < want && tries < 400; tries++) {
+      const b = { x: rand() * aspect, y: between(0.3, 0.7), r: between(0.13, 0.22) };
+      const p = toP(b);
+      const ok = blobs.every((o) => {
+        const q = toP(o);
+        const ang = Math.acos(Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2])));
+        return ang / Math.PI > (b.r + o.r) * 1.15;
+      });
+      if (ok) blobs.push(b);
+    }
+  }
+  const continents = o.template === "continentes";
 
   const raw = new Float32Array(COLS * ROWS);
+  // O relevo sem os vãos entre continentes: dele sai a profundidade do mar (os
+  // vãos só decidem onde é terra, sem deixar sulcos no fundo do oceano).
+  const plain = new Float32Array(COLS * ROWS);
   // Tudo sobre a esfera: ruído 3D e distância pelo arco (formas iguais no equador e nos polos).
   const noise3 = makeNoise3(rand);
   const o1 = [rand() * 50, rand() * 50, rand() * 50] as const;
@@ -559,14 +578,29 @@ function generateHeights(o: WorldOptions): Uint8Array {
     for (let x = 0; x < COLS; x++) {
       const [px, py, pz] = cellOnSphere(x + 0.5, y + 0.5);
       let mask = 0;
+      let m1 = -Infinity;
+      let m2 = -Infinity;
       for (const b of centers) {
         const dot = px * b.p[0] + py * b.p[1] + pz * b.p[2];
         const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI; // 0 a 1 (meia volta)
-        mask = Math.max(mask, 1 - ang / b.r);
+        const v = 1 - ang / b.r;
+        mask = Math.max(mask, v);
+        if (v > m1) {
+          m2 = m1;
+          m1 = v;
+        } else if (v > m2) m2 = v;
       }
       const n = noise3(px * 1.05 + o1[0], py * 1.05 + o1[1], pz * 1.05 + o1[2]);
       const ridge = 1 - Math.abs(noise3(px * 1.6 + o2[0], py * 1.6 + o2[1], pz * 1.6 + o2[2], 4));
-      raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12;
+      if (continents) {
+        // Oceano entre continentes: onde dois centros "puxam" quase igual, afunda.
+        const gap = Math.max(0, 1 - (m1 - m2) / 0.35);
+        plain[y * COLS + x] = mask * 0.75 + n * 0.3 + ridge * ridge * 0.12;
+        raw[y * COLS + x] = plain[y * COLS + x]! - gap * gap * 0.45;
+      } else {
+        raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12;
+        plain[y * COLS + x] = raw[y * COLS + x]!;
+      }
     }
   }
   // No mapa plano tudo precisa caber inteiro: gira o planeta para que a borda
@@ -592,13 +626,16 @@ function generateHeights(o: WorldOptions): Uint8Array {
     for (let y = 0; y < ROWS; y++)
       for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = raw[y * COLS + wrapCol(x + bestX)]!;
     raw.set(rolled);
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = plain[y * COLS + wrapCol(x + bestX)]!;
+    plain.set(rolled);
   }
   // Afasta a terra dos polos e da borda de 180° aos poucos, com um limite que
   // ondula pelo ruído: a costa segue o relevo e não vira uma linha reta ao longo
   // de um paralelo ou de um meridiano.
   // Guarda o relevo antes do afastamento: a profundidade do mar vem dele (o mar
   // não fica artificialmente fundo perto dos polos e da borda).
-  const before = Float32Array.from(raw);
+  const before = plain;
   {
     const o3 = [o1[0] + 17.3, o1[1] + 31.1, o1[2] + 7.9] as const;
     const smooth = (v: number) => {
