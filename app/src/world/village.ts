@@ -51,13 +51,27 @@ export interface VillageGeo {
   style?: ArchStyle;
   /** Povoado com porto: cais e barcos na margem da água. */
   port?: boolean;
+  /**
+   * Habitantes: decide quantas construções cabem e quantos andares elas têm
+   * (sem ela, vale o tamanho aldeia/vila/cidade das opções).
+   */
+  population?: number;
 }
 
 /** Jeito de construir de cada lugar: muda forma, tamanho e cor das casas. */
 export type ArchStyle =
-  "temperado" | "deserto" | "tropical" | "frio" | "neve" | "montanha" | "nomade" | "caca";
+  | "moderno"
+  | "temperado"
+  | "deserto"
+  | "tropical"
+  | "frio"
+  | "neve"
+  | "montanha"
+  | "nomade"
+  | "caca";
 
 export const ARCH_STYLES: Record<ArchStyle, string> = {
+  moderno: "Cidade moderna: ruas em grade, prédios de concreto e casas nos bairros",
   temperado: "Casas de telha, sobrados no centro",
   deserto: "Adobe, terraços e casas de pátio",
   tropical: "Palha, cabanas redondas e varandas",
@@ -194,6 +208,13 @@ function houseShape(
 ): { roof: Roof; sx: number; sy: number; square?: boolean } {
   const center = near < 0.45;
   switch (style) {
+    case "moderno":
+      if (near < 0.35) return { roof: "plano", sx: 1.45, sy: 1.3 };
+      if (near < 0.7)
+        return r() < 0.7
+          ? { roof: "plano", sx: 1.35, sy: 1.2 }
+          : { roof: "quatro-aguas", sx: 1, sy: 1 };
+      return { roof: r() < 0.5 ? "quatro-aguas" : "duas-aguas", sx: 0.95, sy: 0.9 };
     case "deserto":
       if (center && r() < 0.45) return { roof: "patio", sx: 1.45, sy: 1.5, square: true };
       return { roof: "plano", sx: 1, sy: 1, square: r() < 0.5 };
@@ -240,14 +261,48 @@ function wander(rand: () => number, start: Pt, dir: number, length: number, step
  * Andares pela época e pela distância ao centro (0 = centro, 1 = borda): sobrados
  * na fantasia e prédios de até 12 andares no mundo real.
  */
-function floorsFor(era: VillageGeo["era"], r: number, rand: () => number): number {
-  if (era === "atual")
+function floorsFor(
+  era: VillageGeo["era"],
+  r: number,
+  rand: () => number,
+  /** Gente a mais do que cabe no mapa (1 = cabe): empilha andares no centro. */
+  pressure = 1,
+): number {
+  const p = Math.max(1, pressure);
+  if (era === "atual") {
+    const tall = Math.min(70, Math.round((4 + rand() * 8) * Math.sqrt(p)));
     return r < 0.35
-      ? 4 + Math.floor(rand() * 9)
+      ? tall
       : r < 0.7
-        ? 2 + Math.floor(rand() * 3)
+        ? Math.min(20, Math.round((2 + rand() * 3) * Math.sqrt(Math.sqrt(p))))
         : 1 + Math.floor(rand() * 2);
+  }
+  if (p > 1.3 && r < 0.6) return Math.min(5, 2 + Math.floor(rand() * Math.min(4, p)));
   return r < 0.5 && rand() < 0.5 ? (rand() < 0.3 ? 3 : 2) : 1;
+}
+
+/**
+ * Quantas construções desenhar e o raio da área construída, pela população.
+ * Na fantasia cada casa abriga ~6 pessoas; no mundo real, ~40 por prédio (com
+ * apartamentos). Quem não cabe no chão vai para andares a mais (`want`).
+ */
+export function townSize(
+  population: number,
+  era: VillageGeo["era"],
+): { target: number; radius: number; branches: number; want: number } {
+  const per = era === "atual" ? 40 : 6;
+  const want = population / per;
+  // Até ~100 construções o mapa mostra todas; daí em diante a área cresce mais
+  // devagar que a população (cidade grande é mais densa e mais alta).
+  const target = Math.round(
+    Math.max(5, Math.min(650, want < 100 ? want : 100 * (want / 100) ** 0.55)),
+  );
+  return {
+    target,
+    radius: Math.max(24, Math.min(175, 9.5 * Math.sqrt(target))),
+    branches: Math.max(0, Math.min(9, Math.round(target / 50))),
+    want,
+  };
 }
 
 /** Ponto e direção a uma distância `s` ao longo da linha. */
@@ -430,7 +485,8 @@ function buildTown(
   g?: VillageGeo,
 ): VillageMap {
   const between = (a: number, b: number) => a + rand() * (b - a);
-  const cfg = SIZE[o.size];
+  const sized = g?.population ? townSize(g.population, g.era) : null;
+  const cfg = sized ?? { ...SIZE[o.size], want: 0 };
   const W = MAP_W;
   const H = MAP_H;
   const inSea = (p: Pt) => !!sea && insidePoly(p, sea.poly);
@@ -439,7 +495,7 @@ function buildTown(
   const shapeRand = rng((o.seed ^ 0x2f6b9d) >>> 0);
   // Ruas locais (sorteadas): saem da principal para os dois lados.
   if (g) {
-    for (let i = 0; i < cfg.branches; i++) {
+    for (let i = 0; i < (g.era === "atual" ? 0 : cfg.branches); i++) {
       const at = along(main, Math.min(lineLength(main) * 0.9, between(20, cfg.radius)));
       if (!at) continue;
       const side = i % 2 === 0 ? 1 : -1;
@@ -448,10 +504,50 @@ function buildTown(
       const cut = pts.findIndex((p) => inSea(p));
       if (cut > 0) pts = pts.slice(0, cut);
       if (pts.length > 1) roads.push({ points: pts, width: 5, main: false });
+      // Cidade grande: travessas saindo do meio de cada rua.
+      if (cfg.target > 150 && pts.length > 3 && g.era !== "atual") {
+        const mid = along(pts, lineLength(pts) * between(0.35, 0.65));
+        if (mid) {
+          const sdir = mid.angle + (rand() < 0.5 ? 1 : -1) * (Math.PI / 2 + between(-0.4, 0.4));
+          let sp = wander(rand, mid.p, sdir, between(cfg.radius * 0.4, cfg.radius * 0.8), 16);
+          const sc = sp.findIndex((p) => inSea(p));
+          if (sc > 0) sp = sp.slice(0, sc);
+          if (sp.length > 1) roads.push({ points: sp, width: 4, main: false });
+        }
+      }
+    }
+    // Mundo real: quarteirões em grade, alinhados com a estrada principal.
+    if (g.era === "atual" && cfg.target > 25) {
+      const a0 = along(main, Math.min(lineLength(main) * 0.5, 30))?.angle ?? 0;
+      const step = 27;
+      const R = cfg.radius * 0.95;
+      for (const a of [a0, a0 + Math.PI / 2]) {
+        const ux = Math.cos(a);
+        const uy = Math.sin(a);
+        for (let k = -Math.floor(R / step); k <= Math.floor(R / step); k++) {
+          if (k === 0 && a === a0) continue;
+          const off = k * step;
+          const half = Math.sqrt(Math.max(0, R * R - off * off));
+          if (half < step) continue;
+          const ox = center[0] - uy * off;
+          const oy = center[1] + ux * off;
+          let pts: Pt[] = [];
+          for (let t = -half; t <= half; t += 12) pts.push([ox + ux * t, oy + uy * t]);
+          // Para na água (mar ou lago).
+          const first = pts.findIndex((p) => !inSea(p));
+          if (first < 0) continue;
+          pts = pts.slice(first);
+          const cut = pts.findIndex((p) => inSea(p));
+          if (cut > 0) pts = pts.slice(0, cut);
+          if (pts.length > 1) roads.push({ points: pts, width: 4.5, main: false });
+        }
+      }
     }
   }
   // Praça, cidadela e muralha (antes das casas, que se desviam deles).
-  const plaza = o.plaza ? { x: center[0], y: center[1], r: o.size === "cidade" ? 18 : 13 } : null;
+  const plaza = o.plaza
+    ? { x: center[0], y: center[1], r: Math.max(8, Math.min(20, cfg.radius * 0.13)) }
+    : null;
   let citadel: Pt[] | null = null;
   if (o.citadel) {
     const at = along(main, lineLength(main) * 0.5)!;
@@ -497,8 +593,17 @@ function buildTown(
 
   // Casas ao longo das ruas, mais densas perto do centro.
   const buildings: Building[] = [];
-  const free = (poly: Pt[]) => buildings.every((b) => !overlaps(b.corners, poly, 1.2));
-  for (let pass = 0; pass < 3 && buildings.length < cfg.target; pass++) {
+  const free = (poly: Pt[]) => {
+    const [px, py] = poly[0]!;
+    return buildings.every(
+      (b) =>
+        Math.abs(b.center[0] - px) > 40 ||
+        Math.abs(b.center[1] - py) > 40 ||
+        !overlaps(b.corners, poly, 1.2),
+    );
+  };
+  const passes = cfg.target > 200 ? 7 : 3;
+  for (let pass = 0; pass < passes && buildings.length < cfg.target; pass++) {
     for (const road of roads) {
       const len = lineLength(road.points);
       for (let s = between(0, 8); s < len && buildings.length < cfg.target; s += between(8, 13)) {
@@ -510,15 +615,17 @@ function buildTown(
           const inside = !wall || insidePoly(at.p, wall);
           const prob =
             Math.exp(-((dist / cfg.radius) ** 2)) *
-            (pass === 0 ? 1 : 0.6) *
+            (pass === 0 ? 1 : cfg.target > 200 ? 0.8 : 0.6) *
             (inside ? (wall ? 1.6 : 1) : 0.25);
           if (rand() > prob) continue;
           const shape = houseShape(style, dist / cfg.radius, shapeRand);
-          let w = between(6, 11) * shape.sx;
-          let d = between(6, 10) * shape.sy;
+          // Cidade cheia: casas geminadas, mais estreitas.
+          const tight = cfg.target > 300 && dist < cfg.radius * 0.6 ? 0.8 : 1;
+          let w = between(6, 11) * shape.sx * tight;
+          let d = between(6, 10) * shape.sy * tight;
           if (shape.square) d = w = (w + d) / 2;
           // Segunda fileira (atrás) nas passadas seguintes, onde é mais denso.
-          const row = pass === 2 ? 1 : 0;
+          const row = pass >= 2 ? Math.min(2, Math.floor(pass / 2)) : 0;
           const back = road.width / 2 + 1.6 + d / 2 + between(0, 1.5) + row * between(10, 14);
           const nx = -Math.sin(at.angle) * side;
           const ny = Math.cos(at.angle) * side;
@@ -538,6 +645,54 @@ function buildTown(
           });
         }
       }
+    }
+  }
+
+  // Cidade grande: preenche os quarteirões por dentro (miolo apinhado), cada casa
+  // alinhada com a rua mais próxima.
+  if (cfg.target > 250) {
+    const fillTo = Math.min(cfg.target, Math.round(buildings.length * (1 + cfg.target / 650)));
+    for (let tries = 0; tries < 3000 && buildings.length < fillTo; tries++) {
+      const a = rand() * Math.PI * 2;
+      const rr = cfg.radius * 0.8 * Math.sqrt(rand());
+      const p: Pt = [center[0] + Math.cos(a) * rr * 1.1, center[1] + Math.sin(a) * rr * 0.9];
+      if (wall && !insidePoly(p, wall)) continue;
+      let best = Infinity;
+      let ang = 0;
+      for (const r of roads)
+        for (let i = 1; i < r.points.length; i++) {
+          const q = r.points[i]!;
+          const d = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
+          if (d < best) {
+            best = d;
+            const q0 = r.points[i - 1]!;
+            ang = Math.atan2(q[1] - q0[1], q[0] - q0[0]);
+          }
+        }
+      if (best > 40) continue;
+      const shape = houseShape(style, rr / cfg.radius, shapeRand);
+      let w = between(5.5, 9) * shape.sx;
+      let d = between(5.5, 8.5) * shape.sy;
+      if (shape.square) d = w = (w + d) / 2;
+      const corners = rect(p[0], p[1], w, d, ang + between(-0.05, 0.05));
+      if (blocked(corners) || !free(corners)) continue;
+      buildings.push({
+        corners,
+        center: p,
+        floors: floorsFor(g?.era, rr / cfg.radius, rand),
+        tone: Math.floor(rand() * 4),
+        roof: shape.roof,
+      });
+    }
+  }
+
+  // Gente que não coube no chão sobe: andares a mais no centro, até fechar a população.
+  if (cfg.want > buildings.length * 1.15 && buildings.length) {
+    const pressure = cfg.want / buildings.length;
+    for (const b of buildings) {
+      if (b.roof === "tenda" || b.roof === "redondo") continue;
+      const r = Math.hypot(b.center[0] - center[0], b.center[1] - center[1]) / cfg.radius;
+      b.floors = Math.max(b.floors, floorsFor(g?.era, r, rand, pressure));
     }
   }
 
@@ -588,7 +743,7 @@ function buildTown(
   const docks: Dock[] = [];
   if (sea && g?.port && g.coast !== null && g.coast !== undefined) {
     const a = g.coast;
-    const want = o.size === "cidade" ? 4 : o.size === "vila" ? 2 : 1;
+    const want = cfg.target > 180 ? 4 : cfg.target > 60 ? 2 : 1;
     const spots = sea.coast
       .filter((p) => p[0] > 10 && p[1] > 10 && p[0] < W - 10 && p[1] < H - 10)
       .sort(
@@ -666,7 +821,7 @@ function buildTown(
   // Árvores, mais para fora do centro.
   const trees: Tree[] = [];
   // Quantidade de árvores pelo bioma; posições pela geografia (ficam ao regenerar).
-  const nTrees = Math.round((o.size === "cidade" ? 140 : 220) * (g?.trees ?? 1));
+  const nTrees = Math.round((cfg.target > 180 ? 140 : 220) * (g?.trees ?? 1));
   for (let tries = 0; tries < nTrees * 6 && trees.length < nTrees; tries++) {
     const x = treeRand() * W;
     const y = treeRand() * H;

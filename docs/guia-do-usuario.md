@@ -1255,7 +1255,11 @@ inventados) e **estradas** entre elas.
   trópicos, madeira escura e casas compridas na taiga, telhados com neve no frio extremo, pedra e
   ardósia na montanha, tendas e iurtas para nômades e cabanas de caçadores; o templo muda junto
   (cúpula, torre ou cabana grande), e os portos ganham cais, barcos e armazéns. O estilo aparece
-  escrito embaixo da prévia. **Gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
+  escrito embaixo da prévia, com o número de
+  construções. A densidade segue a população: um povoado de 80 pessoas tem meia dúzia de casas, e
+  uma cidade grande ocupa mais chão, aperta as casas no miolo e sobe sobrados de até 5 andares. No
+  mundo **Real** a cidade é moderna: ruas em grade, prédios de concreto com casas nos bairros e
+  arranha-céus no centro das metrópoles (só os nômades seguem em tendas). **Gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
   **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,

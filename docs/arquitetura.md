@@ -515,6 +515,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   telhado de cada casa (`Building.roof`: duas/quatro águas, plano, pátio, redondo, tenda), sorteada
   num gerador à parte para não mexer no traçado; `VillageGeo.port` põe cais, barcos e armazéns
   (`VillageMap.docks`). `ui/PlaceMap.tsx` desenha telhados com luz e sombra e árvores por estilo.
+  `VillageGeo.population` liga `townSize`: quantas construções (cerca de 6 pessoas por casa na
+  fantasia e 40 por prédio no real, com crescimento sublinear acima de 100) e o raio da área
+  construída; cidades grandes ganham travessas e preenchimento dos quarteirões, e quem não coube
+  no chão vira andares (`floorsFor` com `pressure`). Na época `atual` o estilo é `moderno`, com
+  ruas em grade alinhadas à estrada principal no lugar das ruas sinuosas.
 - Desenho do mapa-múndi em `ui/worldDraw.ts` (`drawWorld`, usado na tela e no "Exportar
   imagem"). O editor só refaz `deriveWorld` quando muda a geografia (alturas, posições das
   cidades, capitais); renomear ou mudar cor não refaz. Enquanto o pincel pinta, a imagem de fundo

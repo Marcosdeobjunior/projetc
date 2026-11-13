@@ -327,7 +327,10 @@ export function BurgDialog({
               </button>
             </div>
             <PlaceMap map={preview} name={burg.name} />
-            <p className="burg-preview-style">{ARCH_STYLES[preview.style]}</p>
+            <p className="burg-preview-style">
+              {ARCH_STYLES[preview.style]} · {preview.buildings.length} construções para{" "}
+              {info.population.toLocaleString("pt-BR")} habitantes
+            </p>
           </div>
           <footer>
             <button type="button" className="btn ghost sm" onClick={onOpenNote}>

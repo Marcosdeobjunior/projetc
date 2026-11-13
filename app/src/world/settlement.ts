@@ -171,7 +171,12 @@ export function settlementInfo(
   const saved = parseMapOptions(fields.mapa);
   const geo: VillageGeo = {
     ...localGeo(burg, d),
-    style: archStyle(biome, type, d.tempC[c]!, metres(heights[c]!)),
+    // No mundo real a cidade é moderna (só os nômades seguem em tendas).
+    style:
+      d.era === "atual" && type !== "Nômade"
+        ? "moderno"
+        : archStyle(biome, type, d.tempC[c]!, metres(heights[c]!)),
+    population,
     port: elements.has("porto") || type === "Porto" || type === "Lacustre",
   };
   const preview: MapOptions = {

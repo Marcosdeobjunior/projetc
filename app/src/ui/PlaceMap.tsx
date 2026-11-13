@@ -32,6 +32,12 @@ function colorsFor(era: VillageMap["era"]) {
 
 /** Telhados (claro, escuro) por estilo; o `tone` da casa escolhe o par. */
 const ROOFS: Record<ArchStyle, [string, string][]> = {
+  moderno: [
+    ["#c8805f", "#a4604a"],
+    ["#8e9399", "#6f747a"],
+    ["#b56b52", "#8f523e"],
+    ["#7b8188", "#5d6268"],
+  ],
   temperado: [
     ["#c97a5c", "#a65a42"],
     ["#b9694f", "#93503b"],
@@ -84,6 +90,7 @@ const ROOFS: Record<ArchStyle, [string, string][]> = {
 
 /** Árvores de cada lugar: copa redonda, pinheiro ou palmeira. */
 const TREES: Record<ArchStyle, { kind: "copa" | "pinho" | "palma"; fill: string; edge: string }> = {
+  moderno: { kind: "copa", fill: "#9fbb7f", edge: "#5d7446" },
   temperado: { kind: "copa", fill: "#a9bb84", edge: "#647448" },
   deserto: { kind: "palma", fill: "#9fb06e", edge: "#5f6d3b" },
   tropical: { kind: "palma", fill: "#8fb36f", edge: "#4f7040" },
@@ -96,6 +103,13 @@ const TREES: Record<ArchStyle, { kind: "copa" | "pinho" | "palma"; fill: string;
 
 const FIELD_TONES = ["#e1d3a9", "#d5d69f", "#e6cf9a", "#cfc69a"];
 const SHADOW = "rgba(58, 42, 25, 0.22)";
+/** Lajes de concreto dos prédios modernos (claro, escuro). */
+const CONCRETE: [string, string][] = [
+  ["#d9dbdd", "#b4b8bc"],
+  ["#cfd3d8", "#a9afb6"],
+  ["#e2dfd8", "#bdb8ae"],
+  ["#c5ccd3", "#9ea7b0"],
+];
 
 const lerp = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 const shrink = (pts: Pt[], c: Pt, k: number) => pts.map((p) => lerp(c, p, k));
@@ -107,12 +121,20 @@ const lit = (face: Pt[], c: Pt) => {
 };
 
 function BuildingShape({ b, style }: { b: Building; style: ArchStyle }) {
-  const pair = b.kind === "templo" ? TEMPLE[style] : (ROOFS[style][b.tone] ?? ROOFS[style][0]!);
+  const flatModern = style === "moderno" && b.roof === "plano" && !b.kind;
+  const pair =
+    b.kind === "templo"
+      ? TEMPLE[style]
+      : flatModern
+        ? CONCRETE[b.tone]!
+        : (ROOFS[style][b.tone] ?? ROOFS[style][0]!);
   const [light, dark] = b.kind === "armazem" ? (["#a58d6a", "#846e50"] as const) : pair;
   const roof = b.roof ?? "duas-aguas";
   const c = b.center;
   const sw = b.kind ? 1.1 : 0.7;
-  const shadowT = `translate(${0.9 + b.floors * 0.5} ${1.1 + b.floors * 0.6})`;
+  // Sombra cresce com a altura (com limite, para arranha-céus não cobrirem o bairro).
+  const sh = Math.min(6, 0.45 * b.floors);
+  const shadowT = `translate(${0.9 + sh} ${1.1 + sh * 1.2})`;
   // Deixa o lado 0→1 como o comprido.
   let k = b.corners;
   if (len(k[0]!, k[1]!) < len(k[1]!, k[2]!)) k = [k[1]!, k[2]!, k[3]!, k[0]!];
@@ -178,6 +200,32 @@ function BuildingShape({ b, style }: { b: Building; style: ArchStyle }) {
           </>
         ) : (
           <path d={poly(inner)} fill={light} />
+        )}
+        {flatModern && b.floors >= 4 && (
+          <>
+            <path
+              d={poly(shrink(k, lerp(c, c0, 0.35), 0.22))}
+              fill={dark}
+              stroke={edge}
+              strokeWidth="0.3"
+            />
+            <path
+              d={poly(shrink(k, lerp(c, c2, 0.3), 0.15))}
+              fill="#eef0f2"
+              stroke={edge}
+              strokeWidth="0.3"
+            />
+          </>
+        )}
+        {flatModern && b.floors >= 20 && (
+          <circle
+            cx={c[0]}
+            cy={c[1]}
+            r={Math.min(len(c0, c1), len(c1, c2)) * 0.18}
+            fill="none"
+            stroke="#f2c14e"
+            strokeWidth="0.6"
+          />
         )}
         {b.kind === "templo" && (
           <>
@@ -253,6 +301,7 @@ function BuildingShape({ b, style }: { b: Building; style: ArchStyle }) {
 }
 
 const TEMPLE: Record<ArchStyle, [string, string]> = {
+  moderno: ["#a39486", "#7f7266"],
   temperado: ["#9c8a74", "#7a6a57"],
   deserto: ["#f2e6cc", "#d8c59f"],
   tropical: ["#c8a258", "#a3803c"],
