@@ -15,6 +15,10 @@ import { exampleTimeline } from "../timeline/example";
 import { dayToDate, formatDate, holidaysOn, seasonOf } from "../timeline/calendar";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
+import { CalendarMonthView, CascadeView, type ViewActions } from "./TimelineViews";
+
+type Layout = "list" | "lanes" | "calendar" | "cascade";
+const LAYOUTS: Layout[] = ["list", "lanes", "calendar", "cascade"];
 
 const LAYOUT_KEY = "talia.timelineLayout";
 const LANE_KINDS: NoteKind[] = ["personagens", "lugares", "organizacoes"];
@@ -195,14 +199,15 @@ export function TimelineView({
   const data = useTimeline((s) => s.data);
   const { setScene, addEvent, updateEvent, removeEvent } = useTimeline.getState();
   const [filter, setFilter] = useState("");
-  const [layout, setLayoutState] = useState<"list" | "lanes">(() => {
+  const [layout, setLayoutState] = useState<Layout>(() => {
     try {
-      return localStorage.getItem(LAYOUT_KEY) === "lanes" ? "lanes" : "list";
+      const v = localStorage.getItem(LAYOUT_KEY) as Layout | null;
+      return v && LAYOUTS.includes(v) ? v : "list";
     } catch {
       return "list";
     }
   });
-  const setLayout = (v: "list" | "lanes") => {
+  const setLayout = (v: Layout) => {
     setLayoutState(v);
     try {
       localStorage.setItem(LAYOUT_KEY, v);
@@ -252,6 +257,25 @@ export function TimelineView({
       season: seasonOf(calendar, d),
       holidays: holidaysOn(calendar, d),
     };
+  };
+
+  /** Tudo o que tem data, uma vez cada (para o calendário e a cascata). */
+  const dated = useMemo(() => {
+    const seen = new Set<string>();
+    return timeline.groups
+      .flatMap((g) => g.items)
+      .filter((it) => !seen.has(it.id) && seen.add(it.id));
+  }, [timeline]);
+  const viewActions: ViewActions = {
+    move: (it, day, days) =>
+      it.kind === "scene"
+        ? void setScene(it.id, { day, days })
+        : void updateEvent(it.id, { day, days }),
+    create: (day) =>
+      addEvent({ title: "Novo acontecimento", day, days: 1, notes: filter ? [filter] : [] }),
+    rename: (id, title) => void updateEvent(id, { title }),
+    remove: (id) => void removeEvent(id),
+    openScene: (id) => openDoc(id),
   };
 
   const newEvent = () =>
@@ -558,10 +582,12 @@ export function TimelineView({
       <div className="segmented wide tl-layout" role="radiogroup" aria-label="Forma de mostrar">
         {(
           [
-            ["list", "Lista"],
-            ["lanes", "Faixas por personagem"],
+            ["list", "menu", "Lista"],
+            ["calendar", "calendar", "Calendário"],
+            ["cascade", "clock", "Cascata"],
+            ["lanes", "person", "Faixas por personagem"],
           ] as const
-        ).map(([v, text]) => (
+        ).map(([v, icon, text]) => (
           <button
             key={v}
             type="button"
@@ -569,12 +595,21 @@ export function TimelineView({
             aria-checked={layout === v}
             onClick={() => setLayout(v)}
           >
-            {text}
+            <Icon name={icon} size={14} /> {text}
           </button>
         ))}
       </div>
 
-      {layout === "lanes" ? (
+      {layout === "calendar" ? (
+        <CalendarMonthView
+          key={data.activeCalendar ?? ""}
+          items={dated}
+          calendar={calendar}
+          actions={viewActions}
+        />
+      ) : layout === "cascade" ? (
+        <CascadeView items={dated} calendar={calendar} actions={viewActions} />
+      ) : layout === "lanes" ? (
         <LanesGrid
           lanes={buildLanes(project, data, linksOf, laneKinds)}
           kinds={laneKinds}

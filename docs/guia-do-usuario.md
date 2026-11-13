@@ -305,6 +305,19 @@ diferente da ordem do livro.
   (cenas que citam a nota e acontecimentos criados com o filtro ativo).
 - O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
 
+**Calendário:** mostra um mês por vez, em grade (com os nomes de meses e dias da semana do
+calendário do mundo escolhido em **Datas**; sem ele, "Mês 1, 2…" de 30 dias). Use ‹ › ou a
+lista de meses e o ano para navegar, e **Início da história** para voltar ao começo. Clique no
+número de um dia para criar um acontecimento ali (o nome já vem selecionado para digitar);
+clique num item para ver os detalhes (nome, duração com − e +, um dia antes ou depois, excluir ou
+abrir a cena); arraste um item para outro dia para mudar a data. Feriados aparecem no dia.
+
+**Cascata:** cada cena (azul) e acontecimento (dourado) vira uma barra numa régua de tempo, em
+degraus na ordem da história. Arraste a barra para mudar o dia, puxe a ponta direita para mudar
+quanto dura, e clique para ver os detalhes; com uma barra escolhida, as setas ← → também a
+movem. A escala vai de **Dias** a **Anos**, e os períodos longos sem nada (por exemplo, o
+nascimento de alguém anos antes) viram um corte listrado com o tempo pulado ("… 7 anos").
+
 **Faixas por personagem:** na Linha do tempo, troque **Lista** por **Faixas por personagem** para
 ver uma linha para cada personagem (ou lugar, organização — escolha nos botões acima da tabela) e
 uma coluna para cada dia com alguma coisa: quem está em qual cena ao mesmo tempo. Uma cena que

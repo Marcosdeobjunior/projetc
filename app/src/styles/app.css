@@ -7502,6 +7502,298 @@ div.row-title {
   cursor: default;
 }
 
+/* ---------- Linha do tempo: calendário e cascata ---------- */
+.tlv-cal,
+.tlv-cascade {
+  --tlv-scene: #6f9be0;
+}
+.tlv-cal,
+.tlv-cascade {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tlv-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tlv-cal-title h3 {
+  margin: 0;
+  font: 600 18px/1.2 var(--font-brand);
+}
+.tlv-cal-title small {
+  display: block;
+  margin-top: 2px;
+}
+.tlv-spacer {
+  flex: 1;
+}
+.tlv-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tlv-wd {
+  padding: 6px 8px;
+  background: var(--panel-2);
+  font: 600 11.5px/1 var(--font-ui);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tlv-cell {
+  min-height: 92px;
+  padding: 4px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.tlv-cell.empty {
+  background: color-mix(in srgb, var(--panel) 60%, var(--bg));
+}
+.tlv-cell.over {
+  background: var(--accent-soft);
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+}
+.tlv-daynum {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: 600 12.5px/1.2 var(--font-ui);
+  cursor: pointer;
+}
+.tlv-cell.busy .tlv-daynum {
+  color: var(--fg);
+}
+.tlv-add {
+  opacity: 0;
+  color: var(--accent);
+  transition: opacity 0.12s;
+}
+.tlv-daynum:hover,
+.tlv-daynum:focus-visible {
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+.tlv-daynum:hover .tlv-add,
+.tlv-daynum:focus-visible .tlv-add {
+  opacity: 1;
+}
+.tlv-holiday {
+  font: 600 10.5px/1.2 var(--font-ui);
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tlv-pill {
+  display: block;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-left: 3px solid var(--tlv-scene);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--tlv-scene) 18%, var(--panel));
+  color: var(--fg);
+  font: 12px/1.25 var(--font-ui);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: grab;
+}
+.tlv-pill.event {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+}
+.tlv-pill.cont {
+  opacity: 0.7;
+  font-style: italic;
+}
+.tlv-pill.on {
+  outline: 2px solid var(--accent);
+}
+.tlv-more {
+  font: 11.5px/1 var(--font-ui);
+  color: var(--muted);
+  padding-left: 4px;
+}
+.tlv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  max-width: 560px;
+}
+.tlv-panel p {
+  margin: 0;
+}
+.tlv-panel-head,
+.tlv-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tlv-panel-head .tl-title-input,
+.tlv-panel-head b {
+  flex: 1;
+}
+.tlv-cascade-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.tlv-cascade-canvas {
+  position: relative;
+  min-width: 100%;
+}
+.tlv-ruler {
+  position: sticky;
+  top: 0;
+  height: 26px;
+  z-index: 2;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+.tlv-tick {
+  position: absolute;
+  top: 6px;
+  padding-left: 4px;
+  font: 11px/1 var(--font-ui);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tlv-tick.major {
+  color: var(--fg);
+  font-weight: 600;
+}
+.tlv-gridline {
+  position: absolute;
+  top: 26px;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--line) 55%, transparent);
+}
+.tlv-gridline.major {
+  background: var(--line);
+}
+.tlv-break {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--line) 70%, transparent) 0 4px,
+    transparent 4px 9px
+  );
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+.tlv-break span {
+  position: sticky;
+  top: 6px;
+  display: block;
+  padding: 0 4px;
+  font: 600 10.5px/1.2 var(--font-ui);
+  color: var(--muted);
+  text-align: center;
+  white-space: normal;
+  background: var(--panel-2);
+}
+.tlv-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30px;
+  z-index: 2;
+}
+.tlv-link {
+  position: absolute;
+  top: -15px;
+  height: 22px;
+  border-left: 1px dashed var(--faint, var(--muted));
+  border-bottom: 1px dashed var(--faint, var(--muted));
+  border-bottom-left-radius: 6px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.tlv-bar {
+  position: absolute;
+  top: 6px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--tlv-scene);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  touch-action: none;
+}
+.tlv-bar.event {
+  background: var(--accent);
+}
+.tlv-bar.on {
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
+}
+.tlv-bar.dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+.tlv-grip {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 9px;
+  height: 100%;
+  cursor: ew-resize;
+  border-radius: 0 6px 6px 0;
+}
+.tlv-grip:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+.tlv-bar-label {
+  position: absolute;
+  top: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 12.5px/1.2 var(--font-ui);
+  color: var(--fg);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tlv-bar-label small {
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .tlv-cell {
+    min-height: 64px;
+  }
+  .tlv-pill {
+    font-size: 11px;
+  }
+}
+
 /* ---------- Calendário de escrita ---------- */
 .writing {
   display: flex;
