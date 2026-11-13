@@ -1,6 +1,12 @@
 import { hashSeed, rng } from "./geom";
 import { cellOf, COLS, dCol, ROWS, SEA, type Burg, type Derived } from "./worldgen";
-import { parseMapOptions, type MapOptions, type MapSize, type VillageGeo } from "./village";
+import {
+  parseMapOptions,
+  type ArchStyle,
+  type MapOptions,
+  type MapSize,
+  type VillageGeo,
+} from "./village";
 
 /*
  * Dados de um povoado do mapa-múndi (o "Editar povoado"). Ficam nos campos do
@@ -155,7 +161,11 @@ export function settlementInfo(
                 ? "Caça"
                 : "Genérico");
   const saved = parseMapOptions(fields.mapa);
-  const geo = localGeo(burg, d);
+  const geo: VillageGeo = {
+    ...localGeo(burg, d),
+    style: archStyle(biome, type, d.tempC[c]!, metres(heights[c]!)),
+    port: elements.has("porto") || type === "Porto" || type === "Lacustre",
+  };
   const preview: MapOptions = {
     ...(saved ?? {
       seed,
@@ -184,6 +194,22 @@ export function settlementInfo(
     river,
     preview,
   };
+}
+
+/**
+ * Estilo das construções: o tipo do povoado manda primeiro (nômades moram em
+ * tendas, caçadores em cabanas), depois a altitude, o frio e o bioma.
+ */
+export function archStyle(biome: number, type: string, tempC: number, elev: number): ArchStyle {
+  if (type === "Nômade") return "nomade";
+  if (type === "Caça") return biome === 5 || biome === 7 ? "tropical" : "caca";
+  if (type === "Montanha" || elev > 1800 || biome === 13) return "montanha";
+  if (biome === 11 || biome === 10 || tempC < -3) return "neve";
+  if (biome === 9) return "frio";
+  if (biome === 1 || biome === 2) return "deserto";
+  if (biome === 3 || biome === 5 || biome === 7) return "tropical";
+  if (biome === 12) return tempC > 20 ? "tropical" : "temperado";
+  return "temperado";
 }
 
 /** Cor do chão e árvores da prévia, pelo bioma do mapa-múndi. */

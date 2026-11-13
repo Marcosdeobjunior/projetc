@@ -8660,6 +8660,11 @@ select option {
   font: 600 12.5px/1.2 var(--font-ui);
   color: var(--muted);
 }
+.burg-preview-style {
+  margin: 0;
+  font: 12px/1.3 var(--font-ui);
+  color: var(--muted);
+}
 .burg-dialog footer {
   display: flex;
   gap: 6px;
