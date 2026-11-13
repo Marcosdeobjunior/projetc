@@ -1250,7 +1250,12 @@ inventados) e **estradas** entre elas.
   casebres do lado de fora). O botão de recarregar no título sorteia outro desenho. Tudo fica na
   ficha do lugar; a prévia é fiel ao mapa-múndi — o mar ou lago fica do lado em que está no mapa, o rio corre
   na mesma direção, as estradas saem para onde vão as da região, e o chão e as árvores seguem o
-  bioma; **gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
+  bioma. As construções também seguem o lugar e o tipo de povoado: casas de telha e sobrados no
+  clima temperado, adobe com terraços e casas de pátio no deserto, cabanas redondas de palha nos
+  trópicos, madeira escura e casas compridas na taiga, telhados com neve no frio extremo, pedra e
+  ardósia na montanha, tendas e iurtas para nômades e cabanas de caçadores; o templo muda junto
+  (cúpula, torre ou cabana grande), e os portos ganham cais, barcos e armazéns. O estilo aparece
+  escrito embaixo da prévia. **Gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
   **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,

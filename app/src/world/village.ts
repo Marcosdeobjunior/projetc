@@ -47,7 +47,29 @@ export interface VillageGeo {
   trees?: number;
   /** Bioma permite lavouras? */
   farmland?: boolean;
+  /** Estilo das construções (pelo bioma e pelo tipo de povoado). */
+  style?: ArchStyle;
+  /** Povoado com porto: cais e barcos na margem da água. */
+  port?: boolean;
 }
+
+/** Jeito de construir de cada lugar: muda forma, tamanho e cor das casas. */
+export type ArchStyle =
+  "temperado" | "deserto" | "tropical" | "frio" | "neve" | "montanha" | "nomade" | "caca";
+
+export const ARCH_STYLES: Record<ArchStyle, string> = {
+  temperado: "Casas de telha, sobrados no centro",
+  deserto: "Adobe, terraços e casas de pátio",
+  tropical: "Palha, cabanas redondas e varandas",
+  frio: "Madeira escura, telhados íngremes e casas compridas",
+  neve: "Telhados cobertos de neve",
+  montanha: "Pedra e ardósia",
+  nomade: "Tendas e iurtas",
+  caca: "Cabanas e casas compridas de casca",
+};
+
+/** Forma do telhado vista de cima. */
+export type Roof = "duas-aguas" | "quatro-aguas" | "plano" | "patio" | "redondo" | "tenda";
 
 export const MAP_SIZES: { value: MapSize; label: string }[] = [
   { value: "aldeia", label: "Aldeia" },
@@ -103,7 +125,15 @@ export interface Building {
   /** Índice de tom da parede/telhado (0 a 3). */
   tone: number;
   /** Prédio especial (desenhado diferente). */
-  kind?: "templo";
+  kind?: "templo" | "armazem";
+  /** Forma do telhado (sem ela, duas águas). */
+  roof?: Roof;
+}
+
+export interface Dock {
+  /** O cais: retângulo da margem para dentro da água. */
+  pier: Pt[];
+  boats: { x: number; y: number; angle: number; len: number }[];
 }
 
 export interface Field {
@@ -138,6 +168,10 @@ export interface VillageMap {
   ground?: string;
   /** Época dos prédios (para as cores e a vista de rua). */
   era?: "atual";
+  /** Estilo das construções. */
+  style: ArchStyle;
+  /** Cais do porto. */
+  docks: Dock[];
 }
 
 export const MAP_W = 480;
@@ -148,6 +182,43 @@ const SIZE = {
   vila: { target: 110, radius: 105, branches: 2 },
   cidade: { target: 230, radius: 150, branches: 4 },
 } as const;
+
+/**
+ * Forma e proporção de uma casa conforme o estilo do lugar e a distância ao
+ * centro (`near`: 0 no centro, 1 na borda da área construída).
+ */
+function houseShape(
+  style: ArchStyle,
+  near: number,
+  r: () => number,
+): { roof: Roof; sx: number; sy: number; square?: boolean } {
+  const center = near < 0.45;
+  switch (style) {
+    case "deserto":
+      if (center && r() < 0.45) return { roof: "patio", sx: 1.45, sy: 1.5, square: true };
+      return { roof: "plano", sx: 1, sy: 1, square: r() < 0.5 };
+    case "tropical":
+      if (!center && r() < 0.7) return { roof: "redondo", sx: 0.9, sy: 0.9, square: true };
+      return { roof: "duas-aguas", sx: 1.1, sy: 0.95 };
+    case "nomade":
+      return r() < 0.85
+        ? { roof: "tenda", sx: 0.95, sy: 0.95, square: true }
+        : { roof: "redondo", sx: 1.1, sy: 1.1, square: true };
+    case "caca":
+      if (r() < 0.3) return { roof: "duas-aguas", sx: 2, sy: 0.85 };
+      return { roof: "redondo", sx: 0.85, sy: 0.85, square: true };
+    case "frio":
+    case "neve":
+      if (r() < 0.22) return { roof: "duas-aguas", sx: 1.9, sy: 0.9 };
+      return { roof: "duas-aguas", sx: 1.05, sy: 0.95 };
+    case "montanha":
+      return { roof: r() < 0.3 ? "quatro-aguas" : "duas-aguas", sx: 0.85, sy: 0.85 };
+    default:
+      if (center && r() < 0.5) return { roof: "quatro-aguas", sx: 1.15, sy: 1.05 };
+      if (!center && r() < 0.12) return { roof: "duas-aguas", sx: 1.8, sy: 1 };
+      return { roof: "duas-aguas", sx: 1, sy: 1 };
+  }
+}
 
 /** Uma linha que avança em `dir` com pequenas curvas, por `length`. */
 function wander(rand: () => number, start: Pt, dir: number, length: number, step = 22): Pt[] {
@@ -363,6 +434,9 @@ function buildTown(
   const W = MAP_W;
   const H = MAP_H;
   const inSea = (p: Pt) => !!sea && insidePoly(p, sea.poly);
+  const style: ArchStyle = g?.style ?? "temperado";
+  // Forma das casas num gerador à parte (o traçado das ruas não muda com o estilo).
+  const shapeRand = rng((o.seed ^ 0x2f6b9d) >>> 0);
   // Ruas locais (sorteadas): saem da principal para os dois lados.
   if (g) {
     for (let i = 0; i < cfg.branches; i++) {
@@ -439,8 +513,10 @@ function buildTown(
             (pass === 0 ? 1 : 0.6) *
             (inside ? (wall ? 1.6 : 1) : 0.25);
           if (rand() > prob) continue;
-          const w = between(6, 11);
-          const d = between(6, 10);
+          const shape = houseShape(style, dist / cfg.radius, shapeRand);
+          let w = between(6, 11) * shape.sx;
+          let d = between(6, 10) * shape.sy;
+          if (shape.square) d = w = (w + d) / 2;
           // Segunda fileira (atrás) nas passadas seguintes, onde é mais denso.
           const row = pass === 2 ? 1 : 0;
           const back = road.width / 2 + 1.6 + d / 2 + between(0, 1.5) + row * between(10, 14);
@@ -453,8 +529,12 @@ function buildTown(
           buildings.push({
             corners,
             center: [cx, cy],
-            floors: floorsFor(g?.era, dist / cfg.radius, rand),
+            floors:
+              shape.roof === "tenda" || shape.roof === "redondo"
+                ? 1
+                : floorsFor(g?.era, dist / cfg.radius, rand),
             tone: Math.floor(rand() * 4),
+            roof: shape.roof,
           });
         }
       }
@@ -469,11 +549,16 @@ function buildTown(
       const cx = center[0] + Math.cos(a) * r;
       const cy = center[1] + Math.sin(a) * r;
       const corners = rect(cx, cy, 13, 20, a);
-      if (blocked(corners)) continue;
+      const roundT = style === "nomade" || style === "caca" || style === "tropical";
+      if (blocked(roundT ? rect(cx, cy, 17, 17, a) : corners)) continue;
       // Tira as casas que estavam no caminho.
       for (let i = buildings.length - 1; i >= 0; i--)
-        if (overlaps(buildings[i]!.corners, corners, 1.5)) buildings.splice(i, 1);
-      buildings.push({ corners, center: [cx, cy], floors: 3, tone: 2, kind: "templo" });
+        if (overlaps(buildings[i]!.corners, roundT ? rect(cx, cy, 17, 17, a) : corners, 1.5))
+          buildings.splice(i, 1);
+      const round = style === "nomade" || style === "caca" || style === "tropical";
+      const roof: Roof = style === "deserto" ? "plano" : round ? "redondo" : "duas-aguas";
+      const tc = round ? rect(cx, cy, 17, 17, a) : corners;
+      buildings.push({ corners: tc, center: [cx, cy], floors: 3, tone: 2, kind: "templo", roof });
       break;
     }
   }
@@ -489,7 +574,68 @@ function buildTown(
       if (wall && insidePoly([cx, cy], wall)) continue;
       const corners = rect(cx, cy, between(3.5, 6), between(3.5, 5.5), rand() * Math.PI);
       if (blocked(corners) || !free(corners)) continue;
-      buildings.push({ corners, center: [cx, cy], floors: 1, tone: 3 });
+      buildings.push({
+        corners,
+        center: [cx, cy],
+        floors: 1,
+        tone: 3,
+        roof: style === "nomade" ? "tenda" : style === "deserto" ? "plano" : "duas-aguas",
+      });
+    }
+  }
+
+  // Porto: cais saindo da margem mais perto do centro, com barcos e armazéns.
+  const docks: Dock[] = [];
+  if (sea && g?.port && g.coast !== null && g.coast !== undefined) {
+    const a = g.coast;
+    const want = o.size === "cidade" ? 4 : o.size === "vila" ? 2 : 1;
+    const spots = sea.coast
+      .filter((p) => p[0] > 10 && p[1] > 10 && p[0] < W - 10 && p[1] < H - 10)
+      .sort(
+        (p, q) =>
+          Math.hypot(p[0] - center[0], p[1] - center[1]) -
+          Math.hypot(q[0] - center[0], q[1] - center[1]),
+      );
+    const used: Pt[] = [];
+    for (const p of spots) {
+      if (docks.length >= want) break;
+      if (used.some((u) => Math.hypot(u[0] - p[0], u[1] - p[1]) < 34)) continue;
+      if (river && distToPolyline(p, river.points) < river.width + 8) continue;
+      const len = between(18, 30);
+      const cx = p[0] + Math.cos(a) * (len / 2 - 3);
+      const cy = p[1] + Math.sin(a) * (len / 2 - 3);
+      const pier = rect(cx, cy, len, 4.5, a);
+      used.push(p);
+      const boats: Dock["boats"] = [];
+      for (const side of [-1, 1]) {
+        if (rand() < 0.35) continue;
+        const t = between(0.35, 0.85) * len;
+        const bl = between(7, 11);
+        boats.push({
+          x: p[0] + Math.cos(a) * t - Math.sin(a) * side * 6,
+          y: p[1] + Math.sin(a) * t + Math.cos(a) * side * 6,
+          angle: a + between(-0.15, 0.15),
+          len: bl,
+        });
+      }
+      docks.push({ pier, boats });
+      // Armazém comprido na margem, de costas para a água.
+      const back = 12;
+      const wx = p[0] - Math.cos(a) * back;
+      const wy = p[1] - Math.sin(a) * back;
+      const wc = rect(wx, wy, 9, 18, a);
+      if (!blocked(wc)) {
+        for (let i = buildings.length - 1; i >= 0; i--)
+          if (overlaps(buildings[i]!.corners, wc, 1)) buildings.splice(i, 1);
+        buildings.push({
+          corners: wc,
+          center: [wx, wy],
+          floors: 2,
+          tone: 1,
+          kind: "armazem",
+          roof: style === "deserto" ? "plano" : "duas-aguas",
+        });
+      }
     }
   }
 
@@ -549,5 +695,7 @@ function buildTown(
     sea,
     ground: g?.ground,
     ...(g?.era ? { era: g.era } : {}),
+    style,
+    docks,
   };
 }

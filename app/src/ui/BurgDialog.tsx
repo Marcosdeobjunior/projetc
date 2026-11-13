@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 import type { Note } from "../manuscript/types";
 import type { Burg, Derived, Era } from "../world/worldgen";
-import { generateVillage, serializeMapOptions } from "../world/village";
+import { ARCH_STYLES, generateVillage, serializeMapOptions } from "../world/village";
 import { generateEmblem, parseEmblemOptions } from "../world/heraldry";
 import { hashSeed } from "../world/geom";
 import {
@@ -327,6 +327,7 @@ export function BurgDialog({
               </button>
             </div>
             <PlaceMap map={preview} name={burg.name} />
+            <p className="burg-preview-style">{ARCH_STYLES[preview.style]}</p>
           </div>
           <footer>
             <button type="button" className="btn ghost sm" onClick={onOpenNote}>
