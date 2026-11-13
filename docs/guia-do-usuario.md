@@ -265,7 +265,10 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     mouse aproxima e arrastar move. **Vista de rua** mostra o lugar em 3D, do chão: clique na
     imagem e ande com as setas (ou W A S D), **Shift** corre, arrastar olha em volta; um
     minimapa no canto mostra onde você está e para onde olha. Clicar numa rua do mapa abre a
-    vista de rua ali. Não dá para entrar nas casas nem atravessar o rio fora da ponte;
+    vista de rua ali. As casas seguem o estilo do lugar (telhados de duas ou quatro águas com
+    chaminé, adobe com terraço, cabanas de palha, tendas, prédios de vidro no mundo real), com
+    janelas por andar e porta virada para a rua. Não dá para entrar nas casas nem atravessar o
+    rio fora da ponte;
     , para o que não cabe nos campos; **Editar anotações** abre
     no editor (renomeie pelo nome no alto do texto);
   - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);

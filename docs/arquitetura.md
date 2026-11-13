@@ -428,9 +428,14 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   determinística a partir das opções gravadas em `fields.mapa` (semente mulberry32 em
   `world/geom.ts`; estrada e ruas por caminhada aleatória suavizada, casas ao longo das ruas com
   teste de sobreposição SAT, campos e árvores); `ui/PlaceMap.tsx` desenha em SVG (zoom/arrastar
-  por `viewBox`); `ui/StreetView.tsx` é um renderizador 3D em canvas 2D (casas como caixas com
-  telhado de quatro águas, projeção em perspectiva, recorte no plano próximo, descarte de faces
-  de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
+  por `viewBox`); `ui/StreetView.tsx` é um renderizador 3D em canvas 2D (projeção em perspectiva,
+  recorte no plano próximo, descarte de faces de costas e pintura de trás para frente, com
+  neblina; `walkable` impede entrar nas casas). Cada `Building.roof` vira um modelo: duas águas
+  com oitões e beiral, quatro águas, laje com platibanda (e casa de máquinas nos prédios),
+  pátio, cabana redonda com cone de palha, tenda; templos com torre e pirâmide ou cúpula.
+  Janelas e portas são `decals` da parede (desenhadas junto com ela, só até `DETAIL`); prédios
+  modernos têm faixas de vidro por andar. Cores de parede por estilo em `LOOK`; luz pela normal
+  3D contra `SUN`; árvores (copa, pinheiro, palmeira) e morros no horizonte seguem o estilo.
   `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
 - Mapa-múndi (`ui/WorldMapView.tsx`, view `"map"`): `world/worldgen.ts` gera e deriva o mundo numa
   grade de 360×180 células (o planeta inteiro, equirretangular, 1° por célula; a longitude dá a volta: vizinhos usam `wrapCol`, distâncias `dCol`, o relevo usa ruído 3D (Perlin) amostrado sobre a esfera e distância pelo arco até os centros dos continentes — sem emenda e sem distorção nos polos —, os caminhos medem passos com `stepLen` (largura da célula × cos(latitude)), e o oceano é o maior corpo d'água). Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`

@@ -31,7 +31,7 @@ function colorsFor(era: VillageMap["era"]) {
 }
 
 /** Telhados (claro, escuro) por estilo; o `tone` da casa escolhe o par. */
-const ROOFS: Record<ArchStyle, [string, string][]> = {
+export const ROOFS: Record<ArchStyle, [string, string][]> = {
   moderno: [
     ["#c8805f", "#a4604a"],
     ["#8e9399", "#6f747a"],
@@ -89,7 +89,10 @@ const ROOFS: Record<ArchStyle, [string, string][]> = {
 };
 
 /** Árvores de cada lugar: copa redonda, pinheiro ou palmeira. */
-const TREES: Record<ArchStyle, { kind: "copa" | "pinho" | "palma"; fill: string; edge: string }> = {
+export const TREES: Record<
+  ArchStyle,
+  { kind: "copa" | "pinho" | "palma"; fill: string; edge: string }
+> = {
   moderno: { kind: "copa", fill: "#9fbb7f", edge: "#5d7446" },
   temperado: { kind: "copa", fill: "#a9bb84", edge: "#647448" },
   deserto: { kind: "palma", fill: "#9fb06e", edge: "#5f6d3b" },
@@ -104,7 +107,7 @@ const TREES: Record<ArchStyle, { kind: "copa" | "pinho" | "palma"; fill: string;
 const FIELD_TONES = ["#e1d3a9", "#d5d69f", "#e6cf9a", "#cfc69a"];
 const SHADOW = "rgba(58, 42, 25, 0.22)";
 /** Lajes de concreto dos prédios modernos (claro, escuro). */
-const CONCRETE: [string, string][] = [
+export const CONCRETE: [string, string][] = [
   ["#d9dbdd", "#b4b8bc"],
   ["#cfd3d8", "#a9afb6"],
   ["#e2dfd8", "#bdb8ae"],
@@ -300,7 +303,7 @@ function BuildingShape({ b, style }: { b: Building; style: ArchStyle }) {
   );
 }
 
-const TEMPLE: Record<ArchStyle, [string, string]> = {
+export const TEMPLE: Record<ArchStyle, [string, string]> = {
   moderno: ["#a39486", "#7f7266"],
   temperado: ["#9c8a74", "#7a6a57"],
   deserto: ["#f2e6cc", "#d8c59f"],
