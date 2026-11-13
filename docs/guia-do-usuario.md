@@ -1263,7 +1263,11 @@ inventados) e **estradas** entre elas.
   uma cidade grande ocupa mais chão, aperta as casas no miolo e sobe sobrados de até 5 andares. No
   mundo **Real** a cidade é moderna: ruas em grade, prédios de concreto com casas nos bairros e
   arranha-céus no centro das metrópoles (só os nômades seguem em tendas). **Gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
-  **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
+  **Ver na ficha** ou **Abrir ficha**. Na ficha de uma cidade ou de um estado do mapa-múndi, os
+  campos **População** e **Clima** vêm do mapa e não se digitam: a população é a do povoado (ou,
+  no estado, a soma das cidades com a gente do campo), e o clima diz o tipo (tropical, temperado,
+  frio…; árido, seco, úmido), a temperatura média e o bioma que domina. Para mudar a população de
+  uma cidade, use o Editar povoado. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
   quantas cidades tem e a capital. Clicar num estado também abre a **ficha do estado** sobre o

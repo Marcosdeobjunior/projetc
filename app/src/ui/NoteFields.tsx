@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Note, Project } from "../manuscript/types";
 import { visibleFields, type FieldDef } from "../manuscript/fields";
 import { setNoteFields } from "../manuscript/tree";
@@ -8,6 +9,31 @@ import { useYearLength } from "./ContinuityEditors";
 import { Select } from "./Select";
 import { Icon } from "./Icon";
 import { characterTips } from "../manuscript/characterCheck";
+import { useWorldMap } from "../state/worldMap";
+import { deriveWorld, type Derived, type WorldMap } from "../world/worldgen";
+import { placeFacts, type PlaceFacts } from "../world/placeFacts";
+
+/** O mapa derivado é caro: um por mapa (a cada edição do mapa vem um objeto novo). */
+const derivedCache = new WeakMap<WorldMap, Derived>();
+function derivedOf(map: WorldMap): Derived {
+  let d = derivedCache.get(map);
+  if (!d) derivedCache.set(map, (d = deriveWorld(map)));
+  return d;
+}
+
+/** População e clima do lugar, lidos do mapa-múndi (se ele for cidade ou estado de lá). */
+function useMapFacts(note: Note, project: Project): PlaceFacts | null {
+  const world = useWorldMap((w) => w.map);
+  return useMemo(() => {
+    if (note.kind !== "lugares" || !world) return null;
+    const linked =
+      world.burgs.some((b) => b.noteId === note.id) ||
+      world.states.some((s) => s.noteId === note.id);
+    if (!linked) return null;
+    const byId = new Map(project.notes.map((n) => [n.id, n.fields ?? {}]));
+    return placeFacts(world, derivedOf(world), note.id, (id) => (id && byId.get(id)) || {});
+  }, [note.kind, note.id, world, project.notes]);
+}
 
 /**
  * Os campos da ficha (no personagem, em seções: base, desejo, mentira…). Cada
@@ -29,6 +55,7 @@ export function NoteFields({
   const birth = useTimeline((s) => s.data.births[note.id]);
   const { yearLen } = useYearLength();
   const values = note.fields ?? {};
+  const facts = useMapFacts(note, project);
   const defs = visibleFields(note.kind, values);
   if (!defs.length) return null;
 
@@ -43,6 +70,25 @@ export function NoteFields({
   const field = (d: FieldDef) => {
     const v = values[d.key] ?? "";
     const id = `f-${note.id}-${d.key}`;
+    // Cidade ou estado do mapa-múndi: população e clima vêm do mapa.
+    if (facts && (d.key === "populacao" || d.key === "clima")) {
+      const text = d.key === "populacao" ? facts.populationText : facts.climate;
+      const hint =
+        d.key === "clima"
+          ? "Do mapa-múndi: temperatura, chuva e bioma do lugar."
+          : facts.source === "cidade"
+            ? "Do mapa-múndi. Para mudar, use a População no Editar povoado."
+            : "Do mapa-múndi: as cidades do estado mais a gente do campo.";
+      return (
+        <div key={d.key} className="field">
+          <label htmlFor={id}>{d.label}</label>
+          <output id={id} className="text-input field-from-map">
+            {text || "—"}
+          </output>
+          <small className="field-hint">{hint}</small>
+        </div>
+      );
+    }
     let input;
     if (d.type === "ref") {
       const options = project.notes

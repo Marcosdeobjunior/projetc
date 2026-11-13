@@ -511,6 +511,11 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   `retireNotes` manda para a lixeira os lugares que saíram do mapa e nunca foram mexidos. A
   reconciliação roda depois de cada mudança no mapa e quando as notas do projeto mudam (com o mapa
   aberto), dentro de `change` (fila única).
+- Ficha de lugar ligada ao mapa (cidade ou estado): `world/placeFacts.ts` calcula população
+  (`settlementInfo`; no estado, cidades + `cellPopulation` do território) e clima
+  (`climateOf`: nome por temperatura e umidade, média, faixa e bioma dominante);
+  `ui/NoteFields.tsx` mostra esses dois campos só para leitura (o `deriveWorld` fica em cache por
+  mapa). O que estava escrito à mão nesses campos continua gravado, só não aparece.
 - "Editar povoado" (`ui/BurgDialog.tsx`): janela flutuante do mapa-múndi. `world/settlement.ts`
   junta os campos do lugar com valores padrão tirados do mapa (população pela semente, porto/rio
   pela costa e vazão, temperatura e altitude da célula) e monta as opções da prévia, que é o
