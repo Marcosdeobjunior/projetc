@@ -85,17 +85,6 @@ export function GlobeCpu(p: GlobeProps) {
     return new Uint32Array(ctx.getImageData(0, 0, c.width, c.height).data.buffer.slice(0));
   }, [p.map, p.derived, p.base, p.vectors, p.layers, p.capitals, p.meta]);
 
-  // Estrelas fixas do fundo.
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 220 }, (_, i) => {
-        const r = Math.sin(i * 12.9898) * 43758.5453;
-        const s = Math.sin(i * 78.233) * 12543.123;
-        return { x: r - Math.floor(r), y: s - Math.floor(s), a: 0.25 + ((i * 37) % 70) / 100 };
-      }),
-    [],
-  );
-
   // Gira devagar sozinho.
   useEffect(() => {
     if (!spin) return;
@@ -159,16 +148,12 @@ export function GlobeCpu(p: GlobeProps) {
     if (c.width !== W) c.width = W;
     if (c.height !== H) c.height = H;
     const ctx = c.getContext("2d")!;
-    // Espaço com estrelas.
+    // Espaço escuro, liso.
     const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
     bg.addColorStop(0, "#0d1626");
     bg.addColorStop(1, "#04070d");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
-    for (const s of stars) {
-      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-      ctx.fillRect(s.x * W, s.y * H, dpr, dpr);
-    }
     const R = Math.min(size.w, size.h) * rot.zoom * dpr;
     const cx = W / 2;
     const cy = H / 2;
@@ -329,19 +314,7 @@ export function GlobeCpu(p: GlobeProps) {
     ctx.restore();
     // Só redesenha quando a vista ou o mapa mudam (não a cada movimento do mouse).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    rot,
-    size,
-    texture,
-    moving,
-    spin,
-    p.layers,
-    p.selectedBurg,
-    p.map,
-    p.capitals,
-    p.vectors,
-    stars,
-  ]);
+  }, [rot, size, texture, moving, spin, p.layers, p.selectedBurg, p.map, p.capitals, p.vectors]);
 
   const onDown = (e: PointerEvent) => {
     (e.target as Element).setPointerCapture(e.pointerId);

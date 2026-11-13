@@ -15,6 +15,20 @@ import { renameDocAndLinks } from "../state/store";
 import { renameDoc, setNoteFields } from "../manuscript/tree";
 import { distToPolyline } from "../world/geom";
 import { BurgDialog } from "./BurgDialog";
+import {
+  computeEconomy,
+  SECTOR_COLORS,
+  SECTORS,
+  sectorLabel,
+  WEALTH_COLORS,
+  WEALTH_LABEL,
+  type Sector,
+  type Wealth,
+} from "../world/economy";
+import { BRUSHES, paintTerrain, settleOnLand, type BrushKind } from "../world/terrain";
+import { MarkerDialog } from "./MarkerDialog";
+import { StateDialog } from "./StateDialog";
+import { ClimateDialog } from "./ClimateDialog";
 import { GlobeView } from "./GlobeView";
 import { makeMarkovNamer, nameBase } from "../world/names";
 import {
@@ -32,13 +46,17 @@ import {
   TEMPLATES,
   type Burg,
   type Route,
+  type WorldClimate,
+  type UserMarker,
+  type Era,
+  ERAS,
+  FORMS_BY_ERA,
+  withEra,
   ROUTE_TYPES,
-  STATE_FORMS,
   type StateForm,
   type WorldState,
   CULTURE_TYPES,
   dCol,
-  wrapCol,
   type Template,
   type WorldMap,
   type WorldOptions,
@@ -50,8 +68,8 @@ import {
   coastPath,
   type MapMode,
 } from "../world/worldRender";
-import { deriveSociety, MARKER_TYPES } from "../world/society";
-import { settlementInfo } from "../world/settlement";
+import { deriveSociety, MARKER_TYPES, MARKER_TYPES_BY_ERA, type Marker } from "../world/society";
+import { bigNumber, ruralPopulation, settlementInfo } from "../world/settlement";
 import { drawWorld, KM_PER_CELL, stateMask, type BurgMeta } from "./worldDraw";
 import { Icon } from "./Icon";
 import { Select } from "./Select";
@@ -63,7 +81,7 @@ import { Select } from "./Select";
  * Mundo.
  */
 
-type Tool = "mover" | "elevar" | "rebaixar" | "suavizar" | "cidade" | "rota";
+type Tool = "mover" | "terreno" | "cidade" | "marcador" | "rota";
 
 const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
   {
@@ -72,15 +90,19 @@ const TOOLS: { value: Tool; icon: string; label: string; hint: string }[] = [
     label: "Mover",
     hint: "Arraste para mover, clique para escolher",
   },
-  { value: "elevar", icon: "up", label: "Elevar", hint: "Pinte para subir o terreno (cria terra)" },
   {
-    value: "rebaixar",
-    icon: "down",
-    label: "Rebaixar",
-    hint: "Pinte para baixar o terreno (cria mar)",
+    value: "terreno",
+    icon: "wave",
+    label: "Terreno",
+    hint: "Editar o terreno: terra, mar, montanhas, neve, lagos… (o mapa se refaz sozinho)",
   },
-  { value: "suavizar", icon: "wave", label: "Suavizar", hint: "Pinte para suavizar o relevo" },
   { value: "cidade", icon: "pin", label: "Cidade", hint: "Clique em terra para pôr uma cidade" },
+  {
+    value: "marcador",
+    icon: "star",
+    label: "Marcador",
+    hint: "Clique no mapa para pôr um marcador (ruínas, mina, caverna…)",
+  },
   {
     value: "rota",
     icon: "link",
@@ -103,11 +125,23 @@ type Layer = (typeof LAYERS)[number][0];
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 32);
 
+/** Abas do painel lateral do mapa: a principal (Mundo) e as demais. */
+const PANEL_TABS = [
+  ["mundo", "Mundo"],
+  ["rotas", "Rotas"],
+  ["lugares", "Lugares"],
+  ["legendas", "Legendas"],
+] as const;
+type PanelTab = (typeof PANEL_TABS)[number][0];
+
 interface Snapshot {
   heights: Uint8Array;
   burgs: Burg[];
   states: WorldMap["states"];
   routes?: Route[];
+  climate?: WorldClimate;
+  markers?: UserMarker[];
+  hiddenMarkers?: string[];
 }
 
 export function WorldMapView({ session }: { session: Session }) {
@@ -201,6 +235,23 @@ function GenerateForm({
         }, 30);
       }}
     >
+      <div className="wm-row">
+        <span>Época</span>
+        <div className="segmented wide wm-grid-2" role="radiogroup" aria-label="Época do mundo">
+          {ERAS.map((e) => (
+            <button
+              key={e.value}
+              type="button"
+              role="radio"
+              title={e.hint}
+              aria-checked={(o.era ?? "fantasia") === e.value}
+              onClick={() => setO({ ...o, era: e.value as Era })}
+            >
+              {e.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="wm-row">
         <span>Tipo de mundo</span>
         <Select
@@ -239,6 +290,14 @@ function GenerateForm({
           value={o.burgs}
           onChange={(e) => setO({ ...o, burgs: Math.max(+e.target.value, o.states) })}
         />
+      </label>
+      <label className="region-check">
+        <input
+          type="checkbox"
+          checked={o.polar !== false}
+          onChange={(e) => setO({ ...o, polar: e.target.checked })}
+        />
+        Terras nos polos (continente gelado no sul, ilhas no norte)
       </label>
       <button type="submit" className="btn primary" disabled={busy}>
         <Icon name="refresh" size={15} /> {busy ? "Gerando…" : submitLabel}
@@ -294,6 +353,8 @@ function WorldEditor({
     marcadores: true,
   });
   const [brush, setBrush] = useState(8);
+  const [brushKind, setBrushKind] = useState<BrushKind>("terra");
+  const [strength, setStrength] = useState(2);
   // Ferramentas e painel de opções recolhíveis (lembrados neste computador).
   const [toolsOpen, setToolsOpen] = useStoredFlag("talia.mapa.ferramentas", true);
   const [panelOpen, setPanelOpen] = useStoredFlag("talia.mapa.opcoes", true);
@@ -306,13 +367,15 @@ function WorldEditor({
     return () => document.removeEventListener("fullscreenchange", on);
   }, []);
   const [selected, setSelected] = useState<{
-    kind: "burg" | "state" | "route" | "road";
+    kind: "burg" | "state" | "route" | "road" | "marker";
     id: string;
   } | null>(null);
   // Rota sendo desenhada (pontos de passagem em células).
   const [draft, setDraft] = useState<[number, number][]>([]);
   const [hover, setHover] = useState<string>("");
   const [showGen, setShowGen] = useState(false);
+  const [panelTab, setPanelTab] = useState<PanelTab>("mundo");
+  const [showClimate, setShowClimate] = useState(false);
   const undo = useRef<Snapshot[]>([]);
   const redo = useRef<Snapshot[]>([]);
   // Quantos passos há para desfazer/refazer (para os botões; as pilhas ficam em refs).
@@ -329,8 +392,11 @@ function WorldEditor({
     map.states.map((s) => s.capital).join("|") +
     "#" +
     map.options.seed +
+    (map.options.era ?? "") +
     "#" +
-    (map.routes ?? []).map((r) => `${r.id}:${r.type}:${r.points.join(";")}`).join("|");
+    (map.routes ?? []).map((r) => `${r.id}:${r.type}:${r.points.join(";")}`).join("|") +
+    "#" +
+    JSON.stringify(map.climate ?? null);
   const colorKey = map.states.map((s) => s.color).join("|");
   const geo = useMemo(
     () => ({ ...map, heights: map.heights }),
@@ -340,19 +406,33 @@ function WorldEditor({
   const derived = useMemo(() => deriveWorld(geo), [geo]);
   // Províncias, religiões e marcadores (dependem também dos nomes e das formas de governo).
   const socKey =
-    map.states.map((s) => s.form ?? "").join("|") + map.burgs.map((b) => b.name).join("|");
+    map.states.map((s) => s.form ?? "").join("|") +
+    map.burgs.map((b) => b.name).join("|") +
+    JSON.stringify([map.markers ?? [], map.hiddenMarkers ?? []]);
   const society = useMemo(
-    () => deriveSociety({ ...geo, states: map.states, burgs: map.burgs }, derived),
+    () =>
+      deriveSociety(
+        {
+          ...geo,
+          states: map.states,
+          burgs: map.burgs,
+          markers: map.markers,
+          hiddenMarkers: map.hiddenMarkers,
+        },
+        derived,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [geo, derived, socKey],
   );
   const provinceVectors = useMemo(() => buildProvinceVectors(society, derived), [society, derived]);
-  const base = useMemo(
+  const baseMain = useMemo(
     () =>
-      bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados, undefined, {
-        cells: society.religion,
-        colors: society.religions.map((r) => r.color),
-      }),
+      mode === "economia" || mode === "riqueza"
+        ? null
+        : bakeBase({ ...geo, states: map.states }, derived, mode, layers.estados, undefined, {
+            cells: society.religion,
+            colors: society.religions.map((r) => r.color),
+          }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [geo, derived, mode, layers.estados, colorKey, mode === "religioes" ? society : null],
   );
@@ -448,6 +528,48 @@ function WorldEditor({
     }
     return m;
   }, [map.burgs, capitals, heights, derived, session.project.notes]);
+  // Economia: vocação de cada cidade (pelo lugar, ou a escolhida na ficha) e dos estados.
+  const economy = useMemo(() => {
+    const notesById = new Map(session.project.notes.map((n) => [n.id, n]));
+    const chosen = new Map<string, Sector>();
+    for (const b of map.burgs) {
+      const v = b.noteId ? notesById.get(b.noteId)?.fields?.vocacao : undefined;
+      if (v && (SECTORS as readonly string[]).includes(v)) chosen.set(b.id, v as Sector);
+    }
+    const population = new Map([...meta].map(([id, m]) => [id, m.population]));
+    const stateChoices = new Map<string, { vocacao?: Sector; riqueza?: Wealth }>();
+    for (const s of map.states) {
+      const f = s.noteId ? notesById.get(s.noteId)?.fields : undefined;
+      if (!f) continue;
+      const vocacao = (SECTORS as readonly string[]).includes(f.vocacao ?? "")
+        ? (f.vocacao as Sector)
+        : undefined;
+      const riqueza = ["rico", "medio", "pobre"].includes(f.riqueza ?? "")
+        ? (f.riqueza as Wealth)
+        : undefined;
+      if (vocacao || riqueza) stateChoices.set(s.id, { vocacao, riqueza });
+    }
+    return computeEconomy({ map, d: derived, society, population, chosen, stateChoices });
+  }, [map, derived, society, meta, session.project.notes]);
+  const base = useMemo(
+    () =>
+      baseMain ??
+      bakeBase({ ...geo, states: map.states }, derived, mode, true, undefined, {
+        cells: derived.owner,
+        colors: map.states.map((s) =>
+          mode === "riqueza"
+            ? WEALTH_COLORS[economy.states.get(s.id)?.wealth ?? "medio"]
+            : SECTOR_COLORS[economy.states.get(s.id)?.main ?? "agricultura"],
+        ),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseMain, economy, mode],
+  );
+  // População do mundo: as cidades do mapa mais o campo (pela área habitável e a época).
+  const rural = useMemo(() => ruralPopulation(derived), [derived]);
+  let cityPop = 0;
+  for (const v of meta.values()) cityPop += v.population;
+  const worldPop = rural + cityPop;
 
   const selectedStateIndex =
     selected?.kind === "state" ? map.states.findIndex((s) => s.id === selected.id) : -1;
@@ -470,7 +592,21 @@ function WorldEditor({
         : map,
     [map, dragging],
   );
-  const painterTool = tool === "elevar" || tool === "rebaixar" || tool === "suavizar";
+  const painterTool = tool === "terreno";
+  // Marcador sendo arrastado: só o ícone anda; grava ao soltar.
+  const [dragMarker, setDragMarker] = useState<{ key: string; x: number; y: number } | null>(null);
+  const societyShown = useMemo(
+    () =>
+      dragMarker
+        ? {
+            ...society,
+            markers: society.markers.map((m) =>
+              m.key === dragMarker.key ? { ...m, x: dragMarker.x, y: dragMarker.y } : m,
+            ),
+          }
+        : society,
+    [society, dragMarker],
+  );
 
   // Desenho.
   useEffect(() => {
@@ -489,12 +625,13 @@ function WorldEditor({
       view,
       size,
       layers,
-      society,
+      society: societyShown,
       provinceVectors,
       capitals,
       meta,
       selectedBurg: selected?.kind === "burg" ? selected.id : null,
       selectedRoute: selected?.kind === "route" ? selected.id : null,
+      selectedMarker: selected?.kind === "marker" ? selected.id : null,
       selectedRoad: selected?.kind === "road" ? selected.id : null,
       draft: tool === "rota" ? draft : null,
       highlight,
@@ -520,7 +657,7 @@ function WorldEditor({
     brush,
     tool,
     draft,
-    society,
+    societyShown,
     provinceVectors,
   ]);
 
@@ -542,7 +679,7 @@ function WorldEditor({
       view: { s: scale, x: 0, y: 0 },
       size: { w, h },
       layers,
-      society,
+      society: societyShown,
       provinceVectors,
       capitals,
       meta,
@@ -566,6 +703,9 @@ function WorldEditor({
     burgs: map.burgs,
     states: map.states,
     routes: map.routes ?? [],
+    climate: map.climate,
+    markers: map.markers,
+    hiddenMarkers: map.hiddenMarkers,
   });
   const commit = (next: WorldMap) => {
     undo.current = [...undo.current.slice(-29), snapshot()];
@@ -590,7 +730,14 @@ function WorldEditor({
     if (!s) return;
     to.current.push(snapshot());
     syncHist();
-    setMap({ ...map, ...s, routes: s.routes ?? map.routes });
+    setMap({
+      ...map,
+      ...s,
+      routes: s.routes ?? map.routes,
+      climate: s.climate,
+      markers: s.markers,
+      hiddenMarkers: s.hiddenMarkers,
+    });
     // Desfazer uma exclusão traz o lugar de volta ao Mundo.
     void useWorldMap.getState().reconcile({ recreate: true });
   };
@@ -646,6 +793,11 @@ function WorldEditor({
     const x = (e.clientX - r.left - view.x) / view.s;
     return [((x % COLS) + COLS) % COLS, (e.clientY - r.top - view.y) / view.s] as const;
   };
+  /** Marcador sob o clique (só com a camada ligada). */
+  const markerAt = (x: number, y: number) =>
+    layers.marcadores
+      ? society.markers.find((m) => Math.hypot(dCol(m.x, x), m.y - y) * view.s < 10)
+      : undefined;
   const burgAt = (x: number, y: number) =>
     map.burgs.find((b) => Math.hypot(dCol(b.x, x), b.y - y) * view.s < 9);
   const near = (pts: [number, number][], x: number, y: number) =>
@@ -657,38 +809,8 @@ function WorldEditor({
       ? vectors.namedRoads.find((r) => near(r.points, x, y))
       : undefined;
 
-  const paint = (h: Uint8Array, x: number, y: number, t: Tool) => {
-    const r = brush;
-    const out = new Uint8Array(h);
-    for (
-      let cy = Math.max(0, Math.floor(y - r));
-      cy <= Math.min(ROWS - 1, Math.ceil(y + r));
-      cy++
-    ) {
-      for (let cx = Math.floor(x - r); cx <= Math.ceil(x + r); cx++) {
-        const d = Math.hypot(cx + 0.5 - x, cy + 0.5 - y) / r;
-        if (d >= 1) continue;
-        const f = (1 - d * d) * (1 - d * d);
-        const i = cy * COLS + wrapCol(cx);
-        if (t === "elevar") out[i] = Math.min(255, h[i]! + 6 * f + (h[i]! < SEA ? 4 * f : 0));
-        else if (t === "rebaixar") out[i] = Math.max(0, h[i]! - 6 * f - (h[i]! >= SEA ? 4 * f : 0));
-        else {
-          let sum = 0;
-          let n = 0;
-          for (let dy = -1; dy <= 1; dy++)
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = cx + dx;
-              const ny = cy + dy;
-              if (ny < 0 || ny >= ROWS) continue;
-              sum += h[ny * COLS + wrapCol(nx)]!;
-              n++;
-            }
-          out[i] = Math.round(h[i]! + (sum / n - h[i]!) * 0.5 * f);
-        }
-      }
-    }
-    return out;
-  };
+  const paint = (h: Uint8Array, x: number, y: number, level?: number) =>
+    paintTerrain(h, x, y, brush, brushKind, strength, level);
 
   const drag = useRef<{
     x: number;
@@ -697,14 +819,16 @@ function WorldEditor({
     vy: number;
     moved: boolean;
     burg?: string;
+    marker?: string;
   } | null>(null);
-  const painting = useRef<{ h: Uint8Array; last: number } | null>(null);
+  const painting = useRef<{ h: Uint8Array; last: number; level: number } | null>(null);
 
   const onDown = (e: PointerEvent) => {
     canvas.current!.setPointerCapture(e.pointerId);
     const [x, y] = toMap(e);
     if (tool === "mover") {
-      const b = burgAt(x, y);
+      const m = markerAt(x, y);
+      const b = m ? undefined : burgAt(x, y);
       drag.current = {
         x: e.clientX,
         y: e.clientY,
@@ -712,7 +836,22 @@ function WorldEditor({
         vy: view.y,
         moved: false,
         burg: b?.id,
+        marker: m?.key,
       };
+    } else if (tool === "marcador") {
+      const era = map.options.era ?? "fantasia";
+      const type = MARKER_TYPES_BY_ERA[era][4]!; // ruínas / sítio arqueológico
+      const m: UserMarker = {
+        id: newId("m"),
+        type,
+        name: `${MARKER_TYPES[type].label} ${nameFor(cellOf(x, y))}`,
+        legend: "",
+        x,
+        y,
+      };
+      commit({ ...map, markers: [...(map.markers ?? []), m] });
+      setSelected({ kind: "marker", id: m.id });
+      setTool("mover");
     } else if (tool === "rota") {
       // Cada clique marca um ponto (perto de uma cidade, encaixa nela); duplo clique conclui.
       const b = burgAt(x, y);
@@ -735,7 +874,8 @@ function WorldEditor({
         setTool("mover");
       }
     } else {
-      painting.current = { h: paint(heights, x, y, tool), last: performance.now() };
+      const level = Math.max(heights[cellOf(x, y)]!, SEA + 2);
+      painting.current = { h: paint(heights, x, y, level), last: performance.now(), level };
       setHeights(painting.current.h);
     }
   };
@@ -778,6 +918,7 @@ function WorldEditor({
       cu ? `povo ${cu}` : null,
       rel,
       `${metres.toLocaleString("pt-BR")} m`,
+      `${Math.round(derived.tempC[c]!)}°C`,
       coord,
     ]
       .filter(Boolean)
@@ -788,11 +929,12 @@ function WorldEditor({
     const [x, y] = toMap(e);
     setHover(hoverText(x, y));
     if (tool === "mover" && !drag.current)
-      canvas.current!.style.cursor = burgAt(x, y) ? "pointer" : "";
+      canvas.current!.style.cursor = markerAt(x, y) || burgAt(x, y) ? "pointer" : "";
     const d = drag.current;
     if (d) {
       if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) d.moved = true;
-      if (d.moved && d.burg) {
+      if (d.moved && d.marker) setDragMarker({ key: d.marker, x, y });
+      else if (d.moved && d.burg) {
         // Arrastar uma cidade a muda de lugar (só em terra); o mapa se refaz ao soltar.
         if (heights[cellOf(x, y)]! >= SEA) setDragging({ id: d.burg, x, y });
       } else if (d.moved)
@@ -803,7 +945,7 @@ function WorldEditor({
     if (painterTool) setBrushAt({ x, y });
     const p = painting.current;
     if (p && e.buttons) {
-      p.h = paint(p.h, x, y, tool);
+      p.h = paint(p.h, x, y, p.level);
       // Refaz o mapa no máximo a cada ~120 ms enquanto pinta (o cálculo é pesado).
       const now = performance.now();
       if (now - p.last > 50) {
@@ -816,7 +958,12 @@ function WorldEditor({
     const d = drag.current;
     drag.current = null;
     if (d) {
-      if (d.moved && d.burg) {
+      if (d.moved && d.marker) {
+        const to = dragMarker;
+        setDragMarker(null);
+        const m = society.markers.find((q) => q.key === d.marker);
+        if (to && m) editMarker(m, { x: to.x, y: to.y });
+      } else if (d.moved && d.burg) {
         const to = dragging;
         setDragging(null);
         if (to)
@@ -826,6 +973,11 @@ function WorldEditor({
           });
       } else if (!d.moved) {
         const [x, y] = toMap(e);
+        const mk = markerAt(x, y);
+        if (mk) {
+          setSelected({ kind: "marker", id: mk.key });
+          return;
+        }
         const b = burgAt(x, y);
         const route = b ? undefined : routeAt(x, y);
         const road = b || route ? undefined : roadAt(x, y);
@@ -841,7 +993,8 @@ function WorldEditor({
     const p = painting.current;
     painting.current = null;
     if (p) {
-      commit({ ...map, heights: p.h });
+      // O mapa se reorganiza: cidades e povos que ficaram no mar vão para a terra.
+      commit(settleOnLand(map, p.h));
       setHeights(null);
     }
   };
@@ -894,6 +1047,45 @@ function WorldEditor({
   const offMap = session.project.notes
     .filter((n) => n.kind === "lugares" && !onMap.has(n.id))
     .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+  const marker =
+    selected?.kind === "marker" ? society.markers.find((m) => m.key === selected.id) : undefined;
+  /** Muda um marcador; um gerado vira do autor (o gerado some, fica a cópia). */
+  const editMarker = (
+    m: Marker,
+    patch: Partial<Pick<UserMarker, "type" | "icon" | "name" | "legend" | "x" | "y">>,
+  ) => {
+    if (m.user) {
+      commit({
+        ...map,
+        markers: (map.markers ?? []).map((u) => (u.id === m.key ? { ...u, ...patch } : u)),
+      });
+      return;
+    }
+    const u: UserMarker = {
+      id: newId("m"),
+      type: m.type,
+      ...(m.icon ? { icon: m.icon } : {}),
+      name: m.name,
+      legend: m.legend,
+      x: m.x,
+      y: m.y,
+      ...patch,
+    };
+    commit({
+      ...map,
+      markers: [...(map.markers ?? []), u],
+      hiddenMarkers: [...(map.hiddenMarkers ?? []), m.key],
+    });
+    setSelected({ kind: "marker", id: u.id });
+  };
+  const removeMarker = (m: Marker) => {
+    commit(
+      m.user
+        ? { ...map, markers: (map.markers ?? []).filter((u) => u.id !== m.key) }
+        : { ...map, hiddenMarkers: [...(map.hiddenMarkers ?? []), m.key] },
+    );
+    setSelected(null);
+  };
   const updateBurg = (id: string, patch: Partial<Burg>) =>
     commit({ ...map, burgs: map.burgs.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
   const openNote = (id: string) => {
@@ -945,6 +1137,52 @@ function WorldEditor({
           onPointerLeave={() => setHover("")}
           onWheel={onWheel}
         />
+        {!globe && tool === "terreno" && (
+          <div className="wm-terrain" role="toolbar" aria-label="Editar terreno">
+            <h3>Editar terreno</h3>
+            <div className="wm-terrain-brushes" role="radiogroup" aria-label="Pincel">
+              {BRUSHES.map((b) => (
+                <button
+                  key={b.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={brushKind === b.value}
+                  className={brushKind === b.value ? "on" : ""}
+                  title={b.hint}
+                  onClick={() => setBrushKind(b.value)}
+                >
+                  <span aria-hidden="true">{b.icon}</span>
+                  {b.label}
+                </button>
+              ))}
+            </div>
+            <label className="wm-terrain-range">
+              <span>Tamanho: {brush}</span>
+              <input
+                type="range"
+                min={1}
+                max={30}
+                value={brush}
+                onChange={(e) => setBrush(+e.target.value)}
+              />
+            </label>
+            <label className="wm-terrain-range">
+              <span>Força: {["", "suave", "média", "forte"][strength]}</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                value={strength}
+                onChange={(e) => setStrength(+e.target.value)}
+              />
+            </label>
+            <p className="field-hint">
+              {BRUSHES.find((b) => b.value === brushKind)?.hint}. Ao soltar, o mapa se reorganiza:
+              rios, lagos, neve, biomas, fronteiras e estradas se refazem, e cidades que ficaram no
+              mar vão para a terra mais perto.
+            </p>
+          </div>
+        )}
         {!globe && (
           <div
             className={"wm-tools" + (toolsOpen ? "" : " compact")}
@@ -974,18 +1212,6 @@ function WorldEditor({
                 <span>{t.label}</span>
               </button>
             ))}
-            {(tool === "elevar" || tool === "rebaixar" || tool === "suavizar") && (
-              <label className="wm-brush" title="Tamanho do pincel">
-                <span>Pincel</span>
-                <input
-                  type="range"
-                  min={2}
-                  max={30}
-                  value={brush}
-                  onChange={(e) => setBrush(+e.target.value)}
-                />
-              </label>
-            )}
             <div className="wm-tools-sep" />
             <button
               type="button"
@@ -1065,6 +1291,50 @@ function WorldEditor({
             )}
           </div>
         )}
+        {showClimate && (
+          <ClimateDialog
+            climate={map.climate}
+            onApply={(climate) => commit({ ...map, climate })}
+            onClose={() => setShowClimate(false)}
+          />
+        )}
+        {state && (
+          <StateDialog
+            key={state.id}
+            state={state}
+            fullName={fullStateName(state)}
+            map={map}
+            derived={derived}
+            society={society}
+            meta={meta}
+            capitals={capitals}
+            economy={economy}
+            onStateFields={(patch) => {
+              const id = state.noteId;
+              if (!id) return;
+              void useApp.getState().change((p) => {
+                const cur = p.notes.find((n) => n.id === id)?.fields ?? {};
+                return setNoteFields(p, id, { ...cur, ...patch });
+              });
+            }}
+            note={session.project.notes.find((n) => n.id === state.noteId)}
+            attachments={session.attachments}
+            onClose={() => setSelected(null)}
+            onOpenBurg={(id) => setSelected({ kind: "burg", id })}
+            onOpenState={(id) => setSelected({ kind: "state", id })}
+            onOpenNote={() => state.noteId && openNote(state.noteId)}
+          />
+        )}
+        {marker && (
+          <MarkerDialog
+            key={marker.key}
+            marker={marker}
+            era={map.options.era ?? "fantasia"}
+            onChange={(patch) => editMarker(marker, patch)}
+            onDelete={() => removeMarker(marker)}
+            onClose={() => setSelected(null)}
+          />
+        )}
         {burg && (
           <BurgDialog
             key={burg.id}
@@ -1075,6 +1345,8 @@ function WorldEditor({
             heights={map.heights}
             derived={derived}
             cultures={map.cultures ?? []}
+            economy={economy.cities.get(burg.id)}
+            era={map.options.era ?? "fantasia"}
             attachments={session.attachments}
             onClose={() => setSelected(null)}
             onRename={(name) => {
@@ -1122,82 +1394,22 @@ function WorldEditor({
 
       {panelOpen && (
         <aside className="wm-panel">
-          <section className="profile-card">
-            <input
-              className="wm-title"
-              aria-label="Nome do mundo"
-              defaultValue={map.name}
-              key={map.name}
-              onBlur={(e) =>
-                e.target.value.trim() &&
-                e.target.value !== map.name &&
-                commit({ ...map, name: e.target.value.trim() })
-              }
-            />
-            <p className="wm-meta">
-              {map.states.length} estados · {map.burgs.length} cidades · {derived.rivers.length}{" "}
-              rios
-            </p>
-            <div className="wm-modes segmented wide" role="radiogroup" aria-label="Estilo do mapa">
-              {(
-                [
-                  ["biomas", "Biomas"],
-                  ["relevo", "Relevo"],
-                  ["politico", "Político"],
-                  ["culturas", "Culturas"],
-                  ["religioes", "Religiões"],
-                ] as const
-              ).map(([v, l]) => (
-                <button
-                  key={v}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === v}
-                  onClick={() => setMode(v)}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-            <div className="wm-layers">
-              {LAYERS.map(([k, l]) => (
-                <label key={k} className="region-check">
-                  <input
-                    type="checkbox"
-                    checked={layers[k]}
-                    onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })}
-                  />
-                  {l}
-                </label>
-              ))}
-            </div>
-            <div className="wm-actions">
-              <button type="button" className="btn ghost sm" onClick={() => setShowGen((v) => !v)}>
-                <Icon name="refresh" size={14} /> Gerar outro mundo
+          <nav className="wm-tabs" role="tablist" aria-label="Seções do painel">
+            {PANEL_TABS.map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={panelTab === v}
+                onClick={() => setPanelTab(v)}
+              >
+                {l}
+                {v === "lugares" && offMap.length > 0 && (
+                  <span className="wm-tab-badge">{offMap.length}</span>
+                )}
               </button>
-              <button type="button" className="btn ghost sm" onClick={() => void exportPng()}>
-                <Icon name="export" size={14} /> Exportar imagem
-              </button>
-            </div>
-            {showGen && (
-              <div className="wm-gen">
-                <p className="field-hint">
-                  Substitui o mapa atual (o relevo, as cidades e os estados). Dá para desfazer com
-                  Ctrl+Z.
-                </p>
-                <GenerateForm
-                  initial={{ ...map.options }}
-                  submitLabel="Gerar"
-                  onGenerate={(o) => {
-                    commit(generateWorld(o, map.name));
-                    setSelected(null);
-                    setShowGen(false);
-                  }}
-                />
-              </div>
-            )}
-          </section>
-
+            ))}
+          </nav>
           {road && (
             <section className="profile-card wm-sel">
               <h3>{ROUTE_TYPES.find((rt) => rt.value === road.type)?.label ?? "Estrada"}</h3>
@@ -1307,7 +1519,12 @@ function WorldEditor({
                 <label>Forma de governo</label>
                 <Select
                   value={state.form ?? "Reino"}
-                  options={STATE_FORMS.map((f) => ({ value: f, label: f }))}
+                  options={[
+                    ...new Set([
+                      ...FORMS_BY_ERA[map.options.era ?? "fantasia"],
+                      ...(state.form ? [state.form] : []),
+                    ]),
+                  ].map((f) => ({ value: f, label: f }))}
                   onChange={(v) =>
                     v &&
                     commit({
@@ -1413,158 +1630,368 @@ function WorldEditor({
               })()}
             </section>
           )}
-
-          {!burg && !state && (
-            <section className="profile-card wm-help">
-              <h3>Como usar</h3>
-              <ul>
-                <li>Roda do mouse aproxima; arraste para mover.</li>
-                <li>Clique numa cidade ou num estado para editar nome, cor e capital.</li>
-                <li>
-                  Elevar e Rebaixar pintam o relevo: crie ilhas, cordilheiras e mares. Rios, biomas
-                  e fronteiras se refazem sozinhos.
-                </li>
-                <li>
-                  Cada estado e cidade é um lugar no Mundo: renomear ou apagar de um lado vale para
-                  o outro. A ficha do lugar tem “Ver no mapa-múndi”.
-                </li>
-              </ul>
-            </section>
-          )}
-          {placing && (
-            <section className="profile-card wm-placing">
-              <p>
-                Clique em terra no mapa para pôr{" "}
-                <b>{session.project.notes.find((n) => n.id === placing)?.title}</b>.
-              </p>
-              <button type="button" className="btn ghost sm" onClick={() => setPlacing(null)}>
-                Cancelar
-              </button>
-            </section>
-          )}
-          {offMap.length > 0 && (
-            <section className="profile-card wm-offmap">
-              <h3>Lugares fora do mapa</h3>
-              <p className="field-hint">
-                Lugares do Mundo que ainda não estão no mapa. Ponha cada um onde fica.
-              </p>
-              <ul>
-                {offMap.map((n) => (
-                  <li key={n.id}>
-                    <span>{n.title}</span>
-                    <button
-                      type="button"
-                      className="btn ghost sm"
-                      onClick={() => {
-                        setPlacing(n.id);
-                        setTool("cidade");
+          {panelTab === "mundo" && (
+            <>
+              <section className="profile-card">
+                <input
+                  className="wm-title"
+                  aria-label="Nome do mundo"
+                  defaultValue={map.name}
+                  key={map.name}
+                  onBlur={(e) =>
+                    e.target.value.trim() &&
+                    e.target.value !== map.name &&
+                    commit({ ...map, name: e.target.value.trim() })
+                  }
+                />
+                <dl className="wm-stats">
+                  {(
+                    [
+                      [map.states.length, "estados"],
+                      [map.burgs.length, "cidades"],
+                      [derived.rivers.length, "rios"],
+                      [derived.lakes.length, "lagos"],
+                    ] as const
+                  ).map(([v, l]) => (
+                    <div key={l}>
+                      <dd>{v.toLocaleString("pt-BR")}</dd>
+                      <dt>{l}</dt>
+                    </div>
+                  ))}
+                  <div className="wm-stats-wide" title="Cidades do mapa mais a população do campo">
+                    <dd>{bigNumber(worldPop)}</dd>
+                    <dt>
+                      habitantes no mundo · {bigNumber(cityPop)} nas {map.burgs.length} cidades do
+                      mapa
+                    </dt>
+                  </div>
+                </dl>
+                <div className="wm-group">
+                  <span className="wm-group-label">Época</span>
+                  <div
+                    className="segmented wide wm-grid-2"
+                    role="radiogroup"
+                    aria-label="Época do mapa"
+                  >
+                    {ERAS.map((e) => (
+                      <button
+                        key={e.value}
+                        type="button"
+                        role="radio"
+                        title={e.hint}
+                        aria-checked={(map.options.era ?? "fantasia") === e.value}
+                        onClick={() =>
+                          (map.options.era ?? "fantasia") !== e.value &&
+                          commit(withEra(map, e.value))
+                        }
+                      >
+                        {e.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="wm-group">
+                  <span className="wm-group-label">Estilo do mapa</span>
+                  <div className="wm-modes" role="radiogroup" aria-label="Estilo do mapa">
+                    {(
+                      [
+                        ["biomas", "Biomas"],
+                        ["relevo", "Relevo"],
+                        ["politico", "Político"],
+                        ["culturas", "Culturas"],
+                        ["religioes", "Religiões"],
+                        ["economia", "Economia"],
+                        ["riqueza", "Riqueza"],
+                      ] as const
+                    ).map(([v, l]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        role="radio"
+                        aria-checked={mode === v}
+                        onClick={() => setMode(v)}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="wm-group">
+                  <span className="wm-group-label">Camadas</span>
+                  <div className="wm-layers">
+                    {LAYERS.map(([k, l]) => (
+                      <label key={k} className="region-check">
+                        <input
+                          type="checkbox"
+                          checked={layers[k]}
+                          onChange={(e) => setLayers({ ...layers, [k]: e.target.checked })}
+                        />
+                        {l}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="wm-actions">
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    aria-pressed={showClimate}
+                    onClick={() => setShowClimate((v) => !v)}
+                  >
+                    <Icon name="globe" size={14} /> Configurar mundo
+                  </button>
+                  <button type="button" className="btn ghost sm" onClick={() => void exportPng()}>
+                    <Icon name="export" size={14} /> Exportar imagem
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost sm wm-actions-wide"
+                    aria-expanded={showGen}
+                    onClick={() => setShowGen((v) => !v)}
+                  >
+                    <Icon name="refresh" size={14} /> Gerar outro mundo
+                  </button>
+                </div>
+                {showGen && (
+                  <div className="wm-gen">
+                    <p className="field-hint">
+                      Substitui o mapa atual (o relevo, as cidades e os estados). Dá para desfazer
+                      com Ctrl+Z.
+                    </p>
+                    <GenerateForm
+                      initial={{ ...map.options }}
+                      submitLabel="Gerar"
+                      onGenerate={(o) => {
+                        commit(generateWorld(o, map.name, map.climate));
                         setSelected(null);
+                        setShowGen(false);
                       }}
-                    >
-                      <Icon name="pin" size={13} /> Pôr no mapa
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                    />
+                  </div>
+                )}
+              </section>
+              {!burg && !state && (
+                <section className="profile-card wm-help">
+                  <h3>Como usar</h3>
+                  <ul>
+                    <li>Roda do mouse aproxima; arraste para mover.</li>
+                    <li>Clique numa cidade ou num estado para editar nome, cor e capital.</li>
+                    <li>
+                      Terreno abre o modo de edição: pincéis de terra, mar, montanha, neve e lago.
+                      Rios, lagos, biomas e fronteiras se refazem sozinhos.
+                    </li>
+                    <li>
+                      Cada estado e cidade é um lugar no Mundo: renomear ou apagar de um lado vale
+                      para o outro. A ficha do lugar tem “Ver no mapa-múndi”.
+                    </li>
+                  </ul>
+                </section>
+              )}
+            </>
           )}
-          <section className="profile-card wm-routes">
-            <h3>Rotas</h3>
-            <ul className="wm-route-legend">
-              {ROUTE_TYPES.map((rt) => (
-                <li key={rt.value}>
-                  <span className={"route-swatch " + rt.value} />
-                  {rt.label}
-                </li>
-              ))}
-            </ul>
-            {(map.routes ?? []).length ? (
-              <ul className="wm-route-list">
-                {(map.routes ?? []).map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      className={selected?.id === r.id ? "on" : ""}
-                      onClick={() => setSelected({ kind: "route", id: r.id })}
-                    >
-                      <span className={"route-swatch " + r.type} />
-                      {r.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="field-hint">
-                As estradas geradas ligam cidades e capitais. Para traçar e dar nome a uma rota sua
-                (uma rodovia, um caminho de romeiros, uma trilha na serra), use a ferramenta Rota.
-              </p>
-            )}
-            <button type="button" className="btn ghost sm" onClick={() => setTool("rota")}>
-              <Icon name="link" size={14} /> Traçar rota
-            </button>
-          </section>
-          {(map.cultures ?? []).length > 0 && (
-            <section className="profile-card wm-legend wm-cultures">
-              <h3>Culturas</h3>
-              <ul>
-                {(map.cultures ?? []).map((c) => (
-                  <li key={c.id} title={`Nomes no estilo ${nameBase(c.base).label.toLowerCase()}`}>
-                    <span style={{ background: c.color }} />
-                    <div>
-                      {c.name}
-                      <small>
-                        {CULTURE_TYPES[c.type]} · {nameBase(c.base).label}
-                      </small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {mode === "religioes" && society.religions.length > 0 && (
-            <section className="profile-card wm-legend wm-cultures">
-              <h3>Religiões</h3>
-              <ul>
-                {society.religions.map((r) => (
-                  <li key={r.name} title={`Divindade: ${r.deity}`}>
-                    <span style={{ background: r.color }} />
-                    <div>
-                      {r.name}
-                      <small>
-                        {r.type} · {r.form}
-                      </small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {layers.marcadores && society.markers.length > 0 && (
-            <section className="profile-card wm-legend wm-markers">
-              <h3>Marcadores</h3>
-              <ul>
-                {(Object.keys(MARKER_TYPES) as (keyof typeof MARKER_TYPES)[])
-                  .filter((k) => society.markers.some((m) => m.type === k))
-                  .map((k) => (
-                    <li key={k}>
-                      <span className="wm-marker-icon">{MARKER_TYPES[k].icon}</span>
-                      {MARKER_TYPES[k].label}
+          {panelTab === "rotas" && (
+            <>
+              <section className="profile-card wm-routes">
+                <h3>Rotas</h3>
+                <ul className="wm-route-legend">
+                  {ROUTE_TYPES.map((rt) => (
+                    <li key={rt.value}>
+                      <span className={"route-swatch " + rt.value} />
+                      {rt.label}
                     </li>
                   ))}
-              </ul>
-            </section>
+                </ul>
+                {(map.routes ?? []).length ? (
+                  <ul className="wm-route-list">
+                    {(map.routes ?? []).map((r) => (
+                      <li key={r.id}>
+                        <button
+                          type="button"
+                          className={selected?.id === r.id ? "on" : ""}
+                          onClick={() => setSelected({ kind: "route", id: r.id })}
+                        >
+                          <span className={"route-swatch " + r.type} />
+                          {r.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="field-hint">
+                    As estradas geradas ligam cidades e capitais. Para traçar e dar nome a uma rota
+                    sua (uma rodovia, um caminho de romeiros, uma trilha na serra), use a ferramenta
+                    Rota.
+                  </p>
+                )}
+                <button type="button" className="btn ghost sm" onClick={() => setTool("rota")}>
+                  <Icon name="link" size={14} /> Traçar rota
+                </button>
+              </section>
+            </>
           )}
-          <section className="profile-card wm-legend">
-            <h3>Biomas</h3>
-            <ul>
-              {BIOMES.slice(1).map((b) => (
-                <li key={b.name}>
-                  <span style={{ background: b.color }} />
-                  {b.name}
-                </li>
-              ))}
-            </ul>
-          </section>
+          {panelTab === "lugares" && (
+            <>
+              {placing && (
+                <section className="profile-card wm-placing">
+                  <p>
+                    Clique em terra no mapa para pôr{" "}
+                    <b>{session.project.notes.find((n) => n.id === placing)?.title}</b>.
+                  </p>
+                  <button type="button" className="btn ghost sm" onClick={() => setPlacing(null)}>
+                    Cancelar
+                  </button>
+                </section>
+              )}
+              {offMap.length > 0 && (
+                <section className="profile-card wm-offmap">
+                  <h3>Lugares fora do mapa</h3>
+                  <p className="field-hint">
+                    Lugares do Mundo que ainda não estão no mapa. Ponha cada um onde fica.
+                  </p>
+                  <ul>
+                    {offMap.map((n) => (
+                      <li key={n.id}>
+                        <span>{n.title}</span>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          onClick={() => {
+                            setPlacing(n.id);
+                            setTool("cidade");
+                            setSelected(null);
+                          }}
+                        >
+                          <Icon name="pin" size={13} /> Pôr no mapa
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {offMap.length === 0 && !placing && (
+                <section className="profile-card">
+                  <h3>Lugares fora do mapa</h3>
+                  <p className="wm-meta">Todos os lugares do Mundo já estão no mapa.</p>
+                </section>
+              )}
+            </>
+          )}
+          {panelTab === "legendas" && (
+            <>
+              {(map.cultures ?? []).length > 0 && (
+                <section className="profile-card wm-legend wm-cultures">
+                  <h3>Culturas</h3>
+                  <ul>
+                    {(map.cultures ?? []).map((c) => (
+                      <li
+                        key={c.id}
+                        title={`Nomes no estilo ${nameBase(c.base).label.toLowerCase()}`}
+                      >
+                        <span style={{ background: c.color }} />
+                        <div>
+                          {c.name}
+                          <small>
+                            {CULTURE_TYPES[c.type]} · {nameBase(c.base).label}
+                          </small>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {society.religions.length > 0 && (
+                <section className="profile-card wm-legend wm-cultures">
+                  <h3>Religiões</h3>
+                  <ul>
+                    {society.religions.map((r) => (
+                      <li key={r.name} title={`Divindade: ${r.deity}`}>
+                        <span style={{ background: r.color }} />
+                        <div>
+                          {r.name}
+                          <small>
+                            {r.type} · {r.form}
+                          </small>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {layers.marcadores && society.markers.length > 0 && (
+                <section className="profile-card wm-legend wm-markers">
+                  <h3>Marcadores</h3>
+                  <ul>
+                    {(Object.keys(MARKER_TYPES) as (keyof typeof MARKER_TYPES)[])
+                      .filter((k) => society.markers.some((m) => m.type === k))
+                      .map((k) => (
+                        <li key={k}>
+                          <span className="wm-marker-icon">{MARKER_TYPES[k].icon}</span>
+                          {MARKER_TYPES[k].label}
+                        </li>
+                      ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={() => setTool("marcador")}
+                  >
+                    <Icon name="star" size={14} /> Pôr marcador
+                  </button>
+                </section>
+              )}
+              <section className="profile-card wm-legend wm-cultures">
+                <h3>Riqueza</h3>
+                <ul>
+                  {(["rico", "medio", "pobre"] as const).map((w) => (
+                    <li key={w}>
+                      <span style={{ background: WEALTH_COLORS[w] }} />
+                      <div>
+                        {WEALTH_LABEL[w]}
+                        <small>
+                          {map.states
+                            .filter((s) => economy.states.get(s.id)?.wealth === w)
+                            .map((s) => s.name)
+                            .join(", ") || "nenhum"}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <section className="profile-card wm-legend wm-cultures">
+                <h3>Economia (vocação)</h3>
+                <ul>
+                  {SECTORS.map((s) => (
+                    <li key={s}>
+                      <span style={{ background: SECTOR_COLORS[s] }} />
+                      <div>
+                        {sectorLabel(s, map.options.era ?? "fantasia")}
+                        <small>
+                          {[...economy.cities.values()].filter((c) => c.main === s).length} cidades
+                          · {[...economy.states.values()].filter((c) => c.main === s).length}{" "}
+                          estados
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <section className="profile-card wm-legend">
+                <h3>Biomas</h3>
+                <ul>
+                  {BIOMES.slice(
+                    1,
+                    (map.options.era ?? "fantasia") === "fantasia" ? 14 : undefined,
+                  ).map((b) => (
+                    <li key={b.name}>
+                      <span style={{ background: b.color }} />
+                      {b.name}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
+          )}
         </aside>
       )}
     </div>

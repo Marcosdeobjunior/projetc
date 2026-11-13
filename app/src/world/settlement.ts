@@ -1,6 +1,12 @@
 import { hashSeed, rng } from "./geom";
 import { cellOf, COLS, dCol, ROWS, SEA, type Burg, type Derived } from "./worldgen";
-import { parseMapOptions, type MapOptions, type MapSize, type VillageGeo } from "./village";
+import {
+  parseMapOptions,
+  type ArchStyle,
+  type MapOptions,
+  type MapSize,
+  type VillageGeo,
+} from "./village";
 
 /*
  * Dados de um povoado do mapa-múndi (o "Editar povoado"). Ficam nos campos do
@@ -108,16 +114,24 @@ export function settlementInfo(
       if (x + dx < 0 || x + dx >= COLS || j < 0 || j >= d.flux.length) continue;
       if (d.land[j] && d.flux[j]! >= d.riverMin) river = true;
     }
+  // No mundo real as cidades são muito maiores (metrópoles de milhões).
+  const scale = d.era === "atual" ? 60 : 1;
   const population =
     parsePopulation(fields.populacao) ??
-    (capital ? 6000 + (seed % 18000) : 200 + (seed % 4800) * (coastal || river ? 1.4 : 1)) | 0;
+    ((capital ? 6000 + (seed % 18000) : 200 + (seed % 4800) * (coastal || river ? 1.4 : 1)) *
+      scale) |
+      0;
   // Elementos pela população (em milhares), com sorteio fixo por cidade: cidades
   // grandes quase sempre têm muralha e cidadela; favela e templo vêm com o tamanho.
   const pr = rng(seed ^ 0x5a17);
   const P = (p: number) => pr() < p;
-  const k = population / 1000;
-  const citadel = capital || (k > 50 && P(0.75)) || (k > 15 && P(0.5)) || P(0.1);
-  const walls = capital || k > 30 || (k > 20 && P(0.75)) || (k > 10 && P(0.5)) || P(0.1);
+  const k = population / 1000 / scale;
+  // No mundo real, muralha e cidadela são raras (centros históricos).
+  const old = scale === 1;
+  const citadel =
+    (old || P(0.15)) && (capital || (k > 50 && P(0.75)) || (k > 15 && P(0.5)) || P(0.1));
+  const walls =
+    (old || P(0.1)) && (capital || k > 30 || (k > 20 && P(0.75)) || (k > 10 && P(0.5)) || P(0.1));
   const shanty = k > 60 || (k > 40 && P(0.75)) || (k > 20 && walls && P(0.4));
   const temple = k > 50 || (k > 35 && P(0.75)) || (k > 20 && P(0.5)) || (k > 3 && P(0.2));
   const plaza = k > 1 || P(0.5);
@@ -155,7 +169,16 @@ export function settlementInfo(
                 ? "Caça"
                 : "Genérico");
   const saved = parseMapOptions(fields.mapa);
-  const geo = localGeo(burg, d);
+  const geo: VillageGeo = {
+    ...localGeo(burg, d),
+    // No mundo real a cidade é moderna (só os nômades seguem em tendas).
+    style:
+      d.era === "atual" && type !== "Nômade"
+        ? "moderno"
+        : archStyle(biome, type, d.tempC[c]!, metres(heights[c]!)),
+    population,
+    port: elements.has("porto") || type === "Porto" || type === "Lacustre",
+  };
   const preview: MapOptions = {
     ...(saved ?? {
       seed,
@@ -186,6 +209,22 @@ export function settlementInfo(
   };
 }
 
+/**
+ * Estilo das construções: o tipo do povoado manda primeiro (nômades moram em
+ * tendas, caçadores em cabanas), depois a altitude, o frio e o bioma.
+ */
+export function archStyle(biome: number, type: string, tempC: number, elev: number): ArchStyle {
+  if (type === "Nômade") return "nomade";
+  if (type === "Caça") return biome === 5 || biome === 7 ? "tropical" : "caca";
+  if (type === "Montanha" || elev > 1800 || biome === 13) return "montanha";
+  if (biome === 11 || biome === 10 || tempC < -3) return "neve";
+  if (biome === 9) return "frio";
+  if (biome === 1 || biome === 2) return "deserto";
+  if (biome === 3 || biome === 5 || biome === 7) return "tropical";
+  if (biome === 12) return tempC > 20 ? "tropical" : "temperado";
+  return "temperado";
+}
+
 /** Cor do chão e árvores da prévia, pelo bioma do mapa-múndi. */
 const BIOME_LOOK: { ground: string; trees: number; farmland: boolean }[] = [
   { ground: "#ece2c9", trees: 1, farmland: true }, // mar (não usado)
@@ -202,7 +241,38 @@ const BIOME_LOOK: { ground: string; trees: number; farmland: boolean }[] = [
   { ground: "#f1f4f4", trees: 0, farmland: false }, // geleira
   { ground: "#dbe0c4", trees: 0.9, farmland: false }, // pântano
   { ground: "#e3ddcf", trees: 0.35, farmland: false }, // montanha
+  { ground: "#dedbd4", trees: 0.25, farmland: false }, // área urbana
+  { ground: "#e8e2bc", trees: 0.3, farmland: true }, // lavouras
 ];
+
+/** Gente por célula inteira (no equador) e por hábitat, conforme a época. */
+const RURAL_DENSITY = { fantasia: 50_000, atual: 900_000 } as const;
+const URBAN_DENSITY = { fantasia: 0, atual: 10_000_000 } as const;
+const HABITAT = [0, 0.05, 0.03, 0.5, 0.9, 0.7, 0.8, 0.5, 0.6, 0.15, 0.03, 0, 0.2, 0.08, 1, 1];
+
+/** Gente no campo de uma célula (pela área, o bioma e a época). */
+export function cellPopulation(d: Derived, i: number): number {
+  if (!d.land[i]) return 0;
+  const y = Math.floor(i / COLS);
+  const area = Math.cos(((y + 0.5) / ROWS - 0.5) * Math.PI);
+  const b = d.biome[i]!;
+  return area * (b === 14 ? URBAN_DENSITY[d.era] : RURAL_DENSITY[d.era] * (HABITAT[b] ?? 0.3));
+}
+
+/** População fora das cidades do mapa (campo e periferias), pela área habitável. */
+export function ruralPopulation(d: Derived): number {
+  let sum = 0;
+  for (let i = 0; i < d.land.length; i++) sum += cellPopulation(d, i);
+  return Math.round(sum);
+}
+
+/** Número grande em palavras ("8,1 bilhões"). */
+export function bigNumber(n: number): string {
+  const f = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  if (n >= 1e9) return `${f(n / 1e9)} ${n >= 2e9 ? "bilhões" : "bilhão"}`;
+  if (n >= 1e6) return `${f(n / 1e6)} ${n >= 2e6 ? "milhões" : "milhão"}`;
+  return n.toLocaleString("pt-BR");
+}
 
 /**
  * Geografia em volta da cidade, lida do mapa-múndi: de que lado está a água,
@@ -279,6 +349,7 @@ export function localGeo(burg: Burg, d: Derived): VillageGeo {
     ground: look.ground,
     trees: look.trees,
     farmland: look.farmland,
+    ...(d.era !== "fantasia" ? { era: d.era } : {}),
   };
 }
 

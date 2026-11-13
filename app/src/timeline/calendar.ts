@@ -164,3 +164,95 @@ export function formatDate(def: CalendarDef, d: CalendarDate): string {
   const suffix = def.yearSuffix.trim();
   return `${d.day} de ${def.months[d.month]!.name} de ${d.year}${suffix ? " " + suffix : ""}`;
 }
+
+/** Modelos prontos para começar um calendário do mundo. */
+export const CALENDAR_PRESETS: {
+  id: string;
+  title: string;
+  hint: string;
+  def: CalendarDef;
+}[] = [
+  {
+    id: "nosso",
+    title: "Como o nosso",
+    hint: "12 meses de janeiro a dezembro, semana de 7 dias.",
+    def: DEFAULT_CALENDAR,
+  },
+  {
+    id: "fantasia",
+    title: "Fantasia simples",
+    hint: "12 meses de 30 dias com nomes do campo, 4 estações e uma era.",
+    def: {
+      ...DEFAULT_CALENDAR,
+      months: [
+        "Alvorada",
+        "Degelo",
+        "Semeadura",
+        "Florada",
+        "Verdejo",
+        "Solar",
+        "Colheita",
+        "Vindima",
+        "Brumal",
+        "Geada",
+        "Ermo",
+        "Vigília",
+      ].map((name) => ({ name, days: 30 })),
+      weekdays: ["Soldia", "Luadia", "Ventodia", "Fogodia", "Águadia", "Terradia", "Repouso"],
+      yearSuffix: "da Nova Era",
+      start: { year: 412, month: 0, day: 1 },
+      holidays: [
+        { name: "Festa da Colheita", month: 6, day: 1 },
+        { name: "Noite Longa", month: 11, day: 30 },
+      ],
+      seasons: [
+        { name: "Primavera", month: 0 },
+        { name: "Verão", month: 3 },
+        { name: "Outono", month: 6 },
+        { name: "Inverno", month: 9 },
+      ],
+    },
+  },
+  {
+    id: "lunar",
+    title: "Lunar",
+    hint: "13 luas de 28 dias (4 semanas certinhas cada).",
+    def: {
+      ...DEFAULT_CALENDAR,
+      months: [
+        "Lua do Lobo",
+        "Lua da Neve",
+        "Lua do Corvo",
+        "Lua da Semente",
+        "Lua da Flor",
+        "Lua do Mel",
+        "Lua do Trovão",
+        "Lua do Feno",
+        "Lua da Cevada",
+        "Lua da Caça",
+        "Lua da Névoa",
+        "Lua do Gelo",
+        "Lua Azul",
+      ].map((name) => ({ name, days: 28 })),
+      start: { year: 1, month: 0, day: 1 },
+    },
+  },
+  {
+    id: "branco",
+    title: "Em branco",
+    hint: "12 meses numerados de 30 dias, sem semana. Dê os nomes depois.",
+    def: {
+      ...DEFAULT_CALENDAR,
+      months: Array.from({ length: 12 }, (_, i) => ({ name: `Mês ${i + 1}`, days: 30 })),
+      weekdays: [],
+    },
+  },
+];
+
+/** Resumo de uma definição: "12 meses · 360 dias · semana de 7". */
+export function calendarSummary(def: CalendarDef): string {
+  const w = def.weekdays.length;
+  return `${def.months.length} ${def.months.length === 1 ? "mês" : "meses"} · ${yearLength(def)} dias${
+    w ? ` · semana de ${w}` : " · sem semana"
+  }`;
+}

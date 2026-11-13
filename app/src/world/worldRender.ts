@@ -16,7 +16,8 @@ import {
  * fronteiras, por marching squares) desenhados por cima a cada quadro.
  */
 
-export type MapMode = "biomas" | "relevo" | "politico" | "culturas" | "religioes";
+export type MapMode =
+  "biomas" | "relevo" | "politico" | "culturas" | "religioes" | "economia" | "riqueza";
 
 /** Pixels por célula na imagem de fundo. */
 export const PX = 3;
@@ -35,6 +36,8 @@ const SALT_LAKE = hex("#b9d8cf");
 const ROCK = hex("#8c8376");
 const SNOW = hex("#f5f7f8");
 const POLITICAL_LAND = hex("#efe6d0");
+const MODERN_DEEP = hex("#5f9ccb");
+const MODERN_SHALLOW = hex("#b9dcf2");
 
 /** Relevo: verde baixo → amarelo → marrom → branco no alto. */
 const RELIEF: [number, [number, number, number]][] = [
@@ -148,7 +151,13 @@ export function bakeBase(
       } else {
         const e = Math.max(0, (v - SEA) / 127);
         if (mode === "relevo") rgb = relief(e);
-        else if (mode === "politico" || mode === "culturas" || mode === "religioes")
+        else if (
+          mode === "politico" ||
+          mode === "culturas" ||
+          mode === "religioes" ||
+          mode === "economia" ||
+          mode === "riqueza"
+        )
           rgb = POLITICAL_LAND;
         else {
           // Bordas orgânicas entre biomas: desloca um pouco o ponto de amostra.
@@ -178,7 +187,12 @@ export function bakeBase(
         // Sombreamento: luz principal do noroeste e luz ambiente; mais forte nas serras.
         const gx = heightAt(h, x + 0.6, y) - heightAt(h, x - 0.6, y);
         const gy = heightAt(h, x, y + 0.6) - heightAt(h, x, y - 0.6);
-        const flat = mode === "politico" || mode === "culturas" || mode === "religioes";
+        const flat =
+          mode === "politico" ||
+          mode === "culturas" ||
+          mode === "religioes" ||
+          mode === "economia" ||
+          mode === "riqueza";
         const strength = flat ? 0.012 : 0.026 + e * 0.03;
         const shade = Math.max(0.5, Math.min(1.28, 1.02 - (gx + gy) * strength));
         rgb = [rgb[0] * shade, rgb[1] * shade, rgb[2] * shade];
@@ -186,11 +200,25 @@ export function bakeBase(
         const cu = d.culture[cell]!;
         if (mode === "culturas") {
           if (cu >= 0 && cultureRgb[cu]) rgb = lerp3(rgb, cultureRgb[cu]!, 0.6);
-        } else if (mode === "religioes") {
+        } else if (mode === "religioes" || mode === "economia" || mode === "riqueza") {
           const r = faith?.cells[cell] ?? -1;
           if (r >= 0 && faithRgb[r]) rgb = lerp3(rgb, faithRgb[r]!, 0.6);
         } else if ((states || mode === "politico") && o >= 0 && stateRgb[o])
           rgb = lerp3(rgb, stateRgb[o]!, mode === "politico" ? 0.55 : 0.32);
+      }
+      // Mundo real: estilo de atlas moderno (mar claro, cores limpas).
+      if (d.era === "atual") {
+        if (v < SEA - 0.5) {
+          const depth = Math.max(0, Math.min(1, v / (SEA - 1)));
+          rgb = lerp3(MODERN_DEEP, MODERN_SHALLOW, Math.pow(depth, 2));
+        } else {
+          const g = (rgb[0] + rgb[1] + rgb[2]) / 3;
+          rgb = [
+            Math.min(255, g + (rgb[0] - g) * 1.15 + 6),
+            Math.min(255, g + (rgb[1] - g) * 1.15 + 8),
+            Math.min(255, g + (rgb[2] - g) * 1.15 + 4),
+          ];
+        }
       }
       const k = (py * W + pxx) * 4;
       px[k] = rgb[0];

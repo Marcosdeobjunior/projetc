@@ -1,11 +1,11 @@
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
-import type { VillageMap } from "../world/village";
+import type { ArchStyle, VillageMap } from "../world/village";
 import { insidePoly, distToPolyline, type Pt } from "../world/geom";
-import { MAP_COLORS, type Viewer } from "./PlaceMap";
+import { CONCRETE, MAP_COLORS, ROOFS, TEMPLE, TREES, type Viewer } from "./PlaceMap";
 
 /*
- * Vista de rua do mini mapa, desenhada do zero num canvas: cada casa vira uma
- * caixa com telhado de quatro águas, ruas e rio viram faixas no chão e árvores
+ * Vista de rua do mini mapa, desenhada do zero num canvas: cada casa vira um
+ * modelo pelo tipo de telhado (com janelas e porta), ruas e rio viram faixas no chão e árvores
  * viram copas. Projeção em perspectiva simples, recorte no plano próximo e
  * pintura de trás para frente (sem WebGL).
  */
@@ -17,26 +17,110 @@ const FOV = (72 * Math.PI) / 180;
 const SKY_TOP = [126, 170, 214];
 const SKY_LOW = [222, 232, 236];
 const FOG = [214, 224, 226];
+/** Detalhes de fachada (janelas, portas) só são desenhados de perto. */
+const DETAIL = 95;
+/** Direção da luz do sol (x, y do mapa com y para baixo, h para cima). */
+const SUN: V3 = (() => {
+  const v: V3 = [-0.45, -0.55, 0.7];
+  const l = Math.hypot(...v);
+  return [v[0] / l, v[1] / l, v[2] / l];
+})();
 
 type V3 = [number, number, number]; // x, y (mapa), h (altura)
+type RGB = [number, number, number];
 
-interface Face {
+interface Decal {
   pts: V3[];
-  color: [number, number, number];
-  ground?: boolean;
+  color: RGB;
 }
 
-const hex = (h: string): [number, number, number] => [
+export interface Face {
+  pts: V3[];
+  color: RGB;
+  ground?: boolean;
+  /** Desenhos colados na face (janelas, portas), pintados junto com ela. */
+  decals?: Decal[];
+  /** Não sombrear pela luz (água, lajes de pedra no chão). */
+  flat?: boolean;
+}
+
+const hex = (h: string): RGB => [
   parseInt(h.slice(1, 3), 16),
   parseInt(h.slice(3, 5), 16),
   parseInt(h.slice(5, 7), 16),
 ];
-const WALLS = ["#e6d8bb", "#d9c39b", "#efe5d0", "#d4bf98"].map(hex);
-const ROOFS = ["#9b4a33", "#7d5a3e", "#a8573a", "#6f5b4b"].map(hex);
 const GROUND = hex("#a9b27f");
+const ROAD = { fantasia: hex("#cfc3a6"), atual: hex("#6b6f75") };
+
+/** Paredes, janelas e portas de cada estilo. */
+const LOOK: Record<
+  ArchStyle,
+  { walls: string[]; window: string; door: string; base: string; gap?: number }
+> = {
+  moderno: {
+    walls: ["#d4d6d9", "#c2c7cd", "#e2ded6", "#cbbfae"],
+    window: "#6f8797",
+    door: "#4b5058",
+    base: "#8d9096",
+  },
+  temperado: {
+    walls: ["#efe6d2", "#e6d8bb", "#f3eee2", "#dccaa6"],
+    window: "#46505a",
+    door: "#6b4a2e",
+    base: "#9b9283",
+  },
+  deserto: {
+    walls: ["#dcb985", "#e5c796", "#d2ad78", "#ecd4a8"],
+    window: "#3e352c",
+    door: "#7a4f2c",
+    base: "#c09a68",
+    gap: 3.8,
+  },
+  tropical: {
+    walls: ["#c9a46a", "#bb955c", "#d4b27c", "#b38b52"],
+    window: "#3a3226",
+    door: "#5e4228",
+    base: "#8f7350",
+    gap: 3.4,
+  },
+  frio: {
+    walls: ["#7a5a3e", "#6b4f37", "#86664a", "#5f4632"],
+    window: "#e8d7a0",
+    door: "#3d2c1f",
+    base: "#77736b",
+    gap: 3.0,
+  },
+  neve: {
+    walls: ["#8a6a4c", "#7a5a3e", "#9a7a5a", "#6b4f37"],
+    window: "#f0dfa8",
+    door: "#3d2c1f",
+    base: "#8c8a85",
+    gap: 3.0,
+  },
+  montanha: {
+    walls: ["#aaa59b", "#9e998f", "#b4afa4", "#938e85"],
+    window: "#3a3d42",
+    door: "#5a4430",
+    base: "#7e7a72",
+    gap: 3.2,
+  },
+  nomade: {
+    walls: ["#efe7d6", "#e6dbc3", "#f3ede0", "#dccfb4"],
+    window: "#8a3b2e",
+    door: "#9a4432",
+    base: "#c7b896",
+  },
+  caca: {
+    walls: ["#8b6d47", "#7d6140", "#977852", "#715737"],
+    window: "#2f261b",
+    door: "#3b2c1d",
+    base: "#6e5a3f",
+    gap: 4.5,
+  },
+};
 
 /** Faixa (rua, rio) como quadriláteros no chão. */
-function strip(points: Pt[], width: number, color: [number, number, number], lift: number): Face[] {
+function strip(points: Pt[], width: number, color: RGB, lift: number): Face[] {
   const faces: Face[] = [];
   for (let i = 1; i < points.length; i++) {
     const [ax, ay] = points[i - 1]!;
@@ -58,9 +142,186 @@ function strip(points: Pt[], width: number, color: [number, number, number], lif
   return faces;
 }
 
+const lerp2 = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const dist2 = (a: Pt, b: Pt) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+const up = (p: Pt, h: number): V3 => [p[0], p[1], h];
+const shade = (c: RGB, k: number): RGB => [c[0] * k, c[1] * k, c[2] * k];
+
+/** Parede (quad vertical) de p a q, entre as alturas z0 e z1. */
+const wallQuad = (p: Pt, q: Pt, z0: number, z1: number): V3[] => [
+  up(p, z0),
+  up(q, z0),
+  up(q, z1),
+  up(p, z1),
+];
+
+/** Retângulo colado na parede p→q: u ao longo dela, z na altura, um pouco para fora. */
+function onWall(p: Pt, q: Pt, out: Pt, u0: number, u1: number, z0: number, z1: number): V3[] {
+  const a = lerp2(p, q, u0);
+  const b = lerp2(p, q, u1);
+  const o = 0.05;
+  const A: Pt = [a[0] + out[0] * o, a[1] + out[1] * o];
+  const B: Pt = [b[0] + out[0] * o, b[1] + out[1] * o];
+  return wallQuad(A, B, z0, z1);
+}
+
+/**
+ * Paredes de um polígono (casa ou cabana): com janelas por andar e uma porta na
+ * parede mais perto da rua. Prédios altos do mundo real ganham faixas de vidro.
+ */
+function walls(
+  faces: Face[],
+  poly: Pt[],
+  center: Pt,
+  h: number,
+  floors: number,
+  color: RGB,
+  look: (typeof LOOK)[ArchStyle],
+  door: number,
+  opts: { glass?: boolean; windows?: boolean; base?: boolean },
+) {
+  const win = hex(look.window);
+  const doorC = hex(look.door);
+  const baseC = hex(look.base);
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i]!;
+    const q = poly[(i + 1) % poly.length]!;
+    const L = dist2(p, q);
+    const m = lerp2(p, q, 0.5);
+    const ol = dist2(m, center) || 1;
+    const out: Pt = [(m[0] - center[0]) / ol, (m[1] - center[1]) / ol];
+    const decals: Decal[] = [];
+    if (opts.base && h > 1) decals.push({ pts: onWall(p, q, out, 0, 1, 0, 0.45), color: baseC });
+    if (opts.glass) {
+      // Faixa de vidro em cada andar (até 60), com o térreo mais alto.
+      for (let f = 0; f < Math.min(floors, 60); f++) {
+        const z = 0.4 + f * 3.2;
+        decals.push({
+          pts: onWall(p, q, out, 0.06, 0.94, z + (f ? 0.9 : 0.5), z + 2.6),
+          color: f ? win : shade(win, 0.8),
+        });
+      }
+    } else if (opts.windows !== false && L > 1.6) {
+      const n = Math.max(1, Math.floor(L / (look.gap ?? 2.6)));
+      for (let f = 0; f < Math.min(floors, 8); f++) {
+        const z = 0.4 + f * 3.2;
+        for (let j = 0; j < n; j++) {
+          const u = (j + 0.5) / n;
+          const isDoor = i === door && f === 0 && j === Math.floor(n / 2);
+          const half = (isDoor ? 0.55 : 0.42) / L;
+          decals.push({
+            pts: onWall(p, q, out, u - half, u + half, isDoor ? 0.02 : z + 1.0, z + 2.25),
+            color: isDoor ? doorC : win,
+          });
+        }
+      }
+    } else if (i === door) {
+      const half = 0.55 / Math.max(L, 1.2);
+      decals.push({ pts: onWall(p, q, out, 0.5 - half, 0.5 + half, 0.02, 1.9), color: doorC });
+    }
+    faces.push({ pts: wallQuad(p, q, 0, h), color, decals });
+  }
+}
+
+/** Índice da parede (lado p→q) de frente para a rua mais próxima. */
+function frontWall(poly: Pt[], roads: VillageMap["roads"]): number {
+  let best = 0;
+  let bd = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const m = lerp2(poly[i]!, poly[(i + 1) % poly.length]!, 0.5);
+    for (const r of roads) {
+      const d = distToPolyline(m, r.points);
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    }
+  }
+  return best;
+}
+
+/** Cone (telhado de palha, tenda) sobre um anel. */
+function cone(faces: Face[], ring: Pt[], h: number, apex: V3, color: RGB) {
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i]!;
+    const q = ring[(i + 1) % ring.length]!;
+    faces.push({ pts: [up(p, h), up(q, h), apex], color });
+  }
+}
+
+/** Cúpula: anéis que encolhem até o topo. */
+function dome(faces: Face[], c: Pt, r: number, h: number, color: RGB) {
+  const N = 14;
+  const rings = 4;
+  const ring = (k: number) => {
+    const t = (k / rings) * (Math.PI / 2);
+    const rr = r * Math.cos(t);
+    return Array.from({ length: N }, (_, i) => {
+      const a = (i / N) * Math.PI * 2;
+      return [c[0] + Math.cos(a) * rr, c[1] + Math.sin(a) * rr, h + r * Math.sin(t)] as V3;
+    });
+  };
+  for (let k = 0; k < rings; k++) {
+    const A = ring(k);
+    const B = ring(k + 1);
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      faces.push({ pts: [A[i]!, A[j]!, B[j]!, B[i]!], color });
+    }
+  }
+}
+
+/** Telhado de duas ou quatro águas, com beiral; a cumeeira corre no lado comprido. */
+function pitched(
+  faces: Face[],
+  k: Pt[],
+  c: Pt,
+  h: number,
+  pitch: number,
+  hip: boolean,
+  roof: RGB,
+  wall: RGB,
+) {
+  const [c0, c1, c2, c3] = k as [Pt, Pt, Pt, Pt];
+  const short = dist2(c1, c2);
+  const long = dist2(c0, c1);
+  const rh = h + short * pitch;
+  const m03 = lerp2(c0, c3, 0.5);
+  const m12 = lerp2(c1, c2, 0.5);
+  const inset = hip ? Math.min(0.45, short / 2 / long) : 0;
+  const R0 = up(lerp2(m03, m12, inset), rh);
+  const R1 = up(lerp2(m12, m03, inset), rh);
+  // Beiral: o telhado sai um pouco além das paredes.
+  const e = 1 + 0.5 / Math.max(2, short);
+  const E = k.map((p) => lerp2(c, p, e)) as [Pt, Pt, Pt, Pt];
+  const eh = h - 0.18;
+  faces.push({ pts: [up(E[0], eh), up(E[1], eh), R1, R0], color: roof });
+  faces.push({ pts: [up(E[2], eh), up(E[3], eh), R0, R1], color: roof });
+  if (hip) {
+    faces.push({ pts: [up(E[1], eh), up(E[2], eh), R1], color: roof });
+    faces.push({ pts: [up(E[3], eh), up(E[0], eh), R0], color: roof });
+  } else {
+    // Oitões: a parede sobe em triângulo até a cumeeira.
+    faces.push({ pts: [up(c1, h), up(c2, h), R1], color: wall });
+    faces.push({ pts: [up(c3, h), up(c0, h), R0], color: wall });
+  }
+  return { R0, R1, rh };
+}
+
+/** Caixa simples (chaminé, torre, casa de máquinas). */
+function box(faces: Face[], poly: Pt[], z0: number, z1: number, side: RGB, top: RGB) {
+  for (let i = 0; i < poly.length; i++)
+    faces.push({ pts: wallQuad(poly[i]!, poly[(i + 1) % poly.length]!, z0, z1), color: side });
+  faces.push({ pts: poly.map((p) => up(p, z1)), color: top });
+}
+
+const shrinkTo = (poly: Pt[], at: Pt, k: number) => poly.map((p) => lerp2(at, p, k));
+
 /** Monta as faces do mundo 3D uma vez por mapa. */
 export function buildScene(map: VillageMap) {
   const faces: Face[] = [];
+  const style: ArchStyle = map.style ?? "temperado";
+  const look = LOOK[style];
   if (map.sea)
     faces.push({
       pts: map.sea.poly.map(([x, y]) => [x, y, 0.008] as V3),
@@ -75,51 +336,118 @@ export function buildScene(map: VillageMap) {
       color: hex("#c9bb7e"),
       ground: true,
     });
-  for (const r of map.roads) faces.push(...strip(r.points, r.width, hex("#cfc3a6"), 0.02));
+  for (const r of map.roads)
+    faces.push(...strip(r.points, r.width, map.era === "atual" ? ROAD.atual : ROAD.fantasia, 0.02));
+  for (const d of map.docks ?? [])
+    faces.push({
+      pts: d.pier.map(([x, y]) => [x, y, 0.35] as V3),
+      color: hex("#9c7c56"),
+      ground: true,
+    });
+
   for (const b of map.buildings) {
-    const h = 3.2 * b.floors + 0.4;
-    const wall = WALLS[b.tone]!;
-    const roof = ROOFS[b.tone]!;
-    const c = b.corners;
-    for (let i = 0; i < 4; i++) {
-      const p = c[i]!;
-      const q = c[(i + 1) % 4]!;
-      faces.push({
-        pts: [
-          [p[0], p[1], 0],
-          [q[0], q[1], 0],
-          [q[0], q[1], h],
-          [p[0], p[1], h],
-        ],
-        color: wall,
+    const roof = b.roof ?? (map.era === "atual" ? "plano" : "duas-aguas");
+    const tone = b.tone % 4;
+    const wall = hex(b.kind === "armazem" ? "#b9a07a" : look.walls[tone]!);
+    const roofC = hex(
+      b.kind === "templo"
+        ? TEMPLE[style][0]
+        : b.kind === "armazem"
+          ? "#8a7458"
+          : style === "moderno" && roof === "plano"
+            ? CONCRETE[tone]![1]
+            : (ROOFS[style][tone] ?? ROOFS[style][0]!)[0],
+    );
+    const c = b.center;
+    // Lado 0→1 como o comprido.
+    let k = b.corners;
+    if (dist2(k[0]!, k[1]!) < dist2(k[1]!, k[2]!)) k = [k[1]!, k[2]!, k[3]!, k[0]!];
+
+    if (roof === "redondo" || roof === "tenda") {
+      const r = Math.min(dist2(k[0]!, k[1]!), dist2(k[1]!, k[2]!)) / 2;
+      const N = 10;
+      const ring = Array.from({ length: N }, (_, i) => {
+        const a = (i / N) * Math.PI * 2;
+        return [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r] as Pt;
       });
+      const tent = roof === "tenda";
+      const h = tent ? 1.7 : b.kind === "templo" ? 3.4 : 2.3;
+      walls(faces, ring, c, h, 1, wall, look, frontWall(ring, map.roads), {
+        windows: false,
+      });
+      const eave = shrinkTo(ring, c, tent ? 1 : 1.18);
+      const apexH = h + r * (tent ? 0.55 : 1.15) + (b.kind === "templo" ? 2 : 0);
+      cone(faces, eave, h - (tent ? 0 : 0.25), [c[0], c[1], apexH], tent ? wall : roofC);
+      continue;
     }
-    // Telhado de quatro águas: cumeeira no meio do lado comprido.
-    const [cx, cy] = b.center;
-    const long0 = Math.hypot(c[1]![0] - c[0]![0], c[1]![1] - c[0]![1]);
-    const long1 = Math.hypot(c[2]![0] - c[1]![0], c[2]![1] - c[1]![1]);
-    const axis: Pt =
-      long0 >= long1
-        ? [(c[1]![0] - c[0]![0]) / long0, (c[1]![1] - c[0]![1]) / long0]
-        : [(c[2]![0] - c[1]![0]) / long1, (c[2]![1] - c[1]![1]) / long1];
-    const half = (Math.max(long0, long1) - Math.min(long0, long1)) / 2;
-    const rh = h + Math.min(long0, long1) * 0.42;
-    const r1: V3 = [cx - axis[0] * half, cy - axis[1] * half, rh];
-    const r2: V3 = [cx + axis[0] * half, cy + axis[1] * half, rh];
-    for (let i = 0; i < 4; i++) {
-      const p = c[i]!;
-      const q = c[(i + 1) % 4]!;
-      const mid: Pt = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-      // Cada água sobe para a ponta da cumeeira mais próxima (ou as duas, no lado comprido).
-      const d1 = Math.hypot(mid[0] - r1[0], mid[1] - r1[1]);
-      const d2 = Math.hypot(mid[0] - r2[0], mid[1] - r2[1]);
-      const sideLong = Math.abs((q[0] - p[0]) * axis[0] + (q[1] - p[1]) * axis[1]) > 0.5;
-      const top: V3[] = sideLong
-        ? (p[0] - q[0]) * axis[0] + (p[1] - q[1]) * axis[1] < 0
-          ? [r2, r1]
-          : [r1, r2]
-        : [d1 < d2 ? r1 : r2];
-      faces.push({ pts: [[p[0], p[1], h], [q[0], q[1], h], ...top], color: roof });
+
+    const h = 3.2 * b.floors + 0.4;
+    const door = frontWall(k, map.roads);
+    const glass = style === "moderno" && roof === "plano" && b.floors >= 3;
+    walls(faces, k, c, h, b.floors, wall, look, door, { glass, base: true });
+
+    if (roof === "plano" || roof === "patio") {
+      // Laje com platibanda; no pátio, o miolo fica aberto (laje em anel).
+      const top = roof === "patio" ? hex("#efe3c6") : roofC;
+      faces.push({ pts: k.map((p) => up(p, h)), color: shade(top, 0.92) });
+      const par = shrinkTo(k, c, 0.94);
+      for (let i = 0; i < 4; i++) {
+        const p = k[i]!;
+        const q = k[(i + 1) % 4]!;
+        faces.push({ pts: wallQuad(p, q, h, h + 0.5), color: wall });
+        // Lado de dentro da platibanda (visto de cima).
+        faces.push({
+          pts: [
+            up(par[(i + 1) % 4]!, h + 0.5),
+            up(par[i]!, h + 0.5),
+            up(par[i]!, h),
+            up(par[(i + 1) % 4]!, h),
+          ],
+          color: shade(wall, 0.85),
+        });
+      }
+      if (b.kind === "templo")
+        dome(
+          faces,
+          c,
+          Math.min(dist2(k[0]!, k[1]!), dist2(k[1]!, k[2]!)) * 0.36,
+          h,
+          hex("#ece2cc"),
+        );
+      else if (style === "moderno" && b.floors >= 4) {
+        const m = shrinkTo(k, lerp2(c, k[0]!, 0.3), 0.25);
+        box(faces, m, h, h + 2.2, hex("#b4b8bc"), hex("#a3a7ab"));
+      }
+      continue;
+    }
+
+    const res = pitched(
+      faces,
+      k,
+      c,
+      h,
+      roof === "quatro-aguas" ? 0.45 : 0.55,
+      roof === "quatro-aguas",
+      roofC,
+      wall,
+    );
+    if (b.kind === "templo") {
+      // Torre com telhado em pirâmide numa das pontas.
+      const t = [k[0]!, lerp2(k[0]!, k[1]!, 0.28), lerp2(k[3]!, k[2]!, 0.28), k[3]!];
+      const tc = lerp2(lerp2(t[0]!, t[2]!, 0.5), lerp2(t[1]!, t[3]!, 0.5), 0.5);
+      const th = res.rh + 6;
+      box(faces, t, 0, th, wall, roofC);
+      cone(faces, shrinkTo(t, tc, 1.1), th, [tc[0], tc[1], th + 5], roofC);
+    } else if (b.kind !== "armazem" && style !== "tropical" && style !== "caca" && b.tone !== 2) {
+      // Chaminé perto da cumeeira.
+      const at = lerp2(lerp2(k[0]!, k[1]!, 0.72), lerp2(k[3]!, k[2]!, 0.72), 0.3);
+      const ch = [
+        [at[0] - 0.35, at[1] - 0.35],
+        [at[0] + 0.35, at[1] - 0.35],
+        [at[0] + 0.35, at[1] + 0.35],
+        [at[0] - 0.35, at[1] + 0.35],
+      ] as Pt[];
+      box(faces, ch, h, res.rh + 0.8, hex(look.base), shade(hex(look.base), 0.6));
     }
   }
   // Muralha e cidadela: paredes altas dos dois lados (sem telhado).
@@ -147,7 +475,7 @@ export function buildScene(map: VillageMap) {
         const a = (i / 16) * Math.PI * 2;
         return [x + Math.cos(a) * r, y + Math.sin(a) * r, 0.03] as V3;
       }),
-      color: hex("#ddd2b6"),
+      color: hex(map.era === "atual" ? "#c9c6bf" : "#ddd2b6"),
       ground: true,
     });
   }
@@ -225,12 +553,54 @@ export function StreetView({
     ctx.fillStyle = ground;
     ctx.fillRect(0, horizon, W, H - horizon);
 
+    // Sol (fixo no céu, a noroeste) e morros ao longe, que giram com o olhar.
+    const sunYaw = Math.atan2(-SUN[1], -SUN[0]) + Math.PI;
+    const rel = Math.atan2(Math.sin(sunYaw - yaw), Math.cos(sunYaw - yaw));
+    if (Math.abs(rel) < FOV) {
+      const sx = W / 2 + f * Math.tan(rel);
+      const sy = horizon - H * 0.32;
+      const glow = ctx.createRadialGradient(sx, sy, 2, sx, sy, H * 0.35);
+      glow.addColorStop(0, "rgba(255,248,225,0.95)");
+      glow.addColorStop(0.08, "rgba(255,244,210,0.6)");
+      glow.addColorStop(1, "rgba(255,244,210,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, Math.max(0, horizon));
+    }
+    const peaks = map.style === "montanha" || map.style === "neve" ? 0.16 : 0.05;
+    for (const [layer, amp, tone] of [
+      [0, peaks, 0.55],
+      [1, peaks * 0.55, 0.35],
+    ] as const) {
+      ctx.beginPath();
+      ctx.moveTo(0, horizon);
+      for (let x = 0; x <= W; x += 6) {
+        const a = yaw + Math.atan((x - W / 2) / f) + layer * 1.7;
+        const n =
+          Math.sin(a * 3) * 0.5 + Math.sin(a * 7 + 1.3) * 0.3 + Math.sin(a * 13 + 0.4) * 0.2;
+        ctx.lineTo(x, horizon - H * amp * (0.55 + 0.45 * n));
+      }
+      ctx.lineTo(W, horizon);
+      ctx.closePath();
+      ctx.fillStyle = mix(
+        soil.map((v) => v * 0.8),
+        FOG,
+        tone + 0.1,
+      );
+      ctx.fill();
+    }
+
     const cam = (p: V3): V3 => {
       const dx = p[0] - cx;
       const dy = p[1] - cy;
       return [-dx * sin + dy * cos, dx * cos + dy * sin, p[2] - EYE]; // direita, frente, cima
     };
-    const drawn: { d: number; pts: [number, number][]; color: string; ground: boolean }[] = [];
+    const drawn: {
+      d: number;
+      pts: [number, number][];
+      color: string;
+      ground: boolean;
+      decals: { pts: [number, number][]; color: string }[];
+    }[] = [];
     for (const face of scene) {
       // Descarta o que está longe ou atrás, rápido.
       const p0 = face.pts[0]!;
@@ -250,9 +620,9 @@ export function StreetView({
         }
       }
       if (clipped.length < 3) continue;
-      const screen = clipped.map(
-        (p) => [W / 2 + (f * p[0]) / p[1], horizon - (f * p[2]) / p[1]] as [number, number],
-      );
+      const toScreen = (p: V3) =>
+        [W / 2 + (f * p[0]) / p[1], horizon - (f * p[2]) / p[1]] as [number, number];
+      const screen = clipped.map(toScreen);
       // Face de costas (paredes e telhados): não desenha.
       if (!face.ground) {
         let area = 0;
@@ -264,22 +634,43 @@ export function StreetView({
         if (area > 0) continue;
       }
       const depth = clipped.reduce((s, p) => s + p[1], 0) / clipped.length;
-      // Luz: paredes viradas para o sol (sudoeste) ficam mais claras.
-      let color = face.color as number[];
-      if (!face.ground && face.pts.length >= 3) {
-        const [a, b] = face.pts;
-        const nx = b![1] - a![1];
-        const ny = -(b![0] - a![0]);
-        const len = Math.hypot(nx, ny) || 1;
-        const light = 0.78 + 0.22 * ((nx / len) * -0.6 + (ny / len) * 0.8);
-        color = color.map((v) => Math.min(255, v * light));
+      // Luz: normal da face (3D) contra o sol; o lado na sombra fica mais escuro.
+      let light = 1;
+      if (!face.ground && !face.flat && face.pts.length >= 3) {
+        const [a, b, c] = face.pts as [V3, V3, V3];
+        const [ux, uy, uz] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const [vx, vy, vz] = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const nx = uy * vz - uz * vy;
+        const ny = uz * vx - ux * vz;
+        const nz = ux * vy - uy * vx;
+        const nl = Math.hypot(nx, ny, nz) || 1;
+        // A ordem dos vértices deixa a normal para dentro: inverte.
+        const dot = -(nx * SUN[0] + ny * SUN[1] + nz * SUN[2]) / nl;
+        light = 0.86 + 0.26 * Math.max(0, dot) - 0.1 * Math.max(0, -dot);
       }
-      const fog = Math.min(1, Math.max(0, (depth - 40) / (FAR - 40)));
+      const color = (face.color as number[]).map((v) => Math.min(255, v * light));
+      const fog = Math.min(1, Math.max(0, (depth - 70) / (FAR - 70)));
+      // Janelas e portas: projetadas como a face, só de perto.
+      const decals: { pts: [number, number][]; color: string }[] = [];
+      if (face.decals && depth < DETAIL)
+        for (const dc of face.decals) {
+          const q = dc.pts.map(cam);
+          if (q.some((p) => p[1] < NEAR)) continue;
+          decals.push({
+            pts: q.map(toScreen),
+            color: mix(
+              dc.color.map((v) => Math.min(255, v * (0.85 + 0.15 * light))),
+              FOG,
+              fog * 0.7,
+            ),
+          });
+        }
       drawn.push({
         d: depth,
         pts: screen,
-        color: mix(color, FOG, fog * 0.85),
+        color: mix(color, FOG, fog * 0.7),
         ground: !!face.ground,
+        decals,
       });
     }
     // Árvores entram na mesma ordenação que as casas (copa redonda sobre um tronco).
@@ -293,13 +684,29 @@ export function StreetView({
         ctx.closePath();
         ctx.fillStyle = d.color;
         ctx.fill();
-        if (!d.ground) {
-          ctx.strokeStyle = "rgba(40,32,24,0.35)";
+        if (d.ground) {
+          // Fecha as frestas entre faixas vizinhas.
+          ctx.strokeStyle = d.color;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = "rgba(40,32,24,0.3)";
           ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+        for (const dc of d.decals) {
+          ctx.beginPath();
+          dc.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          ctx.closePath();
+          ctx.fillStyle = dc.color;
+          ctx.fill();
+          ctx.strokeStyle = "rgba(40,32,24,0.35)";
+          ctx.lineWidth = 0.5;
           ctx.stroke();
         }
       },
     }));
+    const tree = TREES[map.style ?? "temperado"];
     for (const t of map.trees) {
       const p = cam([t.x, t.y, 0]);
       if (p[1] < NEAR + 0.5 || p[1] > FAR) continue;
@@ -312,12 +719,63 @@ export function StreetView({
           const crownH = 3 + t.r * 1.2;
           const top = horizon - (f * (crownH - EYE)) / p[1];
           const rr = (f * t.r * 0.9) / p[1];
-          const fog = Math.min(1, Math.max(0, (p[1] - 40) / (FAR - 40))) * 0.85;
+          const fog = Math.min(1, Math.max(0, (p[1] - 70) / (FAR - 70))) * 0.7;
+          const leaf = hex(tree.fill).map((v) => v * 0.78);
+          const dark = hex(tree.edge);
           ctx.fillStyle = mix([92, 70, 48], FOG, fog);
+          if (tree.kind === "pinho") {
+            const tall = (f * (t.r * 2.6 + 2)) / p[1];
+            ctx.fillRect(sx - rr * 0.08, base - tall * 0.25, rr * 0.16, tall * 0.25);
+            for (let i = 0; i < 3; i++) {
+              const y0 = base - tall * (0.2 + i * 0.26);
+              const w = rr * (1.1 - i * 0.28);
+              ctx.beginPath();
+              ctx.moveTo(sx - w, y0);
+              ctx.lineTo(sx + w, y0);
+              ctx.lineTo(sx, y0 - tall * 0.42);
+              ctx.closePath();
+              ctx.fillStyle = mix(i % 2 ? leaf : dark, FOG, fog);
+              ctx.fill();
+            }
+            return;
+          }
+          if (tree.kind === "palma") {
+            const tall = (f * (t.r * 1.8 + 3.5)) / p[1];
+            const tx = sx + rr * 0.25;
+            ctx.strokeStyle = mix([120, 92, 60], FOG, fog);
+            ctx.lineWidth = Math.max(1, rr * 0.14);
+            ctx.beginPath();
+            ctx.moveTo(sx, base);
+            ctx.quadraticCurveTo(sx, base - tall * 0.6, tx, base - tall);
+            ctx.stroke();
+            ctx.strokeStyle = mix(leaf, FOG, fog);
+            ctx.lineWidth = Math.max(1, rr * 0.18);
+            for (let i = 0; i < 7; i++) {
+              const a = (i / 7) * Math.PI * 2;
+              ctx.beginPath();
+              ctx.moveTo(tx, base - tall);
+              ctx.quadraticCurveTo(
+                tx + Math.cos(a) * rr * 0.6,
+                base - tall - rr * 0.5,
+                tx + Math.cos(a) * rr * 1.3,
+                base - tall + rr * (0.25 + 0.35 * Math.abs(Math.sin(a))),
+              );
+              ctx.stroke();
+            }
+            return;
+          }
           ctx.fillRect(sx - rr * 0.12, top, rr * 0.24, base - top);
           ctx.beginPath();
           ctx.arc(sx, top, rr, 0, Math.PI * 2);
-          ctx.fillStyle = mix([110, 134, 84], FOG, fog);
+          ctx.fillStyle = mix(
+            dark.map((v) => v * 1.1),
+            FOG,
+            fog,
+          );
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(sx - rr * 0.22, top - rr * 0.22, rr * 0.68, 0, Math.PI * 2);
+          ctx.fillStyle = mix(leaf, FOG, fog);
           ctx.fill();
         },
       });

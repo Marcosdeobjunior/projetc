@@ -13,6 +13,7 @@ import {
   type Derived,
   type StateForm,
   type WorldMap,
+  eraOf,
 } from "./worldgen";
 
 /*
@@ -51,10 +52,29 @@ export const MARKER_TYPES = {
   caverna: { icon: "🕳️", label: "Caverna" },
   bosque: { icon: "🌳", label: "Bosque sagrado" },
   batalha: { icon: "⚔️", label: "Campo de batalha" },
+  // Mundo real
+  parque: { icon: "🏞️", label: "Parque nacional" },
+  estancia: { icon: "♨️", label: "Estância termal" },
+  hidreletrica: { icon: "⚡", label: "Usina hidrelétrica" },
+  mineradora: { icon: "⛏️", label: "Mineradora" },
+  arqueologico: { icon: "🏛️", label: "Sítio arqueológico" },
+  porto: { icon: "🚢", label: "Porto de contêineres" },
+  posto: { icon: "⛽", label: "Posto de serviços" },
+  gruta: { icon: "🕳️", label: "Gruta turística" },
+  reserva: { icon: "🌲", label: "Reserva florestal" },
+  memorial: { icon: "🎖️", label: "Memorial de guerra" },
+  aeroporto: { icon: "✈️", label: "Aeroporto internacional" },
+  universidade: { icon: "🎓", label: "Universidade" },
 } as const;
 export type MarkerType = keyof typeof MARKER_TYPES;
 
 export interface Marker {
+  /** Chave estável: "g:tipo:nome" (gerado) ou o id do marcador do autor. */
+  key: string;
+  /** Marcador do autor (editável e móvel), e não gerado. */
+  user?: boolean;
+  /** Ícone próprio (senão, o do tipo). */
+  icon?: string;
   type: MarkerType;
   x: number;
   y: number;
@@ -72,6 +92,9 @@ export interface Society {
 
 /** Como se chama a subdivisão em cada forma de governo. */
 const PROVINCE_FORM: Record<StateForm, string> = {
+  Federação: "Estado",
+  União: "Região",
+  Estado: "Departamento",
   Reino: "Condado",
   Império: "Província",
   Principado: "Marca",
@@ -109,7 +132,69 @@ const neighbours = (i: number) => {
   return out;
 };
 
+type EraMarker = {
+  type: MarkerType;
+  name: (place: string) => string;
+  legend: (place: string) => string;
+};
+const ERA_MARKERS: Record<"atual", Partial<Record<MarkerType, EraMarker>>> = {
+  atual: {
+    vulcao: {
+      type: "parque",
+      name: (p) => `Parque Nacional do Vulcão ${p}`,
+      legend: () =>
+        "Trilhas até a cratera, monitorada por sismógrafos; erupção mais recente há 80 anos.",
+    },
+    termas: {
+      type: "estancia",
+      name: (p) => `Estância de ${p}`,
+      legend: () => "Hotéis e piscinas de água quente; lotada nos feriados.",
+    },
+    cachoeira: {
+      type: "hidreletrica",
+      name: (p) => `Usina Hidrelétrica ${p}`,
+      legend: () => "A barragem abastece de energia meia dúzia de cidades da região.",
+    },
+    mina: {
+      type: "mineradora",
+      name: (p) => `Mineradora ${p}`,
+      legend: () => "Mina a céu aberto; a ferrovia leva o minério até o porto.",
+    },
+    ruinas: {
+      type: "arqueologico",
+      name: (p) => `Sítio Arqueológico de ${p}`,
+      legend: () => "Escavações revelaram uma cidade de dois mil anos; há museu no local.",
+    },
+    farol: {
+      type: "porto",
+      name: (p) => `Porto de ${p}`,
+      legend: () => "Terminal de contêineres e guindastes que não param, dia e noite.",
+    },
+    estalagem: {
+      type: "posto",
+      name: (p) => `Posto ${p}`,
+      legend: () => "Combustível, restaurante 24 horas e descanso para caminhoneiros.",
+    },
+    caverna: {
+      type: "gruta",
+      name: (p) => `Gruta de ${p}`,
+      legend: () => "Visitas guiadas por galerias iluminadas e um lago subterrâneo.",
+    },
+    bosque: {
+      type: "reserva",
+      name: (p) => `Reserva Florestal ${p}`,
+      legend: () => "Área protegida com espécies que só existem aqui.",
+    },
+    batalha: {
+      type: "memorial",
+      name: (p) => `Memorial de ${p}`,
+      legend: () => "Monumento aos mortos da última guerra de fronteira.",
+    },
+  },
+};
+
 export function deriveSociety(map: WorldMap, d: Derived): Society {
+  const era = eraOf(map);
   const n = COLS * ROWS;
   const h = map.heights;
   const seed = map.options.seed;
@@ -166,7 +251,10 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
         const c = cellOf(b.x, b.y);
         const id = provinces.length;
         provinces.push({
-          name: b === cap ? `${form} Real de ${b.name}` : `${form} de ${b.name}`,
+          name:
+            b === cap
+              ? `${form} ${era === "fantasia" ? "Real" : "Capital"} de ${b.name}`
+              : `${form} de ${b.name}`,
           state: k,
           seat: b.id,
           cells: 0,
@@ -292,7 +380,14 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
       );
     const add = (type: MarkerType, c: number, name: string, legend: string, ox = 0.5, oy = 0.5) => {
       taken.push(c);
-      markers.push({ type, x: (c % COLS) + ox, y: Math.floor(c / COLS) + oy, name, legend });
+      markers.push({
+        key: "",
+        type,
+        x: (c % COLS) + ox,
+        y: Math.floor(c / COLS) + oy,
+        name,
+        legend,
+      });
     };
     const quota = (k: number) => Math.round(k * scale);
     const e = (c: number) => (h[c]! - SEA) / 127;
@@ -491,5 +586,89 @@ export function deriveSociety(map: WorldMap, d: Derived): Society {
     }
   }
 
-  return { province, provinces, religion, religions, markers };
+  // No mundo real, os mesmos lugares viram o que seriam hoje (a cachoeira vira
+  // usina, o farol vira porto…), e as capitais ganham aeroporto e universidade.
+  if (era !== "fantasia") {
+    const table = ERA_MARKERS[era];
+    for (const m of markers) {
+      const v = table[m.type];
+      if (!v) continue;
+      const place = nameAt(cellOf(m.x, m.y), 17);
+      m.type = v.type;
+      m.name = v.name(place);
+      m.legend = v.legend(place);
+    }
+    map.states.forEach((s, k) => {
+      const b = map.burgs.find((x) => x.id === s.capital);
+      if (!b || !d.land[cellOf(b.x, b.y)]) return;
+      const at = (type: MarkerType, name: string, legend: string, dx: number) =>
+        markers.push({ key: "", type, x: b.x + dx, y: b.y + 0.6, name, legend });
+      if (era === "atual") {
+        at(
+          "aeroporto",
+          `Aeroporto Internacional de ${b.name}`,
+          "Voos para todos os continentes; o terminal novo foi inaugurado há poucos anos.",
+          0.8,
+        );
+        if (k % 2 === 0)
+          at(
+            "universidade",
+            `Universidade de ${b.name}`,
+            "A maior do país, com hospital-escola e um observatório no campus.",
+            -0.8,
+          );
+      }
+    });
+  }
+
+  // Chave de cada gerado; tira os que o autor ocultou e põe os dele.
+  for (const m of markers) m.key = `g:${m.type}:${m.name}`;
+  const hidden = new Set(map.hiddenMarkers ?? []);
+  const finalMarkers: Marker[] = markers.filter((m) => !hidden.has(m.key));
+  for (const u of map.markers ?? [])
+    finalMarkers.push({
+      key: u.id,
+      user: true,
+      ...(u.icon ? { icon: u.icon } : {}),
+      type: (u.type in MARKER_TYPES ? u.type : "ruinas") as MarkerType,
+      x: u.x,
+      y: u.y,
+      name: u.name,
+      legend: u.legend,
+    });
+
+  return { province, provinces, religion, religions, markers: finalMarkers };
 }
+
+/** Ícone de um marcador (o próprio, ou o do tipo). */
+export const markerIcon = (m: Pick<Marker, "icon" | "type">) => m.icon || MARKER_TYPES[m.type].icon;
+
+/** Tipos de marcador de cada época (para escolher ao criar ou editar). */
+export const MARKER_TYPES_BY_ERA: Record<"fantasia" | "atual", MarkerType[]> = {
+  fantasia: [
+    "vulcao",
+    "termas",
+    "cachoeira",
+    "mina",
+    "ruinas",
+    "farol",
+    "estalagem",
+    "caverna",
+    "bosque",
+    "batalha",
+  ],
+  atual: [
+    "parque",
+    "estancia",
+    "hidreletrica",
+    "mineradora",
+    "arqueologico",
+    "porto",
+    "posto",
+    "gruta",
+    "reserva",
+    "memorial",
+    "aeroporto",
+    "universidade",
+  ],
+};

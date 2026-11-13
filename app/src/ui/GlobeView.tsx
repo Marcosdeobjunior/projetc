@@ -5,7 +5,7 @@ import { GlobeCpu, type GlobeProps } from "./GlobeCpu";
 
 /*
  * O planeta como globo, na placa de vídeo (WebGL): um shader desenha a esfera
- * com o mapa plano como textura, luz, atmosfera e estrelas; nomes, cidades e
+ * com o mapa plano como textura, luz e atmosfera; nomes, cidades e
  * linhas de latitude/longitude ficam numa camada 2D por cima. O giro fica em
  * refs e é desenhado uma vez por quadro (sem re-render do React ao arrastar).
  * Sem WebGL, cai na versão em canvas 2D (`GlobeCpu`).
@@ -30,16 +30,13 @@ uniform float lon0;
 uniform float lat0;
 const float PI = 3.14159265;
 
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
 void main() {
   vec2 c = size * 0.5;
   vec2 p = (gl_FragCoord.xy - c) / radius;   // y para cima
   float r2 = dot(p, p);
-  // Fundo: espaço com estrelas.
+  // Fundo: espaço escuro, liso (sem estrelas).
   vec3 col = mix(vec3(0.051, 0.086, 0.149), vec3(0.016, 0.027, 0.051), clamp(length(gl_FragCoord.xy - c) / max(size.x, size.y) * 1.4, 0.0, 1.0));
-  float s = hash(floor(gl_FragCoord.xy / 2.0));
-  if (s > 0.9975) col += vec3(0.55 + 0.45 * hash(gl_FragCoord.xy));
   if (r2 > 1.0) {
     // Atmosfera em volta do disco.
     float d = sqrt(r2);

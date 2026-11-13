@@ -44,7 +44,22 @@ export interface WorldOptions {
   land: number;
   states: number;
   burgs: number;
+  /** Época do mundo: muda nomes, governos, marcadores e o estilo do mapa. */
+  era?: Era;
+  /** Terras nos polos (um continente gelado no sul, ilhas e terras no norte). */
+  polar?: boolean;
 }
+
+export type Era = "fantasia" | "atual";
+export const ERAS: { value: Era; label: string; hint: string }[] = [
+  { value: "fantasia", label: "Fantasia", hint: "Reinos, castelos, trilhas e ruínas antigas" },
+  {
+    value: "atual",
+    label: "Real",
+    hint: "Como o mundo de hoje: países, rodovias, aeroportos e metrópoles",
+  },
+];
+export const eraOf = (map: { options: WorldOptions }): Era => map.options.era ?? "fantasia";
 
 export interface Burg {
   id: string;
@@ -77,8 +92,75 @@ export const STATE_FORMS = [
   "Teocracia",
   "Canato",
   "Liga",
+  "Federação",
+  "União",
+  "Estado",
 ] as const;
 export type StateForm = (typeof STATE_FORMS)[number];
+
+/** Tipo de governo, que cada época escreve do seu jeito. */
+type Archetype = "monarquia" | "imperio" | "menor" | "republica" | "teocracia" | "tribal" | "liga";
+const ERA_FORMS: Record<Era, Record<Archetype, StateForm>> = {
+  fantasia: {
+    monarquia: "Reino",
+    imperio: "Império",
+    menor: "Principado",
+    republica: "República",
+    teocracia: "Teocracia",
+    tribal: "Canato",
+    liga: "Liga",
+  },
+  atual: {
+    monarquia: "Reino",
+    imperio: "Federação",
+    menor: "Estado",
+    republica: "República",
+    teocracia: "Teocracia",
+    tribal: "República",
+    liga: "União",
+  },
+};
+const ARCHETYPE: Record<StateForm, Archetype> = {
+  Reino: "monarquia",
+  Império: "imperio",
+  Principado: "menor",
+  Ducado: "menor",
+  República: "republica",
+  Teocracia: "teocracia",
+  Canato: "tribal",
+  Liga: "liga",
+  Federação: "imperio",
+  União: "liga",
+  Estado: "menor",
+};
+/** Formas de governo oferecidas em cada época. */
+export const FORMS_BY_ERA: Record<Era, StateForm[]> = {
+  fantasia: [
+    "Reino",
+    "Império",
+    "Principado",
+    "Ducado",
+    "República",
+    "Teocracia",
+    "Canato",
+    "Liga",
+  ],
+  atual: ["República", "Federação", "Reino", "Estado", "União", "Teocracia"],
+};
+/** A forma equivalente noutra época (um Império vira Federação, depois Hegemonia…). */
+export function formForEra(form: StateForm | undefined, era: Era): StateForm {
+  const f = form ?? "Reino";
+  if (FORMS_BY_ERA[era].includes(f)) return f;
+  return ERA_FORMS[era][ARCHETYPE[f]];
+}
+/** Troca a época do mapa, convertendo as formas de governo. */
+export function withEra(map: WorldMap, era: Era): WorldMap {
+  return {
+    ...map,
+    options: { ...map.options, era },
+    states: map.states.map((s) => ({ ...s, form: formForEra(s.form, era) })),
+  };
+}
 
 /** Tipos de rota, da maior para a menor. */
 export type RouteType = "principal" | "estrada" | "trilha" | "maritima";
@@ -133,6 +215,94 @@ export interface WorldMap {
   routes?: Route[];
   /** Culturas (povos); o território de cada uma é calculado a partir do centro. */
   cultures?: Culture[];
+  /** Clima do planeta ("Configurar mundo"); sem ele, o clima da Terra. */
+  climate?: WorldClimate;
+  /** Marcadores postos ou editados pelo autor. */
+  markers?: UserMarker[];
+  /** Marcadores gerados que o autor tirou (ou trocou por um seu), pela chave. */
+  hiddenMarkers?: string[];
+}
+
+/** Marcador do autor: tipo (vulcão, ruínas…), ícone próprio opcional, nome e lenda. */
+export interface UserMarker {
+  id: string;
+  type: string;
+  icon?: string;
+  name: string;
+  legend: string;
+  x: number;
+  y: number;
+}
+
+/**
+ * Clima do planeta: temperatura média ao nível do mar no equador e em cada polo
+ * (°C), chuva em % do normal, e a direção do vento em cada faixa de 30° de
+ * latitude (graus da bússola para onde ele sopra: 0 = norte, 90 = leste…), do
+ * norte (90°–60°N) ao sul (60°–90°S).
+ */
+export interface WorldClimate {
+  equator: number;
+  northPole: number;
+  southPole: number;
+  precipitation: number;
+  winds: number[];
+}
+
+/** Ventos da Terra: alísios (de nordeste/sudeste), ventos de oeste e polares de leste. */
+export const EARTH_WINDS = [225, 45, 225, 315, 135, 315];
+export const DEFAULT_CLIMATE: WorldClimate = {
+  equator: 28,
+  northPole: -17,
+  southPole: -17,
+  precipitation: 100,
+  winds: EARTH_WINDS,
+};
+
+export const CLIMATE_PRESETS: { label: string; hint: string; climate: WorldClimate }[] = [
+  { label: "Terra", hint: "Como o nosso planeta", climate: DEFAULT_CLIMATE },
+  {
+    label: "Era do gelo",
+    hint: "Polos e serras gelados, desertos frios",
+    climate: { ...DEFAULT_CLIMATE, equator: 20, northPole: -40, southPole: -45, precipitation: 80 },
+  },
+  {
+    label: "Estufa",
+    hint: "Quente e úmido até perto dos polos",
+    climate: { ...DEFAULT_CLIMATE, equator: 34, northPole: 6, southPole: 4, precipitation: 130 },
+  },
+  {
+    label: "Árido",
+    hint: "Pouca chuva: desertos e estepes",
+    climate: { ...DEFAULT_CLIMATE, precipitation: 45 },
+  },
+  {
+    label: "Úmido",
+    hint: "Muita chuva: florestas e pântanos",
+    climate: { ...DEFAULT_CLIMATE, precipitation: 160 },
+  },
+];
+
+/** Clima válido (limita os números e completa o que faltar). */
+export function normalizeClimate(c: Partial<WorldClimate> | undefined | null): WorldClimate {
+  const clamp = (v: unknown, lo: number, hi: number, d: number) =>
+    typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d;
+  const winds = Array.isArray(c?.winds) ? c.winds : [];
+  return {
+    equator: clamp(c?.equator, -20, 50, DEFAULT_CLIMATE.equator),
+    northPole: clamp(c?.northPole, -60, 30, DEFAULT_CLIMATE.northPole),
+    southPole: clamp(c?.southPole, -60, 30, DEFAULT_CLIMATE.southPole),
+    precipitation: clamp(c?.precipitation, 0, 500, DEFAULT_CLIMATE.precipitation),
+    winds: EARTH_WINDS.map((w, k) => {
+      const v = winds[k];
+      return typeof v === "number" && Number.isFinite(v) ? ((Math.round(v) % 360) + 360) % 360 : w;
+    }),
+  };
+}
+
+/** Temperatura média ao nível do mar numa latitude (graus, + = norte). */
+export function seaLevelTemp(c: WorldClimate, lat: number): number {
+  const pole = lat >= 0 ? c.northPole : c.southPole;
+  return pole + (c.equator - pole) * (1 - Math.pow(Math.min(90, Math.abs(lat)) / 90, 1.6));
 }
 
 export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
@@ -140,6 +310,7 @@ export const DEFAULT_OPTIONS: Omit<WorldOptions, "seed"> = {
   land: 0.34,
   states: 7,
   burgs: 50,
+  polar: true,
 };
 
 /* ---------- Ruído ---------- */
@@ -376,29 +547,128 @@ function generateHeights(o: WorldOptions): Uint8Array {
     blobs.push({ x: rand() * aspect, y: between(0.42, 0.58), r: between(0.4, 0.48) });
     add(3, 0.08, 0.16);
   } else if (o.template === "ilhas") add(24 + Math.floor(rand() * 12), 0.05, 0.11);
-  else add(5 + Math.floor(rand() * 3), 0.16, 0.28);
+  else {
+    // Continentes de verdade: 3 a 6 centros bem afastados uns dos outros (pelo
+    // arco), para não se juntarem numa pangeia; entre eles fica oceano.
+    const want = 3 + Math.floor(rand() * 4);
+    const toP = (b: { x: number; y: number }) => cellOnSphere((b.x / aspect) * COLS, b.y * ROWS);
+    for (let tries = 0; blobs.length < want && tries < 400; tries++) {
+      const b = { x: rand() * aspect, y: between(0.3, 0.7), r: between(0.13, 0.22) };
+      const p = toP(b);
+      const ok = blobs.every((o) => {
+        const q = toP(o);
+        const ang = Math.acos(Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2])));
+        return ang / Math.PI > (b.r + o.r) * 1.15;
+      });
+      if (ok) blobs.push(b);
+    }
+  }
+  const continents = o.template === "continentes";
+  // Terras polares: um continente gelado no polo sul (como a Antártida) e, no
+  // norte, uma terra grande e algumas ilhas (como a Groenlândia e o Ártico).
+  const polarOn = o.polar !== false;
+  const polarBlobs: { lat: number; lon: number; r: number }[] = [];
+  if (polarOn) {
+    polarBlobs.push({ lat: -90, lon: 0, r: between(0.1, 0.15) });
+    const north = 1 + Math.floor(rand() * 3);
+    for (let k = 0; k < north; k++)
+      polarBlobs.push({
+        lat: between(72, 84),
+        lon: between(-180, 180),
+        r: k === 0 ? between(0.06, 0.09) : between(0.025, 0.045),
+      });
+  }
 
   const raw = new Float32Array(COLS * ROWS);
+  // O relevo sem os vãos entre continentes: dele sai a profundidade do mar (os
+  // vãos só decidem onde é terra, sem deixar sulcos no fundo do oceano).
+  const plain = new Float32Array(COLS * ROWS);
   // Tudo sobre a esfera: ruído 3D e distância pelo arco (formas iguais no equador e nos polos).
   const noise3 = makeNoise3(rand);
   const o1 = [rand() * 50, rand() * 50, rand() * 50] as const;
   const o2 = [rand() * 50, rand() * 50, rand() * 50] as const;
-  const centers = blobs.map((b) => ({
-    p: cellOnSphere((b.x / aspect) * COLS, b.y * ROWS),
+  // Cada continente é um corpo principal com 1 a 3 lobos de lado (penínsulas e
+  // subcontinentes), para não ficar redondo; os lobos são do mesmo continente.
+  const centers: { p: [number, number, number]; r: number; id: number }[] = [];
+  blobs.forEach((b, id) => {
+    centers.push({ p: cellOnSphere((b.x / aspect) * COLS, b.y * ROWS), r: b.r, id });
+    if (!continents) return;
+    const lobes = 1 + Math.floor(rand() * 3);
+    for (let k = 0; k < lobes; k++) {
+      const a = rand() * Math.PI * 2;
+      const dist = b.r * between(0.55, 0.95);
+      const lx = b.x + (Math.cos(a) * dist * 2) / Math.max(0.35, Math.sin(b.y * Math.PI));
+      const ly = Math.min(0.78, Math.max(0.22, b.y + Math.sin(a) * dist));
+      centers.push({
+        p: cellOnSphere(((((lx % aspect) + aspect) % aspect) / aspect) * COLS, ly * ROWS),
+        r: b.r * between(0.35, 0.6),
+        id,
+      });
+    }
+  });
+  const polarCenters = polarBlobs.map((b) => ({
+    p: cellOnSphere(((b.lon + 180) / 360) * COLS, ((90 - b.lat) / 180) * ROWS),
     r: b.r,
   }));
+  // Deformação do espaço (domain warping): bordas irregulares, penínsulas e golfos.
+  const o4 = [o2[0] + 11.7, o2[1] + 5.3, o2[2] + 23.9] as const;
+  const polarMask = new Float32Array(COLS * ROWS);
+  const per = new Float32Array(blobs.length);
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       const [px, py, pz] = cellOnSphere(x + 0.5, y + 0.5);
+      const wa = continents ? 0.3 : 0.22;
+      const qx = px + wa * noise3(px * 1.9 + o4[0], py * 1.9 + o4[1], pz * 1.9 + o4[2], 3);
+      const qy = py + wa * noise3(px * 1.9 + o4[1], py * 1.9 + o4[2], pz * 1.9 + o4[0], 3);
+      const qz = pz + wa * noise3(px * 1.9 + o4[2], py * 1.9 + o4[0], pz * 1.9 + o4[1], 3);
+      const ql = Math.hypot(qx, qy, qz) || 1;
+      const wx = qx / ql;
+      const wy = qy / ql;
+      const wz = qz / ql;
       let mask = 0;
-      for (const b of centers) {
-        const dot = px * b.p[0] + py * b.p[1] + pz * b.p[2];
-        const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI; // 0 a 1 (meia volta)
-        mask = Math.max(mask, 1 - ang / b.r);
+      let m1 = -Infinity;
+      let m2 = -Infinity;
+      let pm = 0;
+      per.fill(-Infinity);
+      for (const b of polarCenters) {
+        const dot = wx * b.p[0] + wy * b.p[1] + wz * b.p[2];
+        const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI;
+        pm = Math.max(pm, 1 - ang / b.r);
       }
+      polarMask[y * COLS + x] = Math.max(0, pm);
+      for (const b of centers) {
+        const dot = wx * b.p[0] + wy * b.p[1] + wz * b.p[2];
+        const ang = Math.acos(Math.max(-1, Math.min(1, dot))) / Math.PI; // 0 a 1 (meia volta)
+        const v = 1 - ang / b.r;
+        mask = Math.max(mask, v);
+        per[b.id] = Math.max(per[b.id]!, v);
+      }
+      for (const v of per)
+        if (v > m1) {
+          m2 = m1;
+          m1 = v;
+        } else if (v > m2) m2 = v;
       const n = noise3(px * 1.05 + o1[0], py * 1.05 + o1[1], pz * 1.05 + o1[2]);
       const ridge = 1 - Math.abs(noise3(px * 1.6 + o2[0], py * 1.6 + o2[1], pz * 1.6 + o2[2], 4));
-      raw[y * COLS + x] = mask * 0.55 + n * 0.5 + ridge * ridge * 0.12;
+      // Serras junto às bordas dos continentes (como os Andes e as Rochosas) e
+      // interiores mais planos; o resto do relevo vem do ruído em cristas.
+      const edgeBand = Math.exp(-(((mask - 0.18) / 0.16) ** 2));
+      const relief = ridge * ridge * (0.08 + 0.3 * edgeBand);
+      const i = y * COLS + x;
+      if (continents) {
+        // Oceano entre continentes: onde dois centros "puxam" quase igual, afunda.
+        const gap = Math.max(0, 1 - (m1 - m2) / 0.35);
+        plain[i] = mask * 0.75 + n * 0.3 + relief;
+        raw[i] = plain[i]! - gap * gap * 0.45;
+      } else {
+        raw[i] = mask * 0.55 + n * 0.5 + relief;
+        plain[i] = raw[i]!;
+      }
+      if (pm > 0) {
+        const polarLand = pm * 0.8 + n * 0.25 + relief;
+        raw[i] = Math.max(raw[i]!, polarLand);
+        plain[i] = Math.max(plain[i]!, polarLand);
+      }
     }
   }
   // No mapa plano tudo precisa caber inteiro: gira o planeta para que a borda
@@ -424,28 +694,71 @@ function generateHeights(o: WorldOptions): Uint8Array {
     for (let y = 0; y < ROWS; y++)
       for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = raw[y * COLS + wrapCol(x + bestX)]!;
     raw.set(rolled);
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++) rolled[y * COLS + x] = plain[y * COLS + wrapCol(x + bestX)]!;
+    plain.set(rolled);
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        rolled[y * COLS + x] = polarMask[y * COLS + wrapCol(x + bestX)]!;
+    polarMask.set(rolled);
+  }
+  // Afasta a terra dos polos e da borda de 180° aos poucos, com um limite que
+  // ondula pelo ruído: a costa segue o relevo e não vira uma linha reta ao longo
+  // de um paralelo ou de um meridiano.
+  // Guarda o relevo antes do afastamento: a profundidade do mar vem dele (o mar
+  // não fica artificialmente fundo perto dos polos e da borda).
+  const before = plain;
+  {
+    const o3 = [o1[0] + 17.3, o1[1] + 31.1, o1[2] + 7.9] as const;
+    const smooth = (v: number) => {
+      const c = Math.max(0, Math.min(1, v));
+      return c * c * (3 - 2 * c);
+    };
+    for (let y = 0; y < ROWS; y++) {
+      const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
+      for (let x = 0; x < COLS; x++) {
+        const [px, py, pz] = cellOnSphere(x + 0.5, y + 0.5);
+        const w = noise3(px * 2.3 + o3[0], py * 2.3 + o3[1], pz * 2.3 + o3[2], 3);
+        const w2 = noise3(px * 7 + o3[1], py * 7 + o3[2], pz * 7 + o3[0], 2);
+        const limit = 50 + w * 8 + w2 * 12;
+        // Terras polares ficam (não são afastadas do polo nem da borda).
+        const keep = polarOn ? smooth(polarMask[y * COLS + x]! * 4) : 0;
+        const polar = smooth((lat - limit) / 24) * (1 - keep);
+        const edge = Math.min(x + 0.5, COLS - x - 0.5);
+        const side =
+          smooth(1 - (edge - 2) / (10 + w * 5 + w2 * 2)) *
+          (polarOn && lat > 60 ? 1 - smooth((lat - 60) / 8) : 1);
+        // Mais um pouco de detalhe miúdo em toda costa (recortes, cabos e baías).
+        raw[y * COLS + x]! -= Math.max(polar, side) * 1.0 - w2 * 0.12;
+      }
+    }
   }
   // Nível do mar pela fração de terra pedida: o quantil vira 128.
   const sorted = Float32Array.from(raw).sort();
   const t = sorted[Math.floor((1 - Math.min(0.6, Math.max(0.15, o.land))) * (sorted.length - 1))]!;
-  const lo = sorted[0]!;
   const hi = sorted[sorted.length - 1]!;
   const out = new Uint8Array(COLS * ROWS);
+  const lo0 = before.reduce((a, v) => Math.min(a, v), Infinity);
   for (let i = 0; i < raw.length; i++) {
     const v = raw[i]!;
+    // No mar: a profundidade natural (terra afastada vira plataforma rasa).
+    const sea = Math.min(before[i]!, t - (t - lo0) * 0.04);
     out[i] =
       v < t
-        ? Math.round(((v - lo) / (t - lo || 1)) * 127)
+        ? Math.min(127, Math.round(((sea - lo0) / (t - lo0 || 1)) * 127))
         : Math.min(255, 128 + Math.round(Math.pow((v - t) / (hi - t || 1), 0.9) * 127));
   }
   // Mar na borda de 180° e nas latitudes altas, com profundidade média (sem faixa
   // escura nem clara): terra ali vira mar raso; o mar mantém a profundidade natural.
   for (let y = 0; y < ROWS; y++) {
     const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
-    const polar = Math.min(1, Math.max(0, (lat - 58) / 12));
+    // Garantia final (quase nunca age, porque a terra já foi afastada acima).
+    const polar = polarOn ? 0 : Math.min(1, Math.max(0, (lat - 70) / 6));
     for (let x = 0; x < COLS; x++) {
       const edge = Math.min(x + 0.5, COLS - x - 0.5);
-      const f = Math.max(polar, Math.max(0, 1 - edge / 12));
+      // Com terras polares, a borda de 180° pode cortar só o continente do polo.
+      const seam = polarOn && lat > 62 ? 0 : Math.max(0, 1 - edge / 3);
+      const f = Math.max(polar, seam);
       if (f <= 0) continue;
       const i = y * COLS + x;
       const v = out[i]!;
@@ -544,9 +857,16 @@ function placeCultures(o: WorldOptions, d: Derived, heights: Uint8Array): Cultur
   });
 }
 
-export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
+export function generateWorld(o: WorldOptions, name = "Mundo", climate?: WorldClimate): WorldMap {
   const heights = generateHeights(o);
-  const map: WorldMap = { name, options: o, heights, burgs: [], states: [] };
+  const map: WorldMap = {
+    name,
+    options: o,
+    heights,
+    burgs: [],
+    states: [],
+    ...(climate ? { climate } : {}),
+  };
   const d0 = deriveWorld({ ...map });
   map.cultures = placeCultures(o, d0, heights);
   const d = deriveWorld({ ...map });
@@ -561,7 +881,7 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
   // Lugares bons para cidades (como num mundo real): bioma habitável, clima ameno,
   // terreno plano, água por perto — rio (mais ainda num encontro de rios), lago ou
   // mar. A costa ajuda, mas não domina: o interior também recebe cidades.
-  const HABITABLE = [0, 0.35, 0.25, 0.75, 1, 0.85, 1, 0.7, 0.8, 0.45, 0.2, 0, 0.3, 0.15];
+  const HABITABLE = [0, 0.35, 0.25, 0.75, 1, 0.85, 1, 0.7, 0.8, 0.45, 0.2, 0, 0.3, 0.15, 1, 1];
   const scored: { i: number; s: number; inland: boolean }[] = [];
   for (let i = 0; i < COLS * ROWS; i++) {
     if (!d.land[i]) continue;
@@ -662,6 +982,7 @@ export function generateWorld(o: WorldOptions, name = "Mundo"): WorldMap {
                     ? "Principado"
                     : "Ducado"
                   : "Reino";
+    s.form = formForEra(s.form, o.era ?? "fantasia");
   });
   return map;
 }
@@ -683,6 +1004,8 @@ export const BIOMES = [
   { name: "Geleira", color: "#eef3f5" },
   { name: "Pântano", color: "#5d8659" },
   { name: "Montanha", color: "#8f8577" },
+  { name: "Área urbana", color: "#a6a39d" },
+  { name: "Lavouras", color: "#d9cf7a" },
 ] as const;
 
 export interface Derived {
@@ -708,6 +1031,8 @@ export interface Derived {
   }[];
   /** Lagos: células, se é salgado (sem saída), profundidade e a célula de saída. */
   lakes: { cells: number[]; salty: boolean; depth: number; outlet: number; name: string }[];
+  /** Época do mapa. */
+  era: Era;
   /** Lago de cada célula (índice em `lakes`) ou −1. */
   lake: Int16Array;
   /** Alturas para desenhar (lagos como água). */
@@ -812,17 +1137,22 @@ const RAIN_BY_LAT = [4, 2, 2, 2, 1, 1, 1.2, 2, 2, 2, 3, 3, 2, 2, 1, 1, 1, 0.5];
 function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoise>) {
   const n = COLS * ROWS;
   const h = map.heights;
+  const cfg = normalizeClimate(map.climate);
+  const era = eraOf(map);
   const temp = new Float32Array(n);
   const tempC = new Float32Array(n);
   const noise = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const x = i % COLS;
     const y = (i / COLS) | 0;
-    const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
-    // Média anual ao nível do mar: ~28 °C no equador, ~16 °C a 40°, ~7 °C a 55°, −17 °C no polo.
-    const sea = 28 - 45 * Math.pow(lat / 90, 1.6);
+    // Média anual ao nível do mar (na Terra: ~28 °C no equador, ~16 °C a 40°,
+    // ~7 °C a 55°, −17 °C no polo), com os valores escolhidos em "Configurar mundo".
+    const sea = seaLevelTemp(cfg, 90 - ((y + 0.5) / ROWS) * 180);
     const km = land[i] ? (((h[i]! - SEA) / 127) ** 1.6 * 5200) / 1000 : 0;
-    const t = sea - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
+    // Aquecimento de hoje (mais forte perto dos polos): +1,2 °C em relação ao passado.
+    const warm = era === "atual" ? 1.2 : 0;
+    const lat = Math.abs(90 - ((y + 0.5) / ROWS) * 180);
+    const t = sea + warm * (1 + (lat / 90) * 1.5) - km * 6.5 + fbm(x / 30, y / 30, 3) * 2.5;
     tempC[i] = t;
     temp[i] = Math.max(0, Math.min(1, (t + 14) / 42));
     noise[i] = fbm(x / 9 + 30, y / 9 + 30, 4) * 0.5 + 0.5;
@@ -834,30 +1164,36 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
   for (let y = 0; y < ROWS; y++) {
     const lat = 90 - ((y + 0.5) / ROWS) * 180;
     const a = Math.abs(lat);
-    const dir = a < 30 || a >= 60 ? -1 : 1; // leste→oeste (−1) ou oeste→leste (+1)
+    // Vento da faixa: o lado leste-oeste dele carrega a umidade; vento quase
+    // norte-sul traz menos umidade, vinda dos dois lados.
+    const wind = (cfg.winds[Math.min(5, Math.floor((90 - lat) / 30))]! * Math.PI) / 180;
+    const east = Math.sin(wind);
+    const dirs = Math.abs(east) >= 0.3 ? [east > 0 ? 1 : -1] : [1, -1];
     const band = RAIN_BY_LAT[Math.min(RAIN_BY_LAT.length - 1, (a / 5) | 0)]!;
-    const maxHum = 30 * band;
+    const maxHum = (30 * band) / dirs.length;
     let start = -1;
     for (let x = 0; x < COLS; x++) if (!land[y * COLS + x]) start = x;
     if (start < 0) continue; // linha toda de terra: sem fonte de umidade
-    let hum = maxHum;
-    for (let k = 1; k <= COLS * 2; k++) {
-      const x = wrapCol(start + dir * k);
-      const i = y * COLS + x;
-      const prev = y * COLS + wrapCol(x - dir);
-      if (!land[i]) {
-        hum = Math.min(maxHum, hum + 6); // o ar se recarrega sobre a água
-        continue;
+    for (const dir of dirs) {
+      let hum = maxHum;
+      for (let k = 1; k <= COLS * 2; k++) {
+        const x = wrapCol(start + dir * k);
+        const i = y * COLS + x;
+        const prev = y * COLS + wrapCol(x - dir);
+        if (!land[i]) {
+          hum = Math.min(maxHum, hum + 6); // o ar se recarrega sobre a água
+          continue;
+        }
+        const rise = Math.max(0, h[i]! - h[prev]!);
+        const e = (h[i]! - SEA) / 127;
+        // Chuva normal + chuva de encosta (o ar sobe, esfria e chove).
+        let p = Math.max(hum / 22, 0.5) + rise * (0.12 + e * 1.0);
+        if (e > 0.82) p = hum; // cordilheira muito alta: despeja tudo, passa seco
+        p = Math.min(p, hum);
+        if (k > COLS) rain[i]! += p; // só a segunda volta conta (o ar já "deu a volta")
+        // Parte da chuva volta ao ar (rios, lagos e plantas evaporam): a umidade avança.
+        hum = Math.max(0, hum - p * 0.55);
       }
-      const rise = Math.max(0, h[i]! - h[prev]!);
-      const e = (h[i]! - SEA) / 127;
-      // Chuva normal + chuva de encosta (o ar sobe, esfria e chove).
-      let p = Math.max(hum / 22, 0.5) + rise * (0.12 + e * 1.0);
-      if (e > 0.82) p = hum; // cordilheira muito alta: despeja tudo, passa seco
-      p = Math.min(p, hum);
-      if (k > COLS) rain[i]! += p; // só a segunda volta conta (o ar já "deu a volta")
-      // Parte da chuva volta ao ar (rios, lagos e plantas evaporam): a umidade avança.
-      hum = Math.max(0, hum - p * 0.55);
     }
   }
   // Um pouco de chuva do mar em toda costa, e suaviza (o ar não é tão preciso).
@@ -888,10 +1224,15 @@ function climate(map: WorldMap, land: Uint8Array, fbm: ReturnType<typeof makeNoi
   for (let i = 0; i < n; i++) if (land[i]) vals.push(cur[i]!);
   vals.sort((a, b) => a - b);
   const p95 = vals[Math.floor(vals.length * 0.95)] ?? 1;
+  // A chuva do planeta ("Precipitação") multiplica a umidade de todas as terras.
+  const rainK = cfg.precipitation / 100;
   const moist = new Float32Array(n);
   for (let i = 0; i < n; i++)
     moist[i] = land[i]
-      ? Math.sqrt(Math.min(1, cur[i]! / (p95 || 1))) * 0.92 + noise[i]! * 0.08
+      ? Math.min(
+          1,
+          (Math.sqrt(Math.min(1, cur[i]! / (p95 || 1))) * 0.92 + noise[i]! * 0.08) * rainK,
+        )
       : 0.6;
   return { temp, tempC, moist, noise };
 }
@@ -1205,6 +1546,38 @@ export function deriveWorld(map: WorldMap): Derived {
     if (flux[i]! >= riverMin) m = Math.min(1, m + 0.12);
     biome[i] = biomeFor(tc, m, e);
   }
+  // No mundo real, as cidades viram manchas urbanas e o campo em volta vira
+  // lavoura.
+  {
+    const era = eraOf(map);
+    if (era !== "fantasia") {
+      const caps = new Set(map.states.map((s) => s.capital));
+      const hash = (i: number) => {
+        const s = Math.sin(i * 78.233 + map.options.seed * 0.0007) * 43758.5453;
+        return s - Math.floor(s);
+      };
+      const farmP = 0.55;
+      const FARMABLE = new Set([3, 4, 5, 6, 8]);
+      for (const b of map.burgs) {
+        const c = cellOf(b.x, b.y);
+        const cx = c % COLS;
+        const cy = (c / COLS) | 0;
+        const big = caps.has(b.id);
+        const urban = big ? 1 : 0;
+        for (let dy = -3; dy <= 3; dy++)
+          for (let dx = -3; dx <= 3; dx++) {
+            const y = cy + dy;
+            if (y < 0 || y >= ROWS) continue;
+            const j = y * COLS + wrapCol(cx + dx);
+            if (!land[j] || biome[j] === 11 || biome[j] === 13) continue;
+            const dist = Math.hypot(dx, dy);
+            if (dist <= urban || j === c) biome[j] = 14;
+            else if (biome[j] !== 14 && FARMABLE.has(biome[j]!) && hash(j) < farmP * (1 - dist / 4))
+              biome[j] = 15;
+          }
+      }
+    }
+  }
 
   // Culturas: cada povo se espalha a partir do centro, com custos do seu jeito de
   // viver (o nômade avança rápido em campos e desertos, o caçador nas matas, o
@@ -1212,7 +1585,7 @@ export function deriveWorld(map: WorldMap): Derived {
   const culture = new Int16Array(n).fill(-1);
   {
     const cults = map.cultures ?? [];
-    const BIOME_COST = [0, 4, 3, 1.2, 1, 1.4, 1.4, 1.6, 1.8, 4, 10, 40, 3, 6];
+    const BIOME_COST = [0, 4, 3, 1.2, 1, 1.4, 1.4, 1.6, 1.8, 4, 10, 40, 3, 6, 0.6, 0.8];
     const cost = new Float64Array(n).fill(Infinity);
     const q = new Heap();
     const native: number[] = [];
@@ -1307,7 +1680,7 @@ export function deriveWorld(map: WorldMap): Derived {
     owner[c] = k;
     sh.push(c, 0);
   });
-  const terrainCost = [0, 2.2, 1.6, 0.6, 0.2, 0.7, 0.9, 1.4, 1.2, 1.6, 2.2, 6, 2.5, 4];
+  const terrainCost = [0, 2.2, 1.6, 0.6, 0.2, 0.7, 0.9, 1.4, 1.2, 1.6, 2.2, 6, 2.5, 4, 0.2, 0.3];
   const maxCost = Math.max(60, Math.sqrt(order.length / Math.max(1, map.states.length)) * 5);
   while (sh.size) {
     const i = sh.pop();
@@ -1362,7 +1735,7 @@ export function deriveWorld(map: WorldMap): Derived {
     const s = Math.sin(i * 12.9898 + map.options.seed * 0.001) * 43758.5453;
     rough[i] = (s - Math.floor(s)) * 0.22;
   }
-  const BIOME_ROAD = [0, 0.5, 0.3, 0.1, 0, 0.35, 0.3, 0.7, 0.45, 0.5, 0.6, 5, 1.6, 1.2];
+  const BIOME_ROAD = [0, 0.5, 0.3, 0.1, 0, 0.35, 0.3, 0.7, 0.45, 0.5, 0.6, 5, 1.6, 1.2, 0, 0.05];
   // 16 direções: as 8 vizinhas e os "pulos de cavalo" (menos retas e diagonais forçadas).
   const DIRS: [number, number][] = [
     ...N8.map(([dx, dy]) => [dx, dy] as [number, number]),
@@ -1488,6 +1861,15 @@ export function deriveWorld(map: WorldMap): Derived {
 
   const byId = new Map(map.burgs.map((b) => [b.id, b]));
   const capitalIds = new Set(map.states.map((s) => s.capital));
+  // Nomes das estradas pela época (rodovias numeradas hoje, linhas maglev no futuro).
+  const era = eraOf(map);
+  let roadNo = 0;
+  const stateCode = (name: string) =>
+    name
+      .normalize("NFD")
+      .replace(/[^A-Za-z]/g, "")
+      .slice(0, 2)
+      .toUpperCase();
   // Rodovias entre capitais de estados vizinhos (os pares vêm da fronteira).
   const pairs = new Set<string>();
   for (let i = 0; i < n; i++) {
@@ -1509,7 +1891,12 @@ export function deriveWorld(map: WorldMap): Derived {
     const from = cellOf(ca.x, ca.y);
     const to = cellOf(cb.x, cb.y);
     const path = findPath(from, (c) => c === to, 4000, to);
-    if (path) addRoad(path, "principal", `Rodovia ${ca.name}–${cb.name}`);
+    if (path)
+      addRoad(
+        path,
+        "principal",
+        era === "atual" ? `Autoestrada A${++roadNo}` : `Rodovia ${ca.name}–${cb.name}`,
+      );
   }
   // Estradas: de cada cidade até a capital do seu estado (pela rede que já existe).
   for (const b of map.burgs) {
@@ -1521,7 +1908,14 @@ export function deriveWorld(map: WorldMap): Derived {
     if (!cap) continue;
     const to = cellOf(cap.x, cap.y);
     const path = findPath(c, (x) => x === to || onRoad[x] === 2, 3000, to);
-    if (path && path.length > 1) addRoad(path, "estrada", `Estrada de ${b.name}`);
+    if (path && path.length > 1)
+      addRoad(
+        path,
+        "estrada",
+        era === "atual"
+          ? `Rodovia ${stateCode(map.states[k]!.name)}-${100 + ++roadNo}`
+          : `Estrada de ${b.name}`,
+      );
   }
   // Trilhas: de cada povoado ao vizinho mais perto, se o caminho for novo.
   const burgCells = new Map(map.burgs.map((b) => [cellOf(b.x, b.y), b]));
@@ -1537,7 +1931,13 @@ export function deriveWorld(map: WorldMap): Derived {
     seen.add(key);
     const fresh = path.filter((c) => !onRoad[c]).length;
     if (fresh / path.length < 0.6) continue;
-    addRoad(path, "trilha", `Trilha ${b.name}–${other.name}`);
+    addRoad(
+      path,
+      "trilha",
+      era === "atual"
+        ? `Estrada vicinal ${b.name}–${other.name}`
+        : `Trilha ${b.name}–${other.name}`,
+    );
   }
 
   // Rotas desenhadas: entre pontos de passagem seguem o terreno (as marítimas vão retas).
@@ -1571,6 +1971,7 @@ export function deriveWorld(map: WorldMap): Derived {
     riverMin,
     rivers,
     lakes,
+    era: eraOf(map),
     lake: lakeId,
     eff,
     owner,
@@ -1613,6 +2014,9 @@ export function serializeWorld(map: WorldMap): string {
         burgs: map.burgs,
         routes: map.routes ?? [],
         cultures: map.cultures ?? [],
+        ...(map.climate ? { climate: map.climate } : {}),
+        ...(map.markers?.length ? { markers: map.markers } : {}),
+        ...(map.hiddenMarkers?.length ? { hiddenMarkers: map.hiddenMarkers } : {}),
       },
       null,
       1,
@@ -1666,6 +2070,8 @@ export function parseWorld(raw: string): WorldMap | null {
       land: Math.min(0.6, Math.max(0.15, num(o.land) ?? DEFAULT_OPTIONS.land)),
       states: Math.min(30, Math.max(1, Math.round(num(o.states) ?? DEFAULT_OPTIONS.states))),
       burgs: Math.min(300, Math.max(1, Math.round(num(o.burgs) ?? DEFAULT_OPTIONS.burgs))),
+      ...(ERAS.some((e) => e.value === o.era) && o.era !== "fantasia" ? { era: o.era as Era } : {}),
+      ...(o.polar === true ? { polar: true } : {}),
     };
     const burgs: Burg[] = [];
     for (const b of Array.isArray(d.burgs)
@@ -1739,7 +2145,46 @@ export function parseWorld(raw: string): WorldMap | null {
         y: Math.max(0, Math.min(ROWS, cy * sy)),
       });
     }
-    return { name: str(d.name, 80) || "Mundo", options, heights, burgs, states, routes, cultures };
+    const climate =
+      d.climate && typeof d.climate === "object"
+        ? normalizeClimate(d.climate as Partial<WorldClimate>)
+        : undefined;
+    const markers: UserMarker[] = [];
+    for (const m of Array.isArray(d.markers)
+      ? (d.markers as Record<string, unknown>[]).slice(0, 2000)
+      : []) {
+      const mx = num(m.x);
+      const my = num(m.y);
+      const id = str(m.id, 64);
+      if (!id || mx === null || my === null || mx < 0 || my < 0 || mx > COLS || my > ROWS) continue;
+      const icon = str(m.icon, 16);
+      markers.push({
+        id,
+        type: str(m.type, 32) || "ruinas",
+        ...(icon ? { icon } : {}),
+        name: str(m.name, 120) || "Marcador",
+        legend: str(m.legend, 2000),
+        x: mx * sx,
+        y: my * sy,
+      });
+    }
+    const hiddenMarkers = Array.isArray(d.hiddenMarkers)
+      ? (d.hiddenMarkers as unknown[])
+          .filter((k): k is string => typeof k === "string" && k.length <= 200)
+          .slice(0, 5000)
+      : [];
+    return {
+      name: str(d.name, 80) || "Mundo",
+      options,
+      heights,
+      burgs,
+      states,
+      routes,
+      cultures,
+      ...(climate ? { climate } : {}),
+      ...(markers.length ? { markers } : {}),
+      ...(hiddenMarkers.length ? { hiddenMarkers } : {}),
+    };
   } catch {
     return null;
   }

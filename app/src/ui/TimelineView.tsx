@@ -15,6 +15,10 @@ import { exampleTimeline } from "../timeline/example";
 import { dayToDate, formatDate, holidaysOn, seasonOf } from "../timeline/calendar";
 import { DOC_ICON, KIND_LABEL } from "../links/context";
 import { Icon } from "./Icon";
+import { CalendarMonthView, CascadeView, type ViewActions } from "./TimelineViews";
+
+type Layout = "list" | "lanes" | "calendar" | "cascade";
+const LAYOUTS: Layout[] = ["list", "lanes", "calendar", "cascade"];
 
 const LAYOUT_KEY = "talia.timelineLayout";
 const LANE_KINDS: NoteKind[] = ["personagens", "lugares", "organizacoes"];
@@ -195,14 +199,15 @@ export function TimelineView({
   const data = useTimeline((s) => s.data);
   const { setScene, addEvent, updateEvent, removeEvent } = useTimeline.getState();
   const [filter, setFilter] = useState("");
-  const [layout, setLayoutState] = useState<"list" | "lanes">(() => {
+  const [layout, setLayoutState] = useState<Layout>(() => {
     try {
-      return localStorage.getItem(LAYOUT_KEY) === "lanes" ? "lanes" : "list";
+      const v = localStorage.getItem(LAYOUT_KEY) as Layout | null;
+      return v && LAYOUTS.includes(v) ? v : "list";
     } catch {
       return "list";
     }
   });
-  const setLayout = (v: "list" | "lanes") => {
+  const setLayout = (v: Layout) => {
     setLayoutState(v);
     try {
       localStorage.setItem(LAYOUT_KEY, v);
@@ -252,6 +257,25 @@ export function TimelineView({
       season: seasonOf(calendar, d),
       holidays: holidaysOn(calendar, d),
     };
+  };
+
+  /** Tudo o que tem data, uma vez cada (para o calendário e a cascata). */
+  const dated = useMemo(() => {
+    const seen = new Set<string>();
+    return timeline.groups
+      .flatMap((g) => g.items)
+      .filter((it) => !seen.has(it.id) && seen.add(it.id));
+  }, [timeline]);
+  const viewActions: ViewActions = {
+    move: (it, day, days) =>
+      it.kind === "scene"
+        ? void setScene(it.id, { day, days })
+        : void updateEvent(it.id, { day, days }),
+    create: (day) =>
+      addEvent({ title: "Novo acontecimento", day, days: 1, notes: filter ? [filter] : [] }),
+    rename: (id, title) => void updateEvent(id, { title }),
+    remove: (id) => void removeEvent(id),
+    openScene: (id) => openDoc(id),
   };
 
   const newEvent = () =>
@@ -479,52 +503,90 @@ export function TimelineView({
         <div>
           <h2>Linha do tempo</h2>
           <p className="muted">
-            As cenas na ordem em que acontecem na história. Você escolhe o dia de cada uma; o app só
-            ordena e conta quanto tempo passou.
+            Quando cada cena acontece na história. Você escolhe os dias; o app põe em ordem e conta
+            quanto tempo passou.
           </p>
         </div>
-        <div className="tl-actions">
-          <select
-            className="tool-select"
-            aria-label="Mostrar só o que está ligado a"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="">Mostrar tudo</option>
-            {notes.map((n) => (
-              <option key={n.id} value={n.id}>
-                {KIND_LABEL[n.kind].one}: {n.title}
-              </option>
-            ))}
-          </select>
-          <select
-            className="tool-select"
-            aria-label="Calendário das datas"
-            value={data.activeCalendar ?? ""}
-            onChange={(e) => void useTimeline.getState().setActiveCalendar(e.target.value || null)}
-          >
-            <option value="">Datas: dias numerados</option>
-            {defined.map((n) => (
-              <option key={n.id} value={n.id}>
-                Datas: {n.title}
-              </option>
-            ))}
-          </select>
-          <button type="button" className="btn sm" onClick={newEvent}>
-            <Icon name="plus" size={14} /> Acontecimento
-          </button>
-          {Object.keys(data.scenes).length === 0 && data.events.length === 0 && (
-            <button
-              type="button"
-              className="btn ghost sm"
-              title="Dá datas fictícias às cenas, idades aos personagens e distâncias aos lugares, para você ver como tudo funciona"
-              onClick={() => void useTimeline.getState().replace(exampleTimeline(project, data))}
-            >
-              Preencher com datas de teste
-            </button>
-          )}
-        </div>
       </header>
+
+      <div className="tl-toolbar">
+        <div className="segmented wide tl-layout" role="radiogroup" aria-label="Forma de mostrar">
+          {(
+            [
+              ["list", "menu", "Lista"],
+              ["calendar", "calendar", "Calendário"],
+              ["cascade", "clock", "Cascata"],
+              ["lanes", "person", "Faixas por personagem"],
+            ] as const
+          ).map(([v, icon, text]) => (
+            <button
+              key={v}
+              type="button"
+              role="radio"
+              aria-checked={layout === v}
+              onClick={() => setLayout(v)}
+            >
+              <Icon name={icon} size={14} /> {text}
+            </button>
+          ))}
+        </div>
+        <div className="tl-filters">
+          <label className="tl-filter">
+            <span>Mostrar</span>
+            <select
+              className="tool-select"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            >
+              <option value="">Tudo</option>
+              {notes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  Só {KIND_LABEL[n.kind].one.toLowerCase()}: {n.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="tl-filter">
+            <span>Datas</span>
+            <select
+              className="tool-select"
+              value={data.activeCalendar ?? ""}
+              onChange={(e) =>
+                e.target.value === "__novo"
+                  ? onOpenCalendar(calendarNotes[0]?.id ?? "")
+                  : void useTimeline.getState().setActiveCalendar(e.target.value || null)
+              }
+            >
+              <option value="">Dia 1, Dia 2…</option>
+              {defined.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.title}
+                </option>
+              ))}
+              <option value="__novo">
+                {defined.length ? "Editar ou criar calendário…" : "+ Criar calendário do mundo…"}
+              </option>
+            </select>
+          </label>
+        </div>
+        <button type="button" className="btn sm tl-new" onClick={newEvent}>
+          <Icon name="plus" size={14} /> Acontecimento
+        </button>
+      </div>
+
+      {Object.keys(data.scenes).length === 0 && data.events.length === 0 && (
+        <p className="tl-empty-hint">
+          <span className="muted">Sua linha do tempo está vazia.</span>
+          <button
+            type="button"
+            className="link-btn"
+            title="Dá datas fictícias às cenas, idades aos personagens e distâncias aos lugares, para você ver como tudo funciona"
+            onClick={() => void useTimeline.getState().replace(exampleTimeline(project, data))}
+          >
+            Preencher com datas de teste
+          </button>
+        </p>
+      )}
       {(warningCount > 0 || ignoredCount > 0) && (
         <p className={"tl-summary" + (warningCount ? " warn" : "")}>
           {warningCount > 0
@@ -534,47 +596,17 @@ export function TimelineView({
             ` ${ignoredCount} ${ignoredCount === 1 ? "cena com avisos ignorados" : "cenas com avisos ignorados"}.`}
         </p>
       )}
-      {defined.length === 0 && (
-        <p className="muted small tl-hint">
-          Para ver as datas no calendário do seu mundo (meses, semana, eras), defina um em{" "}
-          <b>Calendários do mundo</b>
-          {calendarNotes[0] && (
-            <>
-              {" "}
-              ou{" "}
-              <button
-                type="button"
-                className="link-btn"
-                onClick={() => onOpenCalendar(calendarNotes[0]!.id)}
-              >
-                abra “{calendarNotes[0].title}”
-              </button>
-            </>
-          )}
-          .
-        </p>
-      )}
 
-      <div className="segmented wide tl-layout" role="radiogroup" aria-label="Forma de mostrar">
-        {(
-          [
-            ["list", "Lista"],
-            ["lanes", "Faixas por personagem"],
-          ] as const
-        ).map(([v, text]) => (
-          <button
-            key={v}
-            type="button"
-            role="radio"
-            aria-checked={layout === v}
-            onClick={() => setLayout(v)}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
-
-      {layout === "lanes" ? (
+      {layout === "calendar" ? (
+        <CalendarMonthView
+          key={data.activeCalendar ?? ""}
+          items={dated}
+          calendar={calendar}
+          actions={viewActions}
+        />
+      ) : layout === "cascade" ? (
+        <CascadeView items={dated} calendar={calendar} actions={viewActions} />
+      ) : layout === "lanes" ? (
         <LanesGrid
           lanes={buildLanes(project, data, linksOf, laneKinds)}
           kinds={laneKinds}

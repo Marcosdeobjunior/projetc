@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTimeline } from "../state/timeline";
 import {
-  DEFAULT_CALENDAR,
+  CALENDAR_PRESETS,
+  calendarSummary,
   dayToDate,
+  holidaysOn,
   formatDate,
   sanitizeCalendar,
   yearLength,
@@ -103,7 +105,100 @@ function MonthSelect({
  * Calendários: meses, semana, ano, que data é o dia 1 da história, feriados e
  * estações. A linha do tempo usa o calendário escolhido para mostrar as datas.
  */
-export function CalendarEditor({ noteId }: { noteId: string }) {
+/** Modelos para começar: um clique cria a definição inteira (dá para mudar tudo depois). */
+export function PresetPicker({ onPick }: { onPick(def: CalendarDef, title: string): void }) {
+  return (
+    <ul className="cal-presets">
+      {CALENDAR_PRESETS.map((p) => {
+        const d1 = dayToDate(p.def, 1);
+        return (
+          <li key={p.id}>
+            <button type="button" className="cal-preset" onClick={() => onPick(p.def, p.title)}>
+              <b>{p.title}</b>
+              <span className="muted small">{p.hint}</span>
+              <span className="cal-preset-sample">
+                <Icon name="calendar" size={13} />
+                {formatDate(p.def, d1)}
+              </span>
+              <small className="muted">{calendarSummary(p.def)}</small>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * Prévia de um mês do calendário em grade (o mês em que a história começa),
+ * com o dia 1 da história marcado e os feriados.
+ */
+export function MonthPreview({ def, month: m }: { def: CalendarDef; month?: number }) {
+  const month = m ?? def.start.month;
+  const days = def.months[month]!.days;
+  const week = def.weekdays.length;
+  const cols = week >= 1 && week <= 10 ? week : 7;
+  // Dia da semana do dia 1 do mês: anda a partir do dia 1 da história.
+  const offset =
+    def.months.slice(0, month).reduce((n, x) => n + x.days, 0) -
+    def.months.slice(0, def.start.month).reduce((n, x) => n + x.days, 0) -
+    (def.start.day - 1);
+  const lead = week >= 1 && week <= 10 ? (((def.startWeekday + offset) % week) + week) % week : 0;
+  const cells = [
+    ...Array.from({ length: lead }, () => 0),
+    ...Array.from({ length: Math.min(days, 70) }, (_, i) => i + 1),
+  ];
+  while (cells.length % cols) cells.push(0);
+  return (
+    <div className="cal-preview">
+      <div className="cal-preview-title">
+        <b>{def.months[month]!.name}</b>
+        <span className="muted small">
+          {days} dias{def.weekdays.length ? "" : " · sem semana"}
+        </span>
+      </div>
+      <div className="cal-preview-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+        {week >= 1 &&
+          week <= 10 &&
+          def.weekdays.map((w) => (
+            <span key={w} className="cal-preview-wd" title={w}>
+              {w.slice(0, 2)}
+            </span>
+          ))}
+        {cells.map((d, i) => {
+          const start = month === def.start.month && d === def.start.day;
+          const hol = d
+            ? holidaysOn(def, { year: def.start.year, month, day: d, weekday: null })
+            : [];
+          return (
+            <span
+              key={i}
+              className={
+                "cal-preview-day" +
+                (d ? "" : " empty") +
+                (start ? " start" : "") +
+                (hol.length ? " hol" : "")
+              }
+              title={start ? "Dia 1 da história" : hol.join(", ") || undefined}
+            >
+              {d || ""}
+            </span>
+          );
+        })}
+      </div>
+      {days > 70 && <p className="muted small">Mostrando os primeiros 70 dias.</p>}
+    </div>
+  );
+}
+
+export function CalendarEditor({
+  noteId,
+  embedded = false,
+}: {
+  noteId: string;
+  /** Dentro da tela "Calendário do mundo" (sem o título e sem a caixa "usar"). */
+  embedded?: boolean;
+}) {
   const data = useTimeline((s) => s.data);
   const { setCalendar, setActiveCalendar } = useTimeline.getState();
   const def = data.calendars[noteId];
@@ -118,19 +213,10 @@ export function CalendarEditor({ noteId }: { noteId: string }) {
       <section className="cal-editor">
         <h3>Calendário do mundo</h3>
         <p className="muted small">
-          Defina os meses, a semana e as eras deste calendário. A linha do tempo passa a mostrar as
-          datas nele (“15 de Brumal de 412”) em vez de “Dia 37”.
+          Escolha um modelo para começar. A linha do tempo passa a mostrar as datas nele (“15 de
+          Brumal de 412”) em vez de “Dia 37”; nomes e quantidades mudam à vontade depois.
         </p>
-        <button
-          type="button"
-          className="btn sm"
-          onClick={() => void setCalendar(noteId, DEFAULT_CALENDAR)}
-        >
-          <Icon name="calendar" size={14} /> Definir calendário
-        </button>
-        <p className="muted small">
-          Começa com 12 meses e 7 dias na semana; troque nomes e quantidades à vontade.
-        </p>
+        <PresetPicker onPick={(d) => void setCalendar(noteId, d)} />
       </section>
     );
   }
@@ -143,17 +229,19 @@ export function CalendarEditor({ noteId }: { noteId: string }) {
 
   return (
     <section className="cal-editor">
-      <div className="cal-head">
-        <h3>Calendário do mundo</h3>
-        <label className="cal-active">
-          <input
-            type="checkbox"
-            checked={active}
-            onChange={(e) => void setActiveCalendar(e.target.checked ? noteId : null)}
-          />
-          Usar na linha do tempo
-        </label>
-      </div>
+      {!embedded && (
+        <div className="cal-head">
+          <h3>Calendário do mundo</h3>
+          <label className="cal-active">
+            <input
+              type="checkbox"
+              checked={active}
+              onChange={(e) => void setActiveCalendar(e.target.checked ? noteId : null)}
+            />
+            Usar na linha do tempo
+          </label>
+        </div>
+      )}
       <p className="muted small">
         O dia 1 da história é{" "}
         <b>{(day1.weekday ? `${day1.weekday}, ` : "") + formatDate(def, day1)}</b>. O ano tem{" "}

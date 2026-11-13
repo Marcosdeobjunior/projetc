@@ -103,3 +103,31 @@ describe("prévia fiel ao mapa-múndi", () => {
     expect(JSON.stringify(b.buildings)).not.toBe(JSON.stringify(a.buildings));
   });
 });
+
+describe("densidade e estilo", () => {
+  const town = (population: number, era?: "atual", style?: "moderno" | "nomade") =>
+    generateVillage({
+      ...defaultMapOptions(11),
+      geo: { seed: 4, river: null, roads: [0, Math.PI], population, era, style },
+    });
+  const people = (m: ReturnType<typeof town>) => m.buildings.reduce((s, b) => s + b.floors, 0);
+
+  it("mais gente dá mais construções ou mais andares", () => {
+    const a = town(100);
+    const b = town(2000);
+    const c = town(30000);
+    expect(b.buildings.length).toBeGreaterThan(a.buildings.length * 3);
+    expect(people(c)).toBeGreaterThan(people(b) * 2);
+    expect(Math.max(...c.buildings.map((x) => x.floors))).toBeGreaterThanOrEqual(4);
+  });
+
+  it("mundo real tem prédios altos e nômades moram em tendas", () => {
+    const real = town(800000, "atual", "moderno");
+    expect(real.style).toBe("moderno");
+    expect(Math.max(...real.buildings.map((x) => x.floors))).toBeGreaterThan(20);
+    const tents = town(300, undefined, "nomade");
+    expect(tents.buildings.filter((x) => x.roof === "tenda").length).toBeGreaterThan(
+      tents.buildings.length / 2,
+    );
+  });
+});

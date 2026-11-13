@@ -390,7 +390,11 @@ prévia e nas exportações (HTML/EPUB e DOCX).
 `timeline/timeline.ts`: `readTimeline`/`writeTimeline`/`sanitizeTimeline` (formato em
 `formato-do-projeto.md`) e `buildTimeline` (pura: agrupa por dia, calcula o intervalo desde o fim
 do grupo anterior, lista as cenas sem data e marca as "fora de ordem" em relação ao livro).
-Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx`,
+Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx` (as vistas Calendário e Cascata ficam em
+`ui/TimelineViews.tsx`; a aba Calendário do mundo é `ui/WorldCalendars.tsx`, lista + editor
+(`CalendarEditor` com `embedded`), com os modelos de `CALENDAR_PRESETS` em `timeline/calendar.ts`
+e a prévia `MonthPreview`; grade do mês com arrastar e soltar, e barras numa régua com os vazios
+longos comprimidos; as duas só chamam as ações do store),
 dentro da aba Calendários do Mundo (sub-seção "Linha do tempo"). `timeline/calendar.ts` converte
 dia da história ↔ data do calendário do mundo (`dayToDate`, `dateToDay`, `formatDate`,
 `holidaysOn`, `seasonOf`); a definição é editada em `ui/CalendarEditor.tsx` (ficha de uma nota de
@@ -428,9 +432,14 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   determinística a partir das opções gravadas em `fields.mapa` (semente mulberry32 em
   `world/geom.ts`; estrada e ruas por caminhada aleatória suavizada, casas ao longo das ruas com
   teste de sobreposição SAT, campos e árvores); `ui/PlaceMap.tsx` desenha em SVG (zoom/arrastar
-  por `viewBox`); `ui/StreetView.tsx` é um renderizador 3D em canvas 2D (casas como caixas com
-  telhado de quatro águas, projeção em perspectiva, recorte no plano próximo, descarte de faces
-  de costas e pintura de trás para frente, com neblina; `walkable` impede entrar nas casas).
+  por `viewBox`); `ui/StreetView.tsx` é um renderizador 3D em canvas 2D (projeção em perspectiva,
+  recorte no plano próximo, descarte de faces de costas e pintura de trás para frente, com
+  neblina; `walkable` impede entrar nas casas). Cada `Building.roof` vira um modelo: duas águas
+  com oitões e beiral, quatro águas, laje com platibanda (e casa de máquinas nos prédios),
+  pátio, cabana redonda com cone de palha, tenda; templos com torre e pirâmide ou cúpula.
+  Janelas e portas são `decals` da parede (desenhadas junto com ela, só até `DETAIL`); prédios
+  modernos têm faixas de vidro por andar. Cores de parede por estilo em `LOOK`; luz pela normal
+  3D contra `SUN`; árvores (copa, pinheiro, palmeira) e morros no horizonte seguem o estilo.
   `world/heraldry.ts` gera brasão/bandeira de `fields.brasao`, desenhados por `ui/EmblemArt.tsx`.
 - Mapa-múndi (`ui/WorldMapView.tsx`, view `"map"`): `world/worldgen.ts` gera e deriva o mundo numa
   grade de 360×180 células (o planeta inteiro, equirretangular, 1° por célula; a longitude dá a volta: vizinhos usam `wrapCol`, distâncias `dCol`, o relevo usa ruído 3D (Perlin) amostrado sobre a esfera e distância pelo arco até os centros dos continentes — sem emenda e sem distorção nos polos —, os caminhos medem passos com `stepLen` (largura da célula × cos(latitude)), e o oceano é o maior corpo d'água). Gravado: alturas (base64), cidades e estados em `.talia/mapa-mundi.json`
@@ -453,6 +462,30 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   cultura com custos por tipo (`d.culture`). `world/names.ts` gera nomes por cadeia de Markov de
   ordem 2 sobre bases de nomes próprias do app. Reinos têm `form`; elementos da cidade seguem
   regras de população (`world/settlement.ts`).
+- Economia (`world/economy.ts`, `computeEconomy`): por cidade, pontuação de 9 setores pelo
+  entorno (biomas num raio de 2 células, umidade, rio, costa, lago, altitude, marcadores
+  próximos, estradas, população, capital e época); a vocação é o setor de maior vantagem
+  relativa (pontuação ÷ média do mundo), ou a do campo `vocacao` da ficha. Renda por pessoa e
+  riqueza vêm do valor dos setores, do tamanho e das ligações. Estados: 55% cidades (pela
+  população) + 45% campo (`cellPopulation` por bioma), vocação também relativa; PIB = cidades +
+  campo. O estilo `economia` de `bakeBase` pinta a cor da vocação de cada estado.
+- Editar terreno (`world/terrain.ts`): `paintTerrain` aplica um pincel (terra, mar, montanha, neve,
+  lago, elevar, rebaixar, suavizar, aplainar) às alturas, com queda suave e ruído fixo por
+  célula; `settleOnLand` leva cidades e centros de povos que ficaram no mar para a terra mais
+  perto (ou tira a cidade, e o estado dela). O resto (rios, lagos, biomas, fronteiras) vem do
+  `deriveWorld` ao gravar.
+- Épocas (`options.era`: `fantasia` ou `atual`, "Real" na tela): `withEra` converte as formas de
+  governo por arquétipo (`formForEra`); `deriveWorld` põe `d.era`, aquece o clima (+1,2 °C, mais
+  nos polos), cria os biomas 14 (Área urbana) e 15 (Lavouras) em volta das cidades e nomeia as
+  estradas; `deriveSociety` troca os marcadores (`ERA_MARKERS`) e põe aeroporto/universidade nas
+  capitais; `settlementInfo` multiplica a população; `ruralPopulation` dá a população do campo;
+  `bakeBase` e o `Theme` de `ui/worldDraw.ts` fazem o estilo de atlas; `localGeo` passa a época à
+  vila (`floorsFor`, cores em `PlaceMap`, laje em `StreetView`).
+- Clima configurável (`map.climate`, `ui/ClimateDialog.tsx`): `normalizeClimate` limita os valores;
+  `seaLevelTemp` interpola entre o polo do hemisfério e o equador com `(lat/90)^1,6`; em
+  `climate()` cada faixa de 30° usa o componente leste-oeste do vento escolhido (quase norte-sul:
+  umidade dos dois lados, pela metade) e `precipitation` multiplica a umidade normalizada. Entra no
+  `geoKey` do editor e nos passos de desfazer.
 - Hidrologia (`deriveWorld`): priority-flood dá o nível da água (`filled`); a direção `down` é o
   maior declive sobre `filled` (sempre desce, então não há ciclos). Componentes de depressão
   (`filled − h ≥ 0,3`, ≥ 2 células, profundidade ≥ 1, sem cidade dentro) viram lagos (`d.lakes`,
@@ -482,11 +515,25 @@ cada pausa) e grava com folga de 5 s (e no `flushAll`). Datas fictícias de test
   `retireNotes` manda para a lixeira os lugares que saíram do mapa e nunca foram mexidos. A
   reconciliação roda depois de cada mudança no mapa e quando as notas do projeto mudam (com o mapa
   aberto), dentro de `change` (fila única).
+- Ficha de lugar ligada ao mapa (cidade ou estado): `world/placeFacts.ts` calcula população
+  (`settlementInfo`; no estado, cidades + `cellPopulation` do território) e clima
+  (`climateOf`: nome por temperatura e umidade, média, faixa e bioma dominante);
+  `ui/NoteFields.tsx` mostra esses dois campos só para leitura (o `deriveWorld` fica em cache por
+  mapa). O que estava escrito à mão nesses campos continua gravado, só não aparece.
 - "Editar povoado" (`ui/BurgDialog.tsx`): janela flutuante do mapa-múndi. `world/settlement.ts`
   junta os campos do lugar com valores padrão tirados do mapa (população pela semente, porto/rio
   pela costa e vazão, temperatura e altitude da célula) e monta as opções da prévia, que é o
   mesmo gerador de vila (`world/village.ts`, agora com muralha, cidadela, praça, templo e favela,
-  e com o centro sempre no meio do mapa).
+  e com o centro sempre no meio do mapa). O estilo das construções (`ArchStyle`, escolhido por
+  `archStyle` pelo tipo, altitude, frio e bioma) vai em `VillageGeo.style` e define a forma do
+  telhado de cada casa (`Building.roof`: duas/quatro águas, plano, pátio, redondo, tenda), sorteada
+  num gerador à parte para não mexer no traçado; `VillageGeo.port` põe cais, barcos e armazéns
+  (`VillageMap.docks`). `ui/PlaceMap.tsx` desenha telhados com luz e sombra e árvores por estilo.
+  `VillageGeo.population` liga `townSize`: quantas construções (cerca de 6 pessoas por casa na
+  fantasia e 40 por prédio no real, com crescimento sublinear acima de 100) e o raio da área
+  construída; cidades grandes ganham travessas e preenchimento dos quarteirões, e quem não coube
+  no chão vira andares (`floorsFor` com `pressure`). Na época `atual` o estilo é `moderno`, com
+  ruas em grade alinhadas à estrada principal no lugar das ruas sinuosas.
 - Desenho do mapa-múndi em `ui/worldDraw.ts` (`drawWorld`, usado na tela e no "Exportar
   imagem"). O editor só refaz `deriveWorld` quando muda a geografia (alturas, posições das
   cidades, capitais); renomear ou mudar cor não refaz. Enquanto o pincel pinta, a imagem de fundo

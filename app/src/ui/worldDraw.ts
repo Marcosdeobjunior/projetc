@@ -2,12 +2,13 @@ import {
   COLS,
   ROWS,
   type Burg,
+  type Era,
   type Derived,
   type RouteType,
   type WorldMap,
 } from "../world/worldgen";
 import type { buildProvinceVectors, buildVectors } from "../world/worldRender";
-import { MARKER_TYPES, type Society } from "../world/society";
+import { markerIcon, type Society } from "../world/society";
 
 /*
  * Desenho do mapa-múndi num canvas (tela ou exportação): fundo assado,
@@ -42,6 +43,8 @@ export interface DrawOptions {
   meta: Map<string, BurgMeta>;
   selectedBurg?: string | null;
   selectedRoute?: string | null;
+  /** Marcador selecionado (pela chave). */
+  selectedMarker?: string | null;
   /** Estrada gerada selecionada (pelo nome). */
   selectedRoad?: string | null;
   /** Rota sendo desenhada (pontos em células). */
@@ -60,6 +63,84 @@ export interface DrawOptions {
 export const KM_PER_CELL = 111;
 
 const SERIF = 'Georgia, "Times New Roman", serif';
+
+/** Estilo de cada época: cores das linhas e rótulos, e a fonte. */
+interface Theme {
+  font: string;
+  bg: string;
+  coast: string;
+  coastHalo: string;
+  glow: string | null;
+  river: string;
+  roadCase: string;
+  roadFill: string;
+  road: string;
+  trail: string;
+  sea: string;
+  province: string;
+  border: string;
+  halo: string;
+  text: string;
+  text2: string;
+  state: string;
+  lake: string;
+  markerBg: string;
+  markerStroke: string;
+  cityDark: string;
+  cityLight: string;
+}
+const SANS = '"Inter", "Segoe UI", system-ui, sans-serif';
+const THEMES: Record<Era, Theme> = {
+  fantasia: {
+    font: SERIF,
+    bg: "#1f3a55",
+    coast: "#2b2a26",
+    coastHalo: "rgba(255,255,255,0.35)",
+    glow: null,
+    river: "#4f86b8",
+    roadCase: "#5a3a22",
+    roadFill: "#f2c66b",
+    road: "rgba(92,58,34,0.85)",
+    trail: "rgba(92,58,34,0.75)",
+    sea: "rgba(20,40,70,0.75)",
+    province: "rgba(70,40,50,0.45)",
+    border: "rgba(60,30,40,0.75)",
+    halo: "rgba(255,250,235,0.85)",
+    text: "#24201b",
+    text2: "#4a2f1a",
+    state: "#3b2a2a",
+    lake: "#1f4c73",
+    markerBg: "rgba(255,250,238,0.92)",
+    markerStroke: "rgba(60,40,30,0.55)",
+    cityDark: "#2b2a26",
+    cityLight: "#fffaf0",
+  },
+  atual: {
+    font: SANS,
+    bg: "#7fb2d9",
+    coast: "#4a7ea8",
+    coastHalo: "rgba(255,255,255,0.5)",
+    glow: null,
+    river: "#4a90d0",
+    roadCase: "#a83224",
+    roadFill: "#f06a4a",
+    road: "#e2a83a",
+    trail: "rgba(110,110,110,0.8)",
+    sea: "rgba(30,70,120,0.7)",
+    province: "rgba(110,90,130,0.55)",
+    border: "rgba(120,60,140,0.85)",
+    halo: "rgba(255,255,255,0.9)",
+    text: "#1d2329",
+    text2: "#3a4450",
+    state: "#5b4a6e",
+    lake: "#1e5a8c",
+    markerBg: "rgba(255,255,255,0.95)",
+    markerStroke: "rgba(40,60,80,0.45)",
+    cityDark: "#c62828",
+    cityLight: "#ffffff",
+  },
+};
+let T: Theme = THEMES.fantasia;
 
 /** Raio do marcador da cidade pela população. */
 function dotRadius(pop: number, capital: boolean) {
@@ -161,7 +242,8 @@ function compass(ctx: CanvasRenderingContext2D, x: number, y: number, r: number)
 
 export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
   const { view, size } = o;
-  ctx.fillStyle = "#1f3a55";
+  T = THEMES[o.derived.era] ?? THEMES.fantasia;
+  ctx.fillStyle = T.bg;
   ctx.fillRect(0, 0, size.w, size.h);
   const width = COLS * view.s;
   const placed: [number, number, number, number][] = [];
@@ -190,7 +272,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, o: DrawOptions) {
         ctx.save();
         ctx.translate(x, up ? edge : edge - h);
         ctx.scale(view.s, view.s);
-        ctx.strokeStyle = "rgba(43,42,38,0.8)";
+        ctx.strokeStyle = T.coast;
         ctx.lineWidth = 1.2 / view.s;
         ctx.stroke(o.vectors.coast);
         ctx.restore();
@@ -243,14 +325,19 @@ function drawCopy(
   const px = 1 / view.s; // um pixel de tela, em unidades do mapa
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.strokeStyle = T.coastHalo;
   ctx.lineWidth = px * 4;
   ctx.stroke(vectors.coast);
-  ctx.strokeStyle = "#2b2a26";
+  ctx.strokeStyle = T.coast;
   ctx.lineWidth = px * 1.2;
+  if (T.glow) {
+    ctx.shadowColor = T.glow;
+    ctx.shadowBlur = 6;
+  }
   ctx.stroke(vectors.coast);
+  ctx.shadowBlur = 0;
   if (layers.rios) {
-    ctx.strokeStyle = "#4f86b8";
+    ctx.strokeStyle = T.river;
     // O rio engrossa rio abaixo; ponta reta na foz (termina na margem, sem
     // avançar sobre o mar ou o lago) e emendas redondas entre os trechos.
     ctx.lineJoin = "round";
@@ -269,22 +356,22 @@ function drawCopy(
       // marítima: tracejado azul-escuro sobre o mar.
       ctx.setLineDash([]);
       if (type === "principal") {
-        ctx.strokeStyle = "#5a3a22";
+        ctx.strokeStyle = T.roadCase;
         ctx.lineWidth = px * 3.6 * scale;
         return () => {
-          ctx.strokeStyle = "#f2c66b";
+          ctx.strokeStyle = T.roadFill;
           ctx.lineWidth = px * 1.8 * scale;
         };
       }
       if (type === "estrada") {
-        ctx.strokeStyle = "rgba(92,58,34,0.85)";
+        ctx.strokeStyle = T.road;
         ctx.lineWidth = px * 1.4 * scale;
       } else if (type === "trilha") {
-        ctx.strokeStyle = "rgba(92,58,34,0.75)";
+        ctx.strokeStyle = T.trail;
         ctx.lineWidth = px * 1.1 * scale;
         ctx.setLineDash([px * 1.2, px * 3]);
       } else {
-        ctx.strokeStyle = "rgba(20,40,70,0.75)";
+        ctx.strokeStyle = T.sea;
         ctx.lineWidth = px * 1.3 * scale;
         ctx.setLineDash([px * 6, px * 4]);
       }
@@ -355,14 +442,14 @@ function drawCopy(
   }
   if (layers.provincias && o.provinceVectors) {
     // Províncias: linha fina pontilhada, mais discreta que a fronteira do estado.
-    ctx.strokeStyle = "rgba(70,40,50,0.45)";
+    ctx.strokeStyle = T.province;
     ctx.lineWidth = px * 0.8;
     ctx.setLineDash([px * 1.5, px * 2.5]);
     ctx.stroke(o.provinceVectors.borders);
     ctx.setLineDash([]);
   }
   if (layers.fronteiras) {
-    ctx.strokeStyle = "rgba(60,30,40,0.75)";
+    ctx.strokeStyle = T.border;
     ctx.lineWidth = px * 1.6;
     ctx.setLineDash([px * 5, px * 2, px * 1, px * 2]);
     ctx.stroke(vectors.borders);
@@ -419,13 +506,13 @@ function drawCopy(
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(angle);
-      ctx.font = `italic 600 10.5px ${SERIF}`;
+      ctx.font = `italic 600 10.5px ${T.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(255,250,235,0.85)";
+      ctx.strokeStyle = T.halo;
       ctx.strokeText(r.name, 0, -3);
-      ctx.fillStyle = "#4a2f1a";
+      ctx.fillStyle = T.text2;
       ctx.fillText(r.name, 0, -3);
       ctx.restore();
     }
@@ -438,13 +525,13 @@ function drawCopy(
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(r.mid.angle);
-      ctx.font = `italic 600 11.5px ${SERIF}`;
+      ctx.font = `italic 600 11.5px ${T.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(255,250,235,0.85)";
+      ctx.strokeStyle = T.halo;
       ctx.strokeText(r.name, 0, -4);
-      ctx.fillStyle = r.type === "maritima" ? "#16304f" : "#4a2f1a";
+      ctx.fillStyle = r.type === "maritima" ? T.lake : T.text2;
       ctx.fillText(r.name, 0, -4);
       ctx.restore();
     }
@@ -461,31 +548,38 @@ function drawCopy(
       if (sx < -20 || sy < -20 || sx > size.w + 20 || sy > size.h + 20) continue;
       ctx.beginPath();
       ctx.arc(sx, sy, r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,250,238,0.92)";
+      ctx.fillStyle = T.markerBg;
       ctx.fill();
       ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(60,40,30,0.55)";
+      ctx.strokeStyle = T.markerStroke;
       ctx.stroke();
       ctx.fillStyle = "#2b2a26";
-      ctx.fillText(MARKER_TYPES[m.type].icon, sx, sy + 0.5);
+      ctx.fillText(markerIcon(m), sx, sy + 0.5);
+      if (o.selectedMarker === m.key) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, r + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = "#e0a52c";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
       placed.push([sx - r, sy - r, sx + r, sy + r]);
     }
     for (const m of o.society.markers) {
       if (!layers.rotulos || view.s < 9) break;
       const [sx, sy] = toS(m.x, m.y);
       if (sx < -20 || sy < -20 || sx > size.w + 20 || sy > size.h + 20) continue;
-      ctx.font = `italic 500 10.5px ${SERIF}`;
+      ctx.font = `italic 500 10.5px ${T.font}`;
       const tw = ctx.measureText(m.name).width;
       if (!free(sx - tw / 2, sy + r + 2, tw, 12)) continue;
       placed.push([sx - tw / 2, sy + r + 2, sx + tw / 2, sy + r + 14]);
       {
         ctx.save();
-        ctx.font = `italic 500 10.5px ${SERIF}`;
+        ctx.font = `italic 500 10.5px ${T.font}`;
         ctx.textBaseline = "top";
         ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(255,250,235,0.85)";
+        ctx.strokeStyle = T.halo;
         ctx.strokeText(m.name, sx, sy + r + 2);
-        ctx.fillStyle = "#3b2a1a";
+        ctx.fillStyle = T.text2;
         ctx.fillText(m.name, sx, sy + r + 2);
         ctx.restore();
       }
@@ -495,7 +589,7 @@ function drawCopy(
     // Nome das províncias (pequeno, em itálico), onde couber.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `italic 500 10.5px ${SERIF}`;
+    ctx.font = `italic 500 10.5px ${T.font}`;
     for (const l of o.provinceVectors.labels) {
       if (!l || Math.sqrt(l.area) * view.s < 60) continue;
       const [sx, sy] = toS(l.x, l.y);
@@ -503,9 +597,9 @@ function drawCopy(
       if (!free(sx - tw / 2, sy - 6, tw, 12)) continue;
       placed.push([sx - tw / 2, sy - 6, sx + tw / 2, sy + 6]);
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(245,238,220,0.75)";
+      ctx.strokeStyle = T.halo;
       ctx.strokeText(l.name, sx, sy);
-      ctx.fillStyle = "rgba(70,45,50,0.9)";
+      ctx.fillStyle = T.text2;
       ctx.fillText(l.name, sx, sy);
     }
   }
@@ -516,14 +610,14 @@ function drawCopy(
     for (const l of [...vectors.lakeLabels].sort((a, b) => b.area - a.area)) {
       if (Math.sqrt(l.area) * view.s < 14) continue;
       const [sx, sy] = toS(l.x, l.y);
-      ctx.font = `italic 600 11px ${SERIF}`;
+      ctx.font = `italic 600 11px ${T.font}`;
       const tw = ctx.measureText(l.name).width;
       if (!free(sx - tw / 2, sy - 7, tw, 14)) continue;
       placed.push([sx - tw / 2, sy - 7, sx + tw / 2, sy + 7]);
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(235,244,250,0.85)";
+      ctx.strokeStyle = T.halo;
       ctx.strokeText(l.name, sx, sy);
-      ctx.fillStyle = "#1f4c73";
+      ctx.fillStyle = T.lake;
       ctx.fillText(l.name, sx, sy);
     }
   }
@@ -535,14 +629,14 @@ function drawCopy(
       if (!l) return;
       const [sx, sy] = toS(l.x, l.y);
       const fs = Math.max(11, Math.min(30, Math.sqrt(l.area) * view.s * 0.09));
-      ctx.font = `600 ${fs}px ${SERIF}`;
+      ctx.font = `600 ${fs}px ${T.font}`;
       ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(245,238,220,0.8)";
+      ctx.strokeStyle = T.halo;
       const text = s.name.toUpperCase().split("").join(" ");
       const tw = ctx.measureText(text).width;
       placed.push([sx - tw / 2, sy - fs / 2, sx + tw / 2, sy + fs / 2]);
       ctx.strokeText(text, sx, sy);
-      ctx.fillStyle = "#3b2a2a";
+      ctx.fillStyle = T.state;
       ctx.fillText(text, sx, sy);
     });
   }
@@ -561,15 +655,15 @@ function drawCopy(
       const r = dotRadius(meta?.population ?? 500, cap);
       ctx.beginPath();
       ctx.arc(sx, sy, r, 0, Math.PI * 2);
-      ctx.fillStyle = cap ? "#2b2a26" : "#fffaf0";
+      ctx.fillStyle = cap ? T.cityDark : T.cityLight;
       ctx.fill();
       ctx.lineWidth = 1.4;
-      ctx.strokeStyle = cap ? "#fffaf0" : "#2b2a26";
+      ctx.strokeStyle = cap ? T.cityLight : T.cityDark;
       ctx.stroke();
       if (cap) {
         ctx.beginPath();
         ctx.arc(sx, sy, r + 2.6, 0, Math.PI * 2);
-        ctx.strokeStyle = "#2b2a26";
+        ctx.strokeStyle = T.cityDark;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -583,7 +677,7 @@ function drawCopy(
       }
       const big = (meta?.population ?? 0) >= 5000;
       if (layers.rotulos && (cap || sel || view.s > 3.2 || (big && view.s > 2.2))) {
-        ctx.font = `${cap ? "700 13px" : big ? "600 12px" : "500 11.5px"} ${SERIF}`;
+        ctx.font = `${cap ? "700 13px" : big ? "600 12px" : "500 11.5px"} ${T.font}`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         const tw = ctx.measureText(b.name).width;
@@ -598,9 +692,9 @@ function drawCopy(
         const [lx, ly] = spot;
         placed.push([lx, ly - 7, lx + tw + 2, ly + 7]);
         ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(255,250,235,0.85)";
+        ctx.strokeStyle = T.halo;
         ctx.strokeText(b.name, lx, ly);
-        ctx.fillStyle = "#24201b";
+        ctx.fillStyle = T.text;
         ctx.fillText(b.name, lx, ly);
       }
     }

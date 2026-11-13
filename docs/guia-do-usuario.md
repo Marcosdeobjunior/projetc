@@ -255,7 +255,9 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     do quadro), embaixo da imagem: um brasão é gerado a partir do nome, com campo, divisão e
     figura seguindo as cores da heráldica; **Gerar outro** sorteia outro, e **Usar imagem** põe
     um desenho seu no lugar (**Voltar ao gerado** desfaz). Brasão e bandeira são independentes: cada
-    um tem o seu desenho gerado e a sua imagem, e a imagem enviada numa aba não muda a outra;
+    um tem o seu desenho gerado e a sua imagem, e a imagem enviada numa aba não muda a outra.
+    Nos cartões de Lugares e Organizações aparece a bandeira: a imagem que você enviou ou, sem
+    ela, a bandeira padrão gerada (a mesma do mapa); se o lugar tem foto, a bandeira fica no canto;
   - na ficha de **lugar**, o **Mapa da região**: **Gerar mapa** cria um mapa ilustrado com
     estrada, rio, casas ao longo das ruas, campos cultivados e árvores. Escolha **Aldeia**, **Vila**
     ou **Cidade**, ligue ou desligue **Estrada**, **Rio** e **Campos**, e use **Gerar outro** para
@@ -263,7 +265,10 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
     mouse aproxima e arrastar move. **Vista de rua** mostra o lugar em 3D, do chão: clique na
     imagem e ande com as setas (ou W A S D), **Shift** corre, arrastar olha em volta; um
     minimapa no canto mostra onde você está e para onde olha. Clicar numa rua do mapa abre a
-    vista de rua ali. Não dá para entrar nas casas nem atravessar o rio fora da ponte;
+    vista de rua ali. As casas seguem o estilo do lugar (telhados de duas ou quatro águas com
+    chaminé, adobe com terraço, cabanas de palha, tendas, prédios de vidro no mundo real), com
+    janelas por andar e porta virada para a rua. Não dá para entrar nas casas nem atravessar o
+    rio fora da ponte;
     , para o que não cabe nos campos; **Editar anotações** abre
     no editor (renomeie pelo nome no alto do texto);
   - **Aparece em**: as cenas que citam a nota (clique para abrir a cena);
@@ -275,9 +280,15 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
 
 #### Calendários: linha do tempo e calendários do mundo
 
-A aba **Calendários** do Mundo tem três partes, escolhidas no alto: **Linha do tempo**,
-**Calendários do mundo** (as fichas de calendário) e **Escrita** (o seu calendário de escrita). O
-app lembra qual ficou aberta.
+A aba **Calendários** do Mundo tem três partes, nas abas do alto: **Linha do tempo** (quando cada
+cena acontece), **Calendário do mundo** (meses, semana e eras do seu mundo) e **Metas de escrita**
+(palavras por dia). O app lembra qual ficou aberta.
+
+Na Linha do tempo, uma barra só reúne tudo: à esquerda, a forma de mostrar (**Lista**,
+**Calendário**, **Cascata**, **Faixas por personagem**); à direita, **Mostrar** (tudo ou só o que
+está ligado a um personagem, lugar…), **Datas** (Dia 1, Dia 2… ou um calendário do mundo; a última
+opção leva a criar ou editar um) e **+ Acontecimento**. Com a linha vazia, **Preencher com datas
+de teste** mostra como tudo funciona.
 
 **Linha do tempo** mostra as cenas na ordem em que **acontecem na história**, que pode ser
 diferente da ordem do livro.
@@ -299,6 +310,19 @@ diferente da ordem do livro.
 - **Mostrar tudo / uma nota:** filtra a linha pelo que está ligado a um personagem, lugar etc.
   (cenas que citam a nota e acontecimentos criados com o filtro ativo).
 - O **×** tira a data de uma cena (ela volta para Sem data); a lixeirinha exclui um acontecimento.
+
+**Calendário:** mostra um mês por vez, em grade (com os nomes de meses e dias da semana do
+calendário do mundo escolhido em **Datas**; sem ele, "Mês 1, 2…" de 30 dias). Use ‹ › ou a
+lista de meses e o ano para navegar, e **Início da história** para voltar ao começo. Clique no
+número de um dia para criar um acontecimento ali (o nome já vem selecionado para digitar);
+clique num item para ver os detalhes (nome, duração com − e +, um dia antes ou depois, excluir ou
+abrir a cena); arraste um item para outro dia para mudar a data. Feriados aparecem no dia.
+
+**Cascata:** cada cena (azul) e acontecimento (dourado) vira uma barra numa régua de tempo, em
+degraus na ordem da história. Arraste a barra para mudar o dia, puxe a ponta direita para mudar
+quanto dura, e clique para ver os detalhes; com uma barra escolhida, as setas ← → também a
+movem. A escala vai de **Dias** a **Anos**, e os períodos longos sem nada (por exemplo, o
+nascimento de alguém anos antes) viram um corte listrado com o tempo pulado ("… 7 anos").
 
 **Faixas por personagem:** na Linha do tempo, troque **Lista** por **Faixas por personagem** para
 ver uma linha para cada personagem (ou lugar, organização — escolha nos botões acima da tabela) e
@@ -334,9 +358,12 @@ escrita fictícia. O projeto de exemplo da prévia já vem com essas datas.
 - **Ignorar nesta cena** cala os avisos daquela cena (atalho, magia…); **avisos ignorados** volta a
   avisar.
 
-**Calendário do mundo:** na ficha de um calendário (aba Calendários → Calendários do mundo →
-cartão), **Definir calendário** cria um calendário editável, começando com 12 meses e 7 dias na
-semana. Dá para:
+**Calendário do mundo:** na aba **Calendário do mundo**, escolha um modelo para começar (**Como o
+nosso**, **Fantasia simples**, **Lunar** ou **Em branco**); o primeiro calendário já entra em uso na
+linha do tempo. Com calendários criados, a lista fica à esquerda (o que está **Em uso** tem a
+marca) e o editor à direita, com o nome no alto (clique para renomear), **Usar na linha do tempo**
+ou **parar de usar**, **Abrir ficha** (imagens e anotações) e uma prévia do mês em que a história
+começa, com o dia 1 marcado e os feriados sublinhados. Dá para:
 
 - renomear, mudar a quantidade de dias, subir e tirar **meses** (+ mês acrescenta);
 - definir os **dias da semana** (separados por vírgula; vazio = sem semana);
@@ -344,7 +371,10 @@ semana. Dá para:
 - dizer **que data é o dia 1 da história** (dia, mês, ano e dia da semana);
 - cadastrar **feriados e festas** (repetem todo ano) e **estações** (cada uma começa no primeiro dia
   de um mês);
-- marcar **Usar na linha do tempo**.
+- usar outro calendário na linha do tempo (**Usar na linha do tempo**).
+
+**+ Novo calendário** mostra os modelos de novo. Uma ficha de calendário antiga, sem meses, também
+oferece os modelos.
 
 O ano não tem bissextos: tem a soma dos dias dos meses. **Apagar a definição** tira só o calendário;
 a ficha e as datas das cenas continuam.
@@ -1104,7 +1134,11 @@ há terra nas latitudes muito altas (onde o plano deforma). No mapa plano, como 
 fica perto dos polos aparece esticado na horizontal, e a sobra acima e abaixo mostra o que existe
 do outro lado do polo. Na primeira vez, escolha o **tipo de
 mundo** (Continentes, Arquipélago ou Pangeia), quanto é **terra**, quantos **estados** e
-**cidades**, e clique em **Gerar mapa**. O app cria continentes com relevo, clima e **biomas**
+**cidades**, se há **terras nos polos**, e clique em **Gerar mapa**. Em Continentes, o app cria de
+3 a 6 continentes separados por oceano, cada um com penínsulas, golfos e serras junto às bordas
+(como os Andes); com terras nos polos, há um continente gelado no polo sul e uma terra grande com
+ilhas no norte (no mapa plano, como em todo mapa-múndi, elas aparecem esticadas; no globo, no
+tamanho real). O app cria continentes com relevo, clima e **biomas**
 (desertos, savanas, florestas, taiga, tundra, geleiras, pântanos, montanhas), **rios** que
 descem até o mar, **estados** com fronteiras a partir das capitais, **cidades** (com nomes
 inventados) e **estradas** entre elas.
@@ -1126,6 +1160,29 @@ inventados) e **estradas** entre elas.
   reinos têm nomes inventados no sotaque do povo do lugar (cadeias de Markov). O estilo
   **Culturas** pinta o território de cada povo, e a legenda lista os povos. No **Editar povoado**,
   a Cultura vem preenchida com o povo do lugar, e o mouse sobre o mapa mostra o povo.
+- **Época:** no alto do painel (e ao gerar um mundo novo) escolha **Fantasia** ou **Real** (como o
+  mundo de hoje). No Real o mapa vira um atlas moderno (mar claro, autoestradas vermelhas, letras
+  sem serifa), os governos viram República, Federação, União, Estado… (convertidos sozinhos ao
+  trocar), as estradas viram Autoestrada A1, rodovias numeradas e estradas vicinais, as cidades
+  têm milhões de habitantes, e os marcadores viram o que seriam hoje (cachoeira vira usina
+  hidrelétrica, farol vira porto de contêineres, ruínas viram sítio arqueológico; capitais ganham
+  aeroporto e universidade). O mundo também muda: o **clima** fica 1,2 °C mais quente (mais perto
+  dos polos), as cidades viram manchas de **Área urbana** cercadas de **Lavouras**, a
+  **população do mundo** no painel passa de centenas de milhões a bilhões, e a prévia e a vista
+  de rua mostram prédios de concreto de até 12 andares, com laje. O relevo e as cidades gravados
+  não mudam: voltar à Fantasia devolve tudo. Trocar de época entra no Desfazer.
+- **Configurar mundo:** o botão no painel abre a janela do clima do planeta (arraste pelo título).
+  Escolha a temperatura média no **Equador**, no **Polo Norte** e no **Polo Sul** e a
+  **Precipitação** (100% = como na Terra). A temperatura cai do equador até cada polo, devagar nos
+  trópicos e depressa nas latitudes médias, e mais 6,5 °C a cada quilômetro de altitude. O globo
+  ao lado mostra as faixas de temperatura, a linha do equador em vermelho e o meridiano central;
+  as setas à direita são os **ventos** de cada faixa de 30° (clique para girar 45°, Shift+clique
+  para o outro lado; **Restaurar ventos** volta aos da Terra: alísios, ventos de oeste e polares).
+  O vento traz a chuva do mar, então mudar a direção muda onde ficam desertos e florestas.
+  **Predefinições** (Terra, Era do gelo, Estufa, Árido, Úmido) preenchem tudo de uma vez. Com
+  **aplicar alterações automaticamente**, o mapa se refaz ao soltar o controle; senão, use
+  **Atualizar mundo**. A mudança entra no Desfazer e fica gravada no mapa. O mouse sobre o mapa
+  mostra também a temperatura média do lugar.
 - **Rios e lagos:** a chuva que sobra depois da evaporação (que é maior no calor) escorre pelo
   maior declive do relevo e vai se juntando; onde a vazão é grande nasce um rio, que engrossa rio
   abaixo e faz meandros nas planícies. Depressões no terreno enchem e viram **lagos**, até o nível
@@ -1145,8 +1202,33 @@ inventados) e **estradas** entre elas.
 - **Marcadores:** vulcões, fontes termais, cachoeiras (onde o rio cai de um degrau alto), minas,
   ruínas, faróis, estalagens nas estradas, cavernas, bosques sagrados e campos de batalha nas
   fronteiras, cada um com nome e uma pequena lenda (passe o mouse sobre o ícone). A camada
-  **Marcadores** liga e desliga os ícones; os nomes aparecem bem de perto. Províncias, religiões e
+  **Marcadores** liga e desliga os ícones; os nomes aparecem bem de perto. Para pôr um marcador seu,
+  use a ferramenta **Marcador** (ou **Pôr marcador** na aba Legendas) e clique no mapa: abre a
+  janela **Editar marcador**, com nome, tipo, ícone (os dos tipos e outros, como castelo,
+  dragão, caveira, tesouro) e lenda. Clicar em qualquer marcador abre essa janela, e com a
+  ferramenta **Mover** dá para arrastá-lo. Editar ou mover um marcador gerado pelo mapa o torna
+  seu (o gerado some e fica a cópia); **Tirar do mapa** esconde um gerado, e **Excluir** apaga um
+  seu. Tudo entra no Desfazer. Províncias, religiões e
   marcadores saem do mapa e se refazem sozinhos quando ele muda.
+- **Economia:** cada cidade tem uma **vocação** (o caminho da sua economia) tirada do lugar: terra
+  boa e rio dão agricultura, campos dão pecuária, a costa dá pesca e comércio, serras e minas dão
+  mineração, matas dão madeira, cidades grandes e capitais dão indústria e serviços, e praias
+  quentes, picos nevados, termas, parques e ruínas dão turismo (na fantasia, peregrinação). A
+  vocação é o setor em que a cidade mais se destaca no mundo, então há caminhos diferentes. No
+  **Editar povoado**, a seção **Economia** mostra os principais setores, o que a cidade produz, a
+  riqueza (de 1 a 5 estrelas), a renda por pessoa e o PIB, e deixa escolher outra vocação (fica
+  na ficha, campo `vocacao`). A ficha do estado tem a aba **Economia**: vocação, PIB, renda por
+  pessoa, setores, principais produtos e cidades por vocação (o estado soma as cidades e o
+  campo). O estilo **Economia** pinta cada estado pela vocação, com a legenda na aba Legendas.
+  Na fantasia os valores são em moedas; no mundo Real, em dólares. Há **estados ricos e pobres**: a riqueza
+  vem do acesso ao mar, da terra fértil, do clima (desertos e gelo pesam), das estradas, das
+  minas e de uma parte de história fixa de cada estado, e multiplica a renda das cidades e do
+  campo. A aba Economia do estado mostra se ele é **rico**, **médio** ou **pobre**, a posição em
+  renda por pessoa e o desenvolvimento, e deixa escolher a **riqueza** e a **vocação** do estado
+  (campos `riqueza` e `vocacao` da ficha). O estilo **Riqueza** pinta os estados de verde (ricos),
+  amarelo (médios) e vermelho (pobres). Na fantasia, os estados são **reinos** e as cidades,
+  **povoados** ("Editar povoado"); no mundo Real, o tipo do lugar vira **Estado** e a janela,
+  "Editar cidade".
 - **Reinos:** cada reino tem uma **forma de governo** (Reino, Império, Principado, Ducado,
   República, Teocracia, Canato, Liga), sorteada pelo tamanho e pelo povo e trocável no painel do
   reino; os textos mostram o nome completo ("Reino de Faeris").
@@ -1162,14 +1244,21 @@ inventados) e **estradas** entre elas.
   de mapa inteiro ficam no canto. Embaixo à esquerda aparece o bioma, o estado e a altitude do
   ponto sob o mouse.
 - **Estilo:** **Biomas**, **Relevo** (cores de altitude), **Político** (estados em cores
-  chapadas, como num atlas), **Culturas** ou **Religiões**. **Camadas** liga e desliga rios,
+  chapadas, como num atlas), **Culturas**, **Religiões**, **Economia** ou **Riqueza**. **Camadas** liga e desliga rios,
   estradas, fronteiras, a cor dos estados, províncias, cidades, marcadores e nomes.
-- **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade ou num estado para
-  editar; arraste uma cidade para mudá-la de lugar), **Elevar** e **Rebaixar** (pincel de relevo:
-  pinte terra no mar para criar ilhas, ou mar na terra; o tamanho do pincel aparece embaixo),
-  **Suavizar** e **Cidade** (clique em terra para criar uma). Rios, biomas, fronteiras e estradas
-  se refazem sozinhos depois de cada mudança. **Desfazer** e **Refazer** (Ctrl+Z, Ctrl+Shift+Z)
-  voltam até 30 passos.
+- **Ferramentas** (à esquerda): **Mover** (arrasta o mapa; clique numa cidade, num estado ou num
+  marcador para editar; arraste uma cidade ou um marcador para mudá-lo de lugar), **Terreno**,
+  **Cidade** (clique em terra para criar uma), **Marcador** e **Rota**. **Desfazer** e **Refazer**
+  (Ctrl+Z, Ctrl+Shift+Z) voltam até 30 passos.
+- **Editar terreno:** a ferramenta **Terreno** abre a paleta de pincéis: **Terra** (cria terra no
+  mar), **Mar** (afunda a terra: abre baías e estreitos e separa um continente ao meio),
+  **Montanha** (serras com picos irregulares), **Neve** (picos acima da linha da neve, com gelo
+  no topo), **Lago** (cava uma bacia fechada que enche de água até transbordar), **Elevar**,
+  **Rebaixar**, **Suavizar** e **Aplainar** (nivela pela altura onde o traço começou), com
+  **Tamanho** e **Força**. Ao soltar, o mapa se reorganiza sozinho: rios mudam de curso, lagos
+  enchem, neve e biomas acompanham a altitude, fronteiras, estradas e províncias se refazem, e
+  cidades (e centros de povos) que ficaram no mar vão para a terra mais perto; se não houver
+  terra por perto, a cidade sai do mapa.
 - **Mapa e Mundo são a mesma coisa:** cada estado do mapa é um lugar no Mundo (tipo **Reino**) e
   cada cidade também (tipo **Cidade** ou **Capital**, com **Fica em** apontando para o reino). Ao
   gerar o mapa, os lugares aparecem sozinhos em Mundo → Lugares; um lugar que já existia com o
@@ -1189,11 +1278,35 @@ inventados) e **estradas** entre elas.
   casebres do lado de fora). O botão de recarregar no título sorteia outro desenho. Tudo fica na
   ficha do lugar; a prévia é fiel ao mapa-múndi — o mar ou lago fica do lado em que está no mapa, o rio corre
   na mesma direção, as estradas saem para onde vão as da região, e o chão e as árvores seguem o
-  bioma; **gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
-  **Ver na ficha** ou **Abrir ficha**. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
+  bioma. As construções também seguem o lugar e o tipo de povoado: casas de telha e sobrados no
+  clima temperado, adobe com terraços e casas de pátio no deserto, cabanas redondas de palha nos
+  trópicos, madeira escura e casas compridas na taiga, telhados com neve no frio extremo, pedra e
+  ardósia na montanha, tendas e iurtas para nômades e cabanas de caçadores; o templo muda junto
+  (cúpula, torre ou cabana grande), e os portos ganham cais, barcos e armazéns. O estilo aparece
+  escrito embaixo da prévia, com o número de
+  construções. A densidade segue a população: um povoado de 80 pessoas tem meia dúzia de casas, e
+  uma cidade grande ocupa mais chão, aperta as casas no miolo e sobe sobrados de até 5 andares. No
+  mundo **Real** a cidade é moderna: ruas em grade, prédios de concreto com casas nos bairros e
+  arranha-céus no centro das metrópoles (só os nômades seguem em tendas). **Gerar outra** mantém essa geografia e só redistribui casas, ruas e lavouras. Ela é o mesmo **Mapa da região** da ficha (com a vista de rua), aberto por
+  **Ver na ficha** ou **Abrir ficha**. Na ficha de uma cidade ou de um estado do mapa-múndi, os
+  campos **População** e **Clima** vêm do mapa e não se digitam: a população é a do povoado (ou,
+  no estado, a soma das cidades com a gente do campo), e o clima diz o tipo (tropical, temperado,
+  frio…; árido, seco, úmido), a temperatura média e o bioma que domina. Para mudar a população de
+  uma cidade, use o Editar povoado. Na ficha aparece **Ver no mapa-múndi**, que volta ao mapa
   com a cidade no centro.
 - **Estado selecionado:** mude o nome e a cor; o painel mostra quanto das terras ele ocupa,
-  quantas cidades tem e a capital.
+  quantas cidades tem e a capital. Clicar num estado também abre a **ficha do estado** sobre o
+  mapa (arraste pelo título): bandeira, forma de governo, capital e se tem litoral; em **Visão
+  geral**, habitantes, área em km², densidade, províncias, temperatura média (mínima e máxima),
+  ponto mais alto, rios e lagos, quanto da gente vive nas cidades, barras de paisagens (biomas),
+  povos e religiões, os vizinhos e as províncias (clique para ir até eles) e os lugares notáveis
+  (lagos e marcadores); em **Cidades**, a lista das cidades com província e população (a capital
+  primeiro; clique para abrir o Editar povoado). **Abrir ficha** abre o lugar do estado no Mundo.
+- **Abas do painel:** o painel lateral abre na aba **Mundo** (números, época, estilo, camadas,
+  Configurar mundo, exportar e gerar). As outras abas, no alto do painel, são **Rotas**,
+  **Lugares** (lugares do Mundo que ainda não estão no mapa, com o número deles na aba) e
+  **Legendas** (culturas, religiões, marcadores e biomas). O que estiver
+  selecionado no mapa (estado, rota, estrada) aparece no topo de qualquer aba.
 - **Recolher:** a seta no alto das ferramentas deixa só os ícones, e **Esconder opções** (no
   canto direito) tira o painel lateral para o mapa ocupar a tela; **Opções** traz de volta. O app
   lembra a escolha.
