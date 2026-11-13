@@ -391,7 +391,9 @@ prévia e nas exportações (HTML/EPUB e DOCX).
 `formato-do-projeto.md`) e `buildTimeline` (pura: agrupa por dia, calcula o intervalo desde o fim
 do grupo anterior, lista as cenas sem data e marca as "fora de ordem" em relação ao livro).
 Estado em `state/timeline.ts` (gravação pela fila `serial`); tela em `ui/TimelineView.tsx` (as vistas Calendário e Cascata ficam em
-`ui/TimelineViews.tsx`: grade do mês com arrastar e soltar, e barras numa régua com os vazios
+`ui/TimelineViews.tsx`; a aba Calendário do mundo é `ui/WorldCalendars.tsx`, lista + editor
+(`CalendarEditor` com `embedded`), com os modelos de `CALENDAR_PRESETS` em `timeline/calendar.ts`
+e a prévia `MonthPreview`; grade do mês com arrastar e soltar, e barras numa régua com os vazios
 longos comprimidos; as duas só chamam as ações do store),
 dentro da aba Calendários do Mundo (sub-seção "Linha do tempo"). `timeline/calendar.ts` converte
 dia da história ↔ data do calendário do mundo (`dayToDate`, `dateToDay`, `formatDate`,

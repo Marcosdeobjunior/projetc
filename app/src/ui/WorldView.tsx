@@ -9,6 +9,7 @@ import { NoteProfile, useAttachmentImage } from "./NoteProfile";
 import { TimelineView } from "./TimelineView";
 import { useWorldNav } from "../state/worldNav";
 import { WritingView } from "./WritingView";
+import { WorldCalendars } from "./WorldCalendars";
 import { PlaceFlag } from "./PlaceFlag";
 import type { Note } from "../manuscript/types";
 
@@ -183,33 +184,39 @@ export function WorldView({ session }: { session: Session }) {
         aria-labelledby={`world-tab-${tab}`}
       >
         {tab === "calendarios" && !opened && (
-          <div className="segmented wide world-sub" role="radiogroup" aria-label="Calendários">
+          <nav className="world-sub" aria-label="Calendários">
             {(
               [
-                ["timeline", "clock", "Linha do tempo"],
-                ["calendars", "calendar", "Calendários do mundo"],
-                ["writing", "edit", "Escrita"],
+                ["timeline", "clock", "Linha do tempo", "Quando cada cena acontece"],
+                ["calendars", "calendar", "Calendário do mundo", "Meses, semana, eras"],
+                ["writing", "edit", "Metas de escrita", "Palavras por dia"],
               ] as const
-            ).map(([v, icon, text]) => (
+            ).map(([v, icon, text, hint]) => (
               <button
                 key={v}
                 type="button"
-                role="radio"
-                aria-checked={sub === v}
+                aria-current={sub === v ? "page" : undefined}
+                title={hint}
                 onClick={() => setSub(v)}
               >
-                <Icon name={icon} size={14} /> {text}
+                <Icon name={icon} size={15} />
+                <span>
+                  {text}
+                  <small>{hint}</small>
+                </span>
               </button>
             ))}
-          </div>
+          </nav>
         )}
         {tab === "calendarios" && sub === "writing" && !opened ? (
           <WritingView />
+        ) : tab === "calendarios" && sub === "calendars" && !opened ? (
+          <WorldCalendars session={session} onOpenNote={(id) => setOpenId(id)} />
         ) : tab === "calendarios" && sub === "timeline" && !opened ? (
           <TimelineView
             session={session}
             linksOf={linksOf}
-            onOpenCalendar={(id) => setOpenId(id)}
+            onOpenCalendar={() => setSub("calendars")}
           />
         ) : opened ? (
           <NoteProfile

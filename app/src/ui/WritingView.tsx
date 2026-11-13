@@ -34,7 +34,7 @@ export function WritingView() {
     <div className="writing">
       <header className="world-head">
         <div>
-          <h2>Escrita</h2>
+          <h2>Metas de escrita</h2>
           <p className="muted">
             Palavras que você escreveu em cada dia, nas cenas do manuscrito. Apagar texto não
             desconta o que já foi escrito.

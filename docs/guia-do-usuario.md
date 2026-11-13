@@ -280,9 +280,15 @@ com a imagem da ficha (ou o ícone do tipo, sem imagem) e o nome.
 
 #### Calendários: linha do tempo e calendários do mundo
 
-A aba **Calendários** do Mundo tem três partes, escolhidas no alto: **Linha do tempo**,
-**Calendários do mundo** (as fichas de calendário) e **Escrita** (o seu calendário de escrita). O
-app lembra qual ficou aberta.
+A aba **Calendários** do Mundo tem três partes, nas abas do alto: **Linha do tempo** (quando cada
+cena acontece), **Calendário do mundo** (meses, semana e eras do seu mundo) e **Metas de escrita**
+(palavras por dia). O app lembra qual ficou aberta.
+
+Na Linha do tempo, uma barra só reúne tudo: à esquerda, a forma de mostrar (**Lista**,
+**Calendário**, **Cascata**, **Faixas por personagem**); à direita, **Mostrar** (tudo ou só o que
+está ligado a um personagem, lugar…), **Datas** (Dia 1, Dia 2… ou um calendário do mundo; a última
+opção leva a criar ou editar um) e **+ Acontecimento**. Com a linha vazia, **Preencher com datas
+de teste** mostra como tudo funciona.
 
 **Linha do tempo** mostra as cenas na ordem em que **acontecem na história**, que pode ser
 diferente da ordem do livro.
@@ -352,9 +358,12 @@ escrita fictícia. O projeto de exemplo da prévia já vem com essas datas.
 - **Ignorar nesta cena** cala os avisos daquela cena (atalho, magia…); **avisos ignorados** volta a
   avisar.
 
-**Calendário do mundo:** na ficha de um calendário (aba Calendários → Calendários do mundo →
-cartão), **Definir calendário** cria um calendário editável, começando com 12 meses e 7 dias na
-semana. Dá para:
+**Calendário do mundo:** na aba **Calendário do mundo**, escolha um modelo para começar (**Como o
+nosso**, **Fantasia simples**, **Lunar** ou **Em branco**); o primeiro calendário já entra em uso na
+linha do tempo. Com calendários criados, a lista fica à esquerda (o que está **Em uso** tem a
+marca) e o editor à direita, com o nome no alto (clique para renomear), **Usar na linha do tempo**
+ou **parar de usar**, **Abrir ficha** (imagens e anotações) e uma prévia do mês em que a história
+começa, com o dia 1 marcado e os feriados sublinhados. Dá para:
 
 - renomear, mudar a quantidade de dias, subir e tirar **meses** (+ mês acrescenta);
 - definir os **dias da semana** (separados por vírgula; vazio = sem semana);
@@ -362,7 +371,10 @@ semana. Dá para:
 - dizer **que data é o dia 1 da história** (dia, mês, ano e dia da semana);
 - cadastrar **feriados e festas** (repetem todo ano) e **estações** (cada uma começa no primeiro dia
   de um mês);
-- marcar **Usar na linha do tempo**.
+- usar outro calendário na linha do tempo (**Usar na linha do tempo**).
+
+**+ Novo calendário** mostra os modelos de novo. Uma ficha de calendário antiga, sem meses, também
+oferece os modelos.
 
 O ano não tem bissextos: tem a soma dos dias dos meses. **Apagar a definição** tira só o calendário;
 a ficha e as datas das cenas continuam.
